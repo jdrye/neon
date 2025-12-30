@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Cleaner – Arcade 2D</title>
+  <style>
+    :root {
+      --bg: #050914;
+      --panel: rgba(13, 18, 36, 0.72);
+      --panel-strong: rgba(18, 25, 48, 0.9);
+      --accent: #7af6ff;
+      --accent-2: #ff955a;
+      --accent-3: #86f26e;
+      --text: #e7f1ff;
+      --muted: #8aa4c8;
+      --danger: #ff5e7b;
+      --shadow: 0 10px 45px rgba(0, 0, 0, 0.45);
+    }
+
+    body.contrast {
+      --panel: rgba(6, 10, 22, 0.88);
+      --panel-strong: rgba(6, 10, 22, 0.94);
+      --text: #f5fbff;
+      --muted: #c5d8ff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 18% 22%, rgba(53, 103, 255, 0.18), transparent 38%),
+                  radial-gradient(circle at 82% 0%, rgba(255, 119, 71, 0.18), transparent 30%),
+                  linear-gradient(145deg, #040814 0%, #060b19 42%, #02040a 100%);
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      padding: 28px 28px 38px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(122, 246, 255, 0.15);
+      border-radius: 18px;
+      padding: 22px 22px 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 10% 0%, rgba(122, 246, 255, 0.12), transparent 32%),
+                  radial-gradient(circle at 80% 30%, rgba(255, 149, 90, 0.12), transparent 35%);
+      z-index: 0;
+    }
+
+    .panel > * { position: relative; z-index: 1; }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      color: var(--accent);
+      margin: 0 0 8px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 3vw, 36px);
+      letter-spacing: -0.02em;
+    }
+
+    p { color: var(--muted); line-height: 1.5; }
+
+    .controls {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .controls li {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+    }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(122, 246, 255, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .pill strong { color: var(--accent); }
+
+    .toggles {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle input { accent-color: var(--accent); cursor: pointer; }
+
+
+    .game-area {
+      position: relative;
+      background: var(--panel-strong);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow);
+      min-height: 480px;
+      display: grid;
+      place-items: center;
+      isolation: isolate;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      max-height: 760px;
+      display: block;
+      background: radial-gradient(circle at 50% 30%, rgba(122, 246, 255, 0.08), transparent 35%),
+                  radial-gradient(circle at 20% 80%, rgba(255, 149, 90, 0.08), transparent 30%),
+                  #0b1223;
+      border-radius: 14px;
+    }
+
+    .hud {
+      position: absolute;
+      inset: 14px 14px auto 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .badge {
+      padding: 9px 14px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(6px);
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .badge span { color: var(--muted); font-weight: 500; margin-right: 8px; }
+
+    .badge.danger { color: var(--danger); }
+    .badge.combo { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+
+    .effects-badge {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+    }
+
+    .message {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      backdrop-filter: blur(6px);
+      background: linear-gradient(140deg, rgba(5, 9, 20, 0.72), rgba(5, 9, 20, 0.55));
+      z-index: 3;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .message.hidden { opacity: 0; visibility: hidden; }
+
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px 22px;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 { margin: 0 0 12px; letter-spacing: -0.01em; }
+    .card p { margin: 0 0 16px; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; text-align: left; margin: 12px 0 0; }
+    .stat-row { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px 12px; color: var(--text); }
+    .stat-row span { color: var(--muted); }
+
+    .highscores { margin: 14px 0 0; text-align: left; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; }
+    .hs-title { font-weight: 700; color: var(--accent); margin-bottom: 8px; letter-spacing: 0.01em; }
+    .hs-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+    .hs-row:first-of-type { border-top: none; }
+    .hs-rank { display: inline-block; width: 28px; color: var(--muted); font-weight: 700; }
+    .hs-name { font-weight: 700; color: var(--text); }
+    .hs-score { font-variant-numeric: tabular-nums; font-weight: 800; color: #ffffff; }
+    .hs-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+    .hs-empty { color: var(--muted); margin: 6px 0 2px; }
+    .badge-stack { display: flex; flex-direction: column; line-height: 1.1; }
+    .badge-note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .liveboard { margin: 14px 0 0; text-align: left; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; }
+    .live-title { font-weight: 700; color: var(--accent-2); margin-bottom: 8px; letter-spacing: 0.01em; display: flex; align-items: center; gap: 8px; }
+    .live-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+    .live-row:first-of-type { border-top: none; }
+    .live-self { color: var(--accent-3); font-weight: 800; }
+    .live-name { font-weight: 700; color: var(--text); }
+    .live-score { font-variant-numeric: tabular-nums; font-weight: 800; color: #ffffff; }
+    .live-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+
+    input[type=\"text\"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-size: 15px;
+      margin: 0 0 12px;
+      outline: none;
+    }
+    input[type=\"text\"]:focus {
+      border-color: rgba(122, 246, 255, 0.45);
+      box-shadow: 0 0 0 3px rgba(122, 246, 255, 0.15);
+    }
+
+    button {
+      border: none;
+      background: linear-gradient(120deg, var(--accent), #6fe4f8);
+      color: #041120;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 12px 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(122, 246, 255, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 12px 36px rgba(122, 246, 255, 0.35); }
+    button:active { transform: translateY(0); }
+
+    .mobile-controls {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      display: grid;
+      gap: 8px;
+      z-index: 4;
+      pointer-events: auto;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(3, 44px);
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .dpad button, .pulse-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+      touch-action: none;
+    }
+
+    .dpad button:active, .pulse-btn:active { background: rgba(122, 246, 255, 0.18); }
+
+    .pulse-btn { padding: 12px 14px; border-radius: 12px; }
+
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { order: 2; }
+      .game-area { order: 1; min-height: 420px; }
+    }
+
+    @media (max-width: 720px) {
+      .layout { padding: 18px 16px 24px; }
+      .hud { inset: 10px; gap: 8px; }
+      .badge { padding: 8px 10px; font-size: 13px; }
+      .effects-badge { left: 10px; bottom: 10px; font-size: 12px; }
+      .mobile-controls { display: grid; }
+    }
+
+    @media (min-width: 721px) {
+      .mobile-controls { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <p class="eyebrow">Arcade 2D</p>
+      <h1>Space Cleaner</h1>
+      <p>Nettoie l espace en evitant les meteorites, collecte les fragments pour booster ton multiplicateur, et declenche l onde de choc pour degager la zone.</p>
+      <ul class="controls">
+        <li><span class="kbd">Z Q S D</span> ou <span class="kbd">Fleches</span> pour se deplacer</li>
+        <li><span class="kbd">I J K L</span> alternative</li>
+        <li><span class="kbd">Espace</span> onde de choc, <span class="kbd">P</span>/<span class="kbd">Entrer</span> pause</li>
+      </ul>
+      <div class="pill">
+        <strong>But</strong> Survis le plus longtemps possible, depasse ton meilleur score et maintiens un multiplicateur eleve.
+      </div>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="fxToggle"> Effets legers</label>
+        <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste renforce</label>
+      </div>
+      <div class="liveboard" id="liveboard"></div>
+    </section>
+
+    <section class="game-area">
+      <div class="hud">
+        <div class="badge"><span>Score</span><strong id="score">0</strong></div>
+        <div class="badge combo" id="multBadge"><span>Multiplicateur</span><strong id="mult">x1.0</strong></div>
+        <div class="badge"><span>Vies</span><strong id="lives">3</strong></div>
+        <div class="badge"><span>Temps</span><strong id="time">00:00</strong></div>
+        <div class="badge"><span>Meilleur</span><div class="badge-stack"><strong id="best">0</strong><div id="bestPlayer" class="badge-note"></div></div></div>
+        <div class="badge"><span>Reseau</span><div class="badge-stack"><strong id="peerTop">Solo</strong><div id="peerTopScore" class="badge-note"></div><div id="netStatus" class="badge-note"></div></div></div>
+        <div class="badge"><span>Pulse</span><strong id="pulse">Pret</strong></div>
+      </div>
+      <div class="effects-badge" id="effects">Bonus: aucun</div>
+      <canvas id="game" aria-label="Jeu Space Cleaner" role="img"></canvas>
+      <div id="message" class="message">
+        <div class="card">
+          <h2 id="status">Pret a danser ?</h2>
+          <p id="summary">Choisis ton nom de pilote, esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc.</p>
+          <input type="text" id="playerName" maxlength="18" placeholder="Entre ton nom de pilote" aria-label="Nom du pilote">
+          <div class="stats" id="stats"></div>
+          <div class="highscores" id="highscores"></div>
+          <button id="start">Lancer la partie</button>
+        </div>
+      </div>
+      <div class="mobile-controls" aria-hidden="true">
+        <div class="dpad">
+          <div></div><button data-dir="up">▲</button><div></div>
+          <button data-dir="left">◀</button><div></div><button data-dir="right">▶</button>
+          <div></div><button data-dir="down">▼</button><div></div>
+        </div>
+        <button class="pulse-btn" id="pulseBtn">Pulse</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const multEl = document.getElementById('mult');
+    const multBadge = document.getElementById('multBadge');
+    const timeEl = document.getElementById('time');
+    const bestEl = document.getElementById('best');
+    const bestPlayerEl = document.getElementById('bestPlayer');
+    const peerTopEl = document.getElementById('peerTop');
+    const peerTopScoreEl = document.getElementById('peerTopScore');
+    const netStatusEl = document.getElementById('netStatus');
+    const pulseEl = document.getElementById('pulse');
+    const effectsEl = document.getElementById('effects');
+    const message = document.getElementById('message');
+    const startBtn = document.getElementById('start');
+    const statusEl = document.getElementById('status');
+    const summaryEl = document.getElementById('summary');
+    const statsEl = document.getElementById('stats');
+    const highscoresEl = document.getElementById('highscores');
+    const liveboardEl = document.getElementById('liveboard');
+    const nameInput = document.getElementById('playerName');
+    const fxToggle = document.getElementById('fxToggle');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const pulseBtn = document.getElementById('pulseBtn');
+
+    function randomColor() {
+      const h = Math.floor(Math.random() * 360);
+      return `hsl(${h}, 80%, 65%)`;
+    }
+
+    function randomId(prefix = 'id') {
+      try {
+        const bytes = new Uint8Array(10);
+        (window.crypto && crypto.getRandomValues ? crypto.getRandomValues(bytes) : bytes.fill(0).map((_, i) => bytes[i] = Math.floor(Math.random() * 256)));
+        const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        return `${prefix}-${hex}`;
+      } catch (e) {
+        return `${prefix}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+      }
+    }
+
+    const urlParams = new URLSearchParams(location.search);
+    const customApi = urlParams.get('api') || '';
+    const preferredHost = 'http://10.148.6.23:8010';
+    const basePath = location.pathname.startsWith('/space-cleaner') ? '/space-cleaner' : '';
+    const originApi = !location.origin.startsWith('file') ? `${location.origin}${basePath}` : '';
+    const fallbackHost = location.hostname ? `http://${location.hostname}:8010` : preferredHost;
+    const baseApi = customApi || originApi || preferredHost || fallbackHost;
+    const API_URL = `${baseApi.replace(/\/$/, '')}/api/state`;
+
+    const CONFIG = {
+      syncIntervalMs: 250,
+      boardIntervalMs: 2000,
+      uiIntervalMs: 300,
+      maxPeers: 5,
+      maxHazards: 26,
+      pulse: { duration: 0.28, cooldown: 2.4, reach: 220, force: 620, destroyRatio: 0.55 },
+      powerups: { slow: 4, shield: 8, magnet: 6 },
+      magnetReach: 220,
+      hazardTTL: { min: 16, jitter: 10 },
+      trail: { max: 20, baseLife: 0.18, speedLife: 0.18 },
+      net: { pos: 6, score: 25, time: 1, heartbeat: 1500 },
+      speedSmooth: 0.2,
+      speedMargin: 8,
+      spawn: {
+        hazardDecay: 0.045,
+        hazardBase: 1.1,
+        hazardMin: 0.35,
+        hazardJitter: 0.3,
+        hazardFallback: 0.4,
+        orbBase: 2.4,
+        orbJitter: 0.8,
+        powerupBase: 8,
+        powerupJitter: 5,
+      },
+    };
+
+    const storedClientId = localStorage.getItem('space-cleaner-client-id') || localStorage.getItem('space-cleaner-id');
+    const network = {
+      clientId: storedClientId || randomId('c'),
+      sessionId: randomId('s'),
+      color: randomColor(),
+      name: 'Pilote-' + Math.random().toString(36).slice(2, 5),
+      peers: new Map(),
+      lastSync: 0,
+      enabled: true,
+      lastSent: { x: 0, y: 0, score: 0, time: 0 },
+      board: [],
+      lastBoardFetch: 0,
+      lastServerTime: 0,
+      lastSendAt: 0,
+      lastSuccessAt: 0,
+      latencyMs: 0,
+      connected: false,
+    };
+    let leaveSent = false;
+
+    function leaveServer() {
+      if (!network.enabled || leaveSent) return;
+      leaveSent = true;
+      const url = API_URL.replace('/state', '/leave');
+      const payload = JSON.stringify({ sessionId: network.sessionId, clientId: network.clientId });
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+          return;
+        }
+      } catch (e) {
+        // ignore beacon errors
+      }
+      try {
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        });
+      } catch (e) {
+        // ignore fetch errors
+      }
+    }
+    const SYNC_INTERVAL = CONFIG.syncIntervalMs;
+    const MAX_PEERS = CONFIG.maxPeers;
+
+    const state = {
+      running: false,
+      paused: false,
+      last: 0,
+      player: { x: 0, y: 0, vx: 0, vy: 0, r: 14 },
+      color: network.color,
+      name: network.name,
+      hazards: [],
+      orbs: [],
+      powerups: [],
+      particles: [],
+      stars: [],
+      timers: { hazard: 0, orb: 0, powerup: 7 },
+      score: 0,
+      best: 0,
+      bestTime: 0,
+      lives: 3,
+      multiplier: 1,
+      maxMultiplier: 1,
+      time: 0,
+      pulseCooldown: 0,
+      pulseActive: 0,
+      hitCooldown: 0,
+      playerSpeedAvg: 0,
+      lastUiUpdate: 0,
+      lastSave: 0,
+      shieldCharges: 0,
+      effects: { slow: 0, shield: 0, magnet: 0 },
+      stats: { collected: 0, hits: 0 },
+      lowFX: false,
+      comboFlash: 0,
+      thrust: 0,
+      trail: [],
+      highscores: [],
+      bestName: 'Pilote',
+    };
+
+    const input = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+    };
+
+    const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const escapeHtml = (str) => String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+    const particlePool = [];
+    const hazardPool = [];
+    const bgCanvas = document.createElement('canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+
+    function loadBests() {
+      try {
+        const keys = {
+          best: 'space-cleaner-best',
+          bestName: 'space-cleaner-best-name',
+          bestTime: 'space-cleaner-best-time',
+          highs: 'space-cleaner-highscores',
+          legacyBest: 'flux-neon-best',
+          legacyBestName: 'flux-neon-best-name',
+          legacyBestTime: 'flux-neon-best-time',
+          legacyHighs: 'flux-neon-highscores',
+        };
+        const saved = localStorage.getItem(keys.best) || localStorage.getItem(keys.legacyBest);
+        if (saved) state.best = Number(saved) || 0;
+        const bestName = localStorage.getItem(keys.bestName) || localStorage.getItem(keys.legacyBestName);
+        if (bestName) state.bestName = String(bestName);
+        const bestTime = localStorage.getItem(keys.bestTime) || localStorage.getItem(keys.legacyBestTime);
+        if (bestTime) state.bestTime = Number(bestTime) || 0;
+        const highs = localStorage.getItem(keys.highs) || localStorage.getItem(keys.legacyHighs);
+        if (highs) {
+          const parsed = JSON.parse(highs);
+          if (Array.isArray(parsed)) {
+            state.highscores = parsed
+              .map(h => ({
+                name: String(h.name || 'Pilote'),
+                score: Number(h.score) || 0,
+                time: Number(h.time) || 0,
+              }))
+              .filter(h => h.score > 0)
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 5);
+            if (state.highscores[0]) {
+              state.best = Math.max(state.best, state.highscores[0].score);
+              state.bestName = state.highscores[0].name || state.bestName;
+            }
+          }
+        }
+        if (!localStorage.getItem(keys.best) && saved) {
+          localStorage.setItem(keys.best, String(Math.floor(state.best)));
+        }
+        if (!localStorage.getItem(keys.bestName) && state.bestName) {
+          localStorage.setItem(keys.bestName, state.bestName);
+        }
+        if (!localStorage.getItem(keys.bestTime) && state.bestTime) {
+          localStorage.setItem(keys.bestTime, String(Math.floor(state.bestTime)));
+        }
+        if (!localStorage.getItem(keys.highs) && state.highscores.length) {
+          localStorage.setItem(keys.highs, JSON.stringify(state.highscores.slice(0, 5)));
+        }
+      } catch (e) {
+        state.best = 0;
+        state.bestTime = 0;
+        state.highscores = [];
+        state.bestName = 'Pilote';
+      }
+      bestEl.textContent = Math.floor(state.best);
+      if (bestPlayerEl) bestPlayerEl.textContent = state.bestName || '';
+    }
+
+    function saveBests() {
+      try {
+        localStorage.setItem('space-cleaner-best', String(Math.floor(state.best)));
+        localStorage.setItem('space-cleaner-best-time', String(Math.floor(state.bestTime)));
+        localStorage.setItem('space-cleaner-best-name', state.bestName || 'Pilote');
+        localStorage.setItem('space-cleaner-highscores', JSON.stringify(state.highscores.slice(0, 5)));
+      } catch (e) {
+        // stockage non disponible
+      }
+    }
+
+    function resizeCanvas() {
+      const w = Math.min(window.innerWidth - 48, 1200);
+      const h = Math.min(window.innerHeight - 180, 760);
+      canvas.width = Math.max(640, w);
+      canvas.height = Math.max(420, h);
+      renderBackgroundBase();
+    }
+
+    function renderBackgroundBase() {
+      bgCanvas.width = canvas.width;
+      bgCanvas.height = canvas.height;
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      bgCtx.fillStyle = '#0a1122';
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+      const grad = bgCtx.createLinearGradient(0, 0, bgCanvas.width, bgCanvas.height);
+      grad.addColorStop(0, 'rgba(122, 246, 255, 0.05)');
+      grad.addColorStop(1, 'rgba(255, 149, 90, 0.05)');
+      bgCtx.fillStyle = grad;
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+      const glow = bgCtx.createRadialGradient(bgCanvas.width / 2, bgCanvas.height * 0.35, 80, bgCanvas.width / 2, bgCanvas.height * 0.35, Math.max(bgCanvas.width, bgCanvas.height));
+      glow.addColorStop(0, 'rgba(122, 246, 255, 0.08)');
+      glow.addColorStop(1, 'rgba(5, 9, 20, 0)');
+      bgCtx.fillStyle = glow;
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+    }
+
+    function initStars() {
+      state.stars = Array.from({ length: 60 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        s: Math.random() * 2 + 0.5,
+        speed: Math.random() * 18 + 8,
+      }));
+    }
+
+    function resetGame() {
+      resizeCanvas();
+      state.player = { x: canvas.width / 2, y: canvas.height * 0.65, vx: 0, vy: 0, r: 14 };
+      state.color = network.color;
+      state.name = network.name;
+      hazardPool.push(...state.hazards);
+      particlePool.push(...state.particles);
+      state.hazards = [];
+      state.orbs = [];
+      state.powerups = [];
+      state.particles = [];
+      network.peers.clear();
+      network.lastSent = { x: 0, y: 0, score: 0, time: 0 };
+      network.board = [];
+      network.lastBoardFetch = 0;
+      state.score = 0;
+      state.lives = 3;
+      state.multiplier = 1;
+      state.maxMultiplier = 1;
+      state.time = 0;
+      state.stats = { collected: 0, hits: 0 };
+      state.pulseCooldown = 0;
+      state.pulseActive = 0;
+      state.hitCooldown = 0;
+      state.playerSpeedAvg = 0;
+      state.lastUiUpdate = 0;
+      state.lastSave = 0;
+      state.shieldCharges = 0;
+      state.effects = { slow: 0, shield: 0, magnet: 0 };
+      state.thrust = 0;
+      state.trail = [];
+      state.timers.hazard = 0;
+      state.timers.orb = CONFIG.spawn.orbBase * 0.35;
+      state.timers.powerup = CONFIG.spawn.powerupBase - 1;
+      network.lastServerTime = 0;
+      network.lastSendAt = 0;
+      network.lastSuccessAt = 0;
+      network.latencyMs = 0;
+      network.connected = false;
+      state.running = true;
+      state.paused = false;
+      state.comboFlash = 0;
+      message.classList.add('hidden');
+      statusEl.textContent = 'Pret a danser ?';
+      summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
+      statsEl.innerHTML = '';
+      renderHighscores();
+      startBtn.textContent = 'Rejouer';
+      initStars();
+      try {
+        localStorage.setItem('space-cleaner-client-id', network.clientId);
+        localStorage.setItem('space-cleaner-id', network.clientId);
+      } catch (e) {
+        // stockage non disponible
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function renderHighscores() {
+      const container = highscoresEl;
+      if (!container) return;
+      if (!state.highscores.length && (!network.board || !network.board.length)) {
+        container.innerHTML = '<div class="hs-title">Meilleurs scores</div><div class="hs-empty">Aucun score enregistre</div>';
+        return;
+      }
+      const source = (network.board && network.board.length ? network.board.slice(0, 5) : state.highscores).map(h => ({
+        name: h.name || 'Pilote',
+        score: Math.floor(h.score || h.best || 0),
+        time: Math.floor(h.time || h.bestTime || 0),
+      }));
+      const rows = source.map((h, i) => {
+        const safeName = escapeHtml(h.name || 'Pilote');
+        return `
+          <div class="hs-row">
+            <div><span class="hs-rank">#${i + 1}</span><span class="hs-name">${safeName}</span></div>
+            <div class="hs-score">${Math.floor(h.score)}</div>
+            <div class="hs-time">${formatTime(h.time || 0)}</div>
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = `<div class="hs-title">Meilleurs scores</div>${rows}`;
+    }
+
+    function setServerBoard(board) {
+      if (!Array.isArray(board)) return;
+      network.board = board
+        .map(p => ({
+          id: String(p.id || ''),
+          name: p.name || 'Pilote',
+          score: Math.floor(Number(p.score || p.best || 0) || 0),
+          time: Math.floor(Number(p.time || p.bestTime || 0) || 0),
+          color: p.color || '#7af6ff',
+          created: Number(p.created || p.updated) || 0,
+        }))
+        .filter(p => p.score > 0)
+        .sort((a, b) => b.score - a.score || b.time - a.time)
+        .slice(0, 20);
+    }
+
+    function maybeUpdateBoards(force = false) {
+      const now = performance.now();
+      if (!force && state.lastUiUpdate && now - state.lastUiUpdate < CONFIG.uiIntervalMs) return;
+      state.lastUiUpdate = now;
+      renderLiveboard();
+      renderHighscores();
+    }
+
+    function renderLiveboard() {
+      const container = liveboardEl;
+      if (!container) return;
+      const entries = [
+        { id: network.sessionId, name: state.name || 'Pilote', score: state.best || 0, time: state.bestTime || 0, self: true },
+        ...Array.from(network.peers.values()).map(p => ({
+          id: p.id,
+          name: p.name || 'Pilote',
+          score: p.score || p.best || 0,
+          time: p.time || p.bestTime || 0,
+          self: false,
+        })),
+      ].filter(e => e.name);
+
+      if (!entries.length) {
+        container.innerHTML = '<div class="live-title">Classement en ligne</div><div class="hs-empty">Aucun joueur connecte</div>';
+        return;
+      }
+
+      const rows = entries
+        .sort((a, b) => (b.score || 0) - (a.score || 0) || (b.time || 0) - (a.time || 0))
+        .slice(0, 8)
+        .map((e, i) => {
+          const cls = e.self ? 'live-self' : 'live-name';
+          const safeName = escapeHtml(e.name);
+          return `
+            <div class="live-row">
+              <div class="hs-rank">#${i + 1}</div>
+              <div class="${cls}">${safeName}</div>
+              <div class="live-score">${Math.floor(e.score || 0)}</div>
+              <div class="live-time">${formatTime(e.time || 0)}</div>
+            </div>
+          `;
+        }).join('');
+      container.innerHTML = `<div class="live-title">Classement en ligne</div>${rows}`;
+    }
+
+    function recordHighscore() {
+      const entry = {
+        name: state.name || 'Pilote',
+        score: Math.floor(state.score),
+        time: Math.floor(state.time),
+      };
+      if (entry.score <= 0) return;
+      state.highscores.push(entry);
+      state.highscores = state.highscores
+        .filter(h => h.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+      if (state.highscores[0]) {
+        state.best = state.highscores[0].score;
+        state.bestName = state.highscores[0].name || state.bestName;
+      }
+      saveBests();
+      renderHighscores();
+    }
+
+    function prunePeers() {
+      const now = Date.now();
+      for (const [id, peer] of network.peers.entries()) {
+        if (now - peer.lastSeen > CONFIG.net.heartbeat * 4) network.peers.delete(id);
+      }
+    }
+
+    async function fetchBoard() {
+      try {
+        const start = performance.now();
+        const res = await fetch(API_URL.replace('/state', '/board'), { method: 'GET' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !Array.isArray(data.board)) return;
+        network.latencyMs = performance.now() - start;
+        network.connected = true;
+        network.lastSuccessAt = performance.now();
+        network.lastServerTime = Number(data.serverTime) || network.lastServerTime;
+        setServerBoard(data.board);
+        maybeUpdateBoards(true);
+      } catch (e) {
+        // ignore fetch errors, retry later
+      }
+    }
+
+    async function submitScore() {
+      if (!network.enabled) return;
+      const score = Math.floor(state.score);
+      const t = Math.floor(state.time);
+      if (score <= 0) return;
+      try {
+        const res = await fetch(API_URL.replace('/state', '/score'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: network.sessionId,
+            clientId: network.clientId,
+            name: state.name || network.name,
+            color: network.color,
+            score,
+            time: t,
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !Array.isArray(data.board)) return;
+        network.lastServerTime = Number(data.serverTime) || network.lastServerTime;
+        setServerBoard(data.board);
+        maybeUpdateBoards(true);
+      } catch (e) {
+        // ignore submit errors
+      }
+    }
+
+    async function syncPlayers() {
+      if (!network.enabled) return;
+      const now = performance.now();
+      const dx = Math.abs(state.player.x - network.lastSent.x);
+      const dy = Math.abs(state.player.y - network.lastSent.y);
+      const dScore = Math.abs(Math.floor(state.score) - (network.lastSent.score || 0));
+      const dTime = Math.abs(Math.floor(state.time) - (network.lastSent.time || 0));
+      const moved = dx > CONFIG.net.pos || dy > CONFIG.net.pos || dScore > CONFIG.net.score || dTime > CONFIG.net.time;
+      if (!moved && now - network.lastSendAt < CONFIG.net.heartbeat) return;
+      try {
+        const start = performance.now();
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: network.sessionId,
+            sessionId: network.sessionId,
+            clientId: network.clientId,
+            color: network.color,
+            name: network.name,
+            x: state.player.x,
+            y: state.player.y,
+            score: Math.floor(state.score),
+            time: Math.floor(state.time),
+            best: Math.floor(state.best),
+            bestTime: Math.floor(state.bestTime),
+            since: network.lastServerTime || 0,
+          }),
+        });
+        network.lastSent = {
+          x: state.player.x,
+          y: state.player.y,
+          score: Math.floor(state.score),
+          time: Math.floor(state.time),
+        };
+        network.lastSendAt = now;
+        if (!res.ok) throw new Error('sync failed');
+        const data = await res.json();
+        network.latencyMs = performance.now() - start;
+        network.connected = true;
+        network.lastSuccessAt = performance.now();
+        network.lastServerTime = Number(data.serverTime) || network.lastServerTime;
+        if (data && Array.isArray(data.players)) {
+          const nowMs = Date.now();
+          const limited = data.players.slice(0, MAX_PEERS);
+          limited.forEach(p => {
+            if (!p.id) return;
+            const existing = network.peers.get(p.id);
+            const prevX = existing ? existing.x : Number(p.x) || 0;
+            const prevY = existing ? existing.y : Number(p.y) || 0;
+            const prevSeen = existing ? existing.lastSeen : nowMs;
+            const dtSec = Math.max((nowMs - prevSeen) / 1000, 0.001);
+            const speed = Math.hypot((Number(p.x) || 0) - prevX, (Number(p.y) || 0) - prevY) / dtSec;
+            const speedAvg = existing ? lerp(existing.speedAvg || speed, speed, CONFIG.speedSmooth) : speed;
+            network.peers.set(p.id, {
+              id: p.id,
+              x: Number(p.x) || 0,
+              y: Number(p.y) || 0,
+              color: p.color || '#7af6ff',
+              name: p.name || 'Pilote',
+              lastSeen: nowMs,
+              score: Number(p.best || p.score) || 0,
+              time: Number(p.bestTime || p.time) || 0,
+              speed: Number.isFinite(speed) ? speed : 0,
+              speedAvg: Number.isFinite(speedAvg) ? speedAvg : 0,
+            });
+          });
+          const trimmed = Array.from(network.peers.values()).sort((a, b) => b.lastSeen - a.lastSeen);
+          trimmed.slice(MAX_PEERS).forEach(p => network.peers.delete(p.id));
+
+          if (Array.isArray(data.board)) {
+            setServerBoard(data.board);
+          }
+          maybeUpdateBoards(true);
+        }
+      } catch (e) {
+        network.connected = false;
+      }
+    }
+
+    function spawnHazard(difficulty) {
+      if (state.hazards.length >= CONFIG.maxHazards) return false;
+      const margin = 36;
+      const edge = Math.floor(Math.random() * 4);
+      let x, y;
+      if (edge === 0) { x = Math.random() * canvas.width; y = -margin; }
+      else if (edge === 1) { x = canvas.width + margin; y = Math.random() * canvas.height; }
+      else if (edge === 2) { x = Math.random() * canvas.width; y = canvas.height + margin; }
+      else { x = -margin; y = Math.random() * canvas.height; }
+
+      const angle = Math.atan2(state.player.y - y, state.player.x - x);
+      const speedBoost = 90 + difficulty * 55 + Math.random() * 80;
+      const vx = Math.cos(angle) * speedBoost;
+      const vy = Math.sin(angle) * speedBoost;
+      const r = 14 + Math.random() * 12;
+      const shape = Array.from({ length: 7 }, () => 0.75 + Math.random() * 0.4);
+      const craters = Array.from({ length: 3 + Math.floor(Math.random() * 3) }, () => ({
+        a: Math.random() * Math.PI * 2,
+        dist: Math.random() * 0.55 + 0.15,
+        r: Math.random() * 4 + 3,
+      }));
+      const ttl = CONFIG.hazardTTL.min + Math.random() * CONFIG.hazardTTL.jitter;
+      const hp = Math.max(1, Math.round(r / 10));
+      const h = hazardPool.pop() || {};
+      h.x = x;
+      h.y = y;
+      h.vx = vx;
+      h.vy = vy;
+      h.r = r;
+      h.spin = (Math.random() - 0.5) * 0.8;
+      h.rot = 0;
+      h.shape = shape;
+      h.craters = craters;
+      h.ttl = ttl;
+      h.hp = hp;
+      state.hazards.push(h);
+      return true;
+    }
+
+    function spawnOrb() {
+      const padding = 60;
+      const x = padding + Math.random() * (canvas.width - padding * 2);
+      const y = padding + Math.random() * (canvas.height - padding * 2);
+      state.orbs.push({ x, y, r: 10, ttl: 10 + Math.random() * 6 });
+    }
+
+    function spawnPowerup() {
+      const padding = 60;
+      const x = padding + Math.random() * (canvas.width - padding * 2);
+      const y = padding + Math.random() * (canvas.height - padding * 2);
+      const types = state.lives < 5 ? ['slow', 'shield', 'magnet', 'life'] : ['slow', 'shield', 'magnet'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      state.powerups.push({ x, y, r: 12, ttl: 9 + Math.random() * 3, type });
+    }
+
+    function addParticles(x, y, color, amount = 10, speed = 120) {
+      const count = state.lowFX ? Math.ceil(amount * 0.45) : amount;
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = Math.random() * speed * 0.6 + speed * 0.4;
+        const p = particlePool.pop() || {};
+        p.x = x;
+        p.y = y;
+        p.vx = Math.cos(a) * s;
+        p.vy = Math.sin(a) * s;
+        p.life = 0.5 + Math.random() * 0.4;
+        p.color = color;
+        state.particles.push(p);
+      }
+    }
+
+    function updateParticles(dt) {
+      const next = [];
+      for (const p of state.particles) {
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.life > 0) {
+          next.push(p);
+        } else {
+          particlePool.push(p);
+        }
+      }
+      state.particles = next;
+    }
+
+    function updateTrail(dt) {
+      state.trail = state.trail
+        .map(t => ({ ...t, life: t.life - dt }))
+        .filter(t => t.life > 0);
+      if (state.trail.length > CONFIG.trail.max) {
+        state.trail.splice(0, state.trail.length - CONFIG.trail.max);
+      }
+    }
+
+    function triggerPulse(force = false) {
+      if (!state.running || state.paused) return;
+      if (!force && state.pulseCooldown > 0) return;
+      state.pulseActive = CONFIG.pulse.duration;
+      state.pulseCooldown = CONFIG.pulse.cooldown;
+      addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.9)', 26, 220);
+    }
+
+    function updateStars(dt) {
+      for (const star of state.stars) {
+        star.y += star.speed * dt;
+        if (star.y > canvas.height) {
+          star.y = -2;
+          star.x = Math.random() * canvas.width;
+        }
+      }
+    }
+
+    function updatePlayer(dt) {
+      const moving = input.up || input.down || input.left || input.right;
+      const targetThrust = moving ? 1 : 0;
+      const ramp = moving ? 2.8 : 3.8; // montee/descente plus lente
+      state.thrust = clamp(state.thrust + (targetThrust - state.thrust) * ramp * dt, 0, 1);
+
+      let ix = 0, iy = 0;
+      if (input.up) iy -= 1;
+      if (input.down) iy += 1;
+      if (input.left) ix -= 1;
+      if (input.right) ix += 1;
+      const mag = Math.hypot(ix, iy);
+      if (mag > 0) {
+        ix /= mag;
+        iy /= mag;
+      }
+
+      const targetSpeed = lerp(90, 440, state.thrust); // limite haute reduite
+      const accelLerp = lerp(3.5, 7.5, state.thrust); // interpolation plus douce
+      state.player.vx = lerp(state.player.vx, ix * targetSpeed, accelLerp * dt);
+      state.player.vy = lerp(state.player.vy, iy * targetSpeed, accelLerp * dt);
+
+      const decay = Math.pow(moving ? 0.994 : 0.94, dt * 60);
+      state.player.vx *= decay;
+      state.player.vy *= decay;
+
+      state.player.x = clamp(state.player.x + state.player.vx * dt, state.player.r, canvas.width - state.player.r);
+      state.player.y = clamp(state.player.y + state.player.vy * dt, state.player.r, canvas.height - state.player.r);
+
+      // ajoute une trace neon selon l impulsion actuelle
+      const speedMag = Math.hypot(state.player.vx, state.player.vy);
+      const life = CONFIG.trail.baseLife + clamp(speedMag / 420, 0, 1) * CONFIG.trail.speedLife;
+      state.trail.push({ x: state.player.x, y: state.player.y, life, r: state.player.r });
+
+      state.playerSpeedAvg = lerp(state.playerSpeedAvg, speedMag, CONFIG.speedSmooth);
+    }
+
+    function updateHazards(dt, difficulty) {
+      const slowFactor = state.effects.slow > 0 ? 0.6 : 1;
+      const effectiveDt = dt * slowFactor;
+
+      state.hazards.forEach(h => {
+        h.ttl -= dt;
+        h.x += h.vx * effectiveDt;
+        h.y += h.vy * effectiveDt;
+        h.rot += h.spin * effectiveDt;
+
+        h.vx += (Math.random() - 0.5) * 16 * effectiveDt;
+        h.vy += (Math.random() - 0.5) * 16 * effectiveDt;
+
+        if (h.x < h.r) { h.x = h.r; h.vx *= -1; }
+        if (h.x > canvas.width - h.r) { h.x = canvas.width - h.r; h.vx *= -1; }
+        if (h.y < h.r) { h.y = h.r; h.vy *= -1; }
+        if (h.y > canvas.height - h.r) { h.y = canvas.height - h.r; h.vy *= -1; }
+      });
+
+      if (state.pulseActive > 0) {
+        for (const h of state.hazards) {
+          const dx = h.x - state.player.x;
+          const dy = h.y - state.player.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          const reach = CONFIG.pulse.reach;
+          if (dist < reach) {
+            const force = (1 - dist / reach) * CONFIG.pulse.force;
+            h.vx += (dx / dist) * force * dt;
+            h.vy += (dy / dist) * force * dt;
+            const blastKill = reach * CONFIG.pulse.destroyRatio;
+            if (dist < blastKill) {
+              h.hp = (h.hp || 1) - 1;
+              if (h.hp <= 0) {
+                h.ttl = 0;
+                addParticles(h.x, h.y, 'rgba(255, 149, 90, 0.8)', 22, 240);
+                continue;
+              }
+            }
+          }
+        }
+        // pulse detruit les vaisseaux adverses proches
+        const peerReach = 200;
+        for (const [id, peer] of network.peers.entries()) {
+          const dx = peer.x - state.player.x;
+          const dy = peer.y - state.player.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          if (dist < peerReach) {
+            network.peers.delete(id);
+            addParticles(peer.x, peer.y, 'rgba(122, 246, 255, 0.8)', 22, 260);
+          }
+        }
+        state.pulseActive -= dt;
+      }
+
+      for (const h of state.hazards) {
+        if (h.hp <= 0) continue;
+        const dx = h.x - state.player.x;
+        const dy = h.y - state.player.y;
+        const dist2 = dx * dx + dy * dy;
+        const rad = (h.r + state.player.r) ** 2;
+        if (dist2 < rad && state.running && !state.paused) {
+          const dist = Math.hypot(dx, dy) || 1;
+          if (state.effects.shield > 0 && state.shieldCharges > 0) {
+            state.shieldCharges -= 1;
+            if (state.shieldCharges <= 0) state.effects.shield = 0;
+            addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
+            h.x += Math.sign(dx || 1) * (h.r + 8);
+            h.y += Math.sign(dy || 1) * (h.r + 8);
+            // renvoyer le bloc a l oppose
+            const speed = Math.hypot(h.vx, h.vy) || (120 + Math.random() * 80);
+            h.vx = (dx / dist) * speed;
+            h.vy = (dy / dist) * speed;
+            triggerPulse(true);
+            continue;
+          }
+          state.lives -= 1;
+          state.stats.hits += 1;
+          addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 28, 260);
+          h.x += Math.sign(dx || 1) * (h.r + 8);
+          h.y += Math.sign(dy || 1) * (h.r + 8);
+          const speed = Math.hypot(h.vx, h.vy) || (120 + Math.random() * 80);
+          h.vx = (dx / dist) * speed;
+          h.vy = (dy / dist) * speed;
+          triggerPulse(true);
+          if (state.lives <= 0) {
+            endGame();
+          }
+        }
+      }
+
+      const remaining = [];
+      for (const h of state.hazards) {
+        if (h.ttl > 0 && (h.hp === undefined || h.hp > 0)) {
+          remaining.push(h);
+        } else {
+          hazardPool.push(h);
+        }
+      }
+      state.hazards = remaining;
+    }
+
+    function updateOrbs(dt) {
+      const magnet = state.effects.magnet > 0;
+      state.orbs.forEach(o => {
+        o.ttl -= dt;
+        if (magnet) {
+          const dx = state.player.x - o.x;
+          const dy = state.player.y - o.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const reach = CONFIG.magnetReach;
+          if (dist < reach) {
+            const pull = (1 - dist / reach) * 180;
+            o.x += (dx / dist) * pull * dt;
+            o.y += (dy / dist) * pull * dt;
+          }
+        }
+      });
+      state.orbs = state.orbs.filter(o => o.ttl > 0);
+
+      for (let i = state.orbs.length - 1; i >= 0; i--) {
+        const o = state.orbs[i];
+        const dx = o.x - state.player.x;
+        const dy = o.y - state.player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < o.r + state.player.r + 2) {
+          state.orbs.splice(i, 1);
+          state.score += 70 * state.multiplier;
+          state.multiplier = Math.min(state.multiplier + 0.15, 6);
+          state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
+          state.comboFlash = 0.35;
+          state.stats.collected += 1;
+          addParticles(o.x, o.y, 'rgba(122, 246, 255, 0.9)', 18, 200);
+        }
+      }
+    }
+
+    function checkPeerCollisions() {
+      if (state.hitCooldown > 0 || network.peers.size === 0) return;
+      for (const peer of network.peers.values()) {
+        const dx = peer.x - state.player.x;
+        const dy = peer.y - state.player.y;
+        const rad = 12 + state.player.r;
+        if (dx * dx + dy * dy < rad * rad) {
+          const playerSpeed = state.playerSpeedAvg || 0;
+          const peerSpeed = peer.speedAvg || peer.speed || 0;
+          const slowerIsPlayer = playerSpeed + CONFIG.speedMargin < peerSpeed;
+
+          if (slowerIsPlayer) {
+            if (state.effects.shield > 0 && state.shieldCharges > 0) {
+              state.shieldCharges -= 1;
+              if (state.shieldCharges <= 0) state.effects.shield = 0;
+              addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
+            } else {
+              state.lives -= 1;
+              state.stats.hits += 1;
+              addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 24, 200);
+              if (state.lives <= 0) {
+                endGame();
+                return;
+              }
+            }
+          } else {
+            addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.7)', 18, 160);
+          }
+
+          triggerPulse(true);
+          // repousse legerement le joueur
+          const dist = Math.hypot(dx, dy) || 1;
+          state.player.x -= (dx / dist) * 12;
+          state.player.y -= (dy / dist) * 12;
+          state.hitCooldown = 0.6;
+          break;
+        }
+      }
+    }
+
+    function applyPowerup(type) {
+      if (type === 'slow') state.effects.slow = CONFIG.powerups.slow;
+      if (type === 'shield') {
+        state.shieldCharges += 1;
+        state.effects.shield = (state.effects.shield || 0) + CONFIG.powerups.shield;
+      }
+      if (type === 'magnet') state.effects.magnet = CONFIG.powerups.magnet;
+      if (type === 'life') {
+        state.lives = Math.min(state.lives + 1, 6);
+      }
+      const colors = {
+        slow: 'rgba(122, 246, 255, 0.7)',
+        shield: 'rgba(134, 242, 110, 0.8)',
+        magnet: 'rgba(255, 149, 90, 0.8)',
+        life: 'rgba(255, 94, 123, 0.8)',
+      };
+      addParticles(state.player.x, state.player.y, colors[type] || 'rgba(122, 246, 255, 0.8)', 24, 180);
+    }
+
+    function updatePowerups(dt) {
+      for (const p of state.powerups) p.ttl -= dt;
+      state.powerups = state.powerups.filter(p => p.ttl > 0);
+
+      for (let i = state.powerups.length - 1; i >= 0; i--) {
+        const p = state.powerups[i];
+        const dx = p.x - state.player.x;
+        const dy = p.y - state.player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < p.r + state.player.r + 4) {
+          applyPowerup(p.type);
+          state.powerups.splice(i, 1);
+        }
+      }
+    }
+
+    function updateEffects(dt) {
+      for (const key of Object.keys(state.effects)) {
+        if (state.effects[key] > 0) state.effects[key] -= dt;
+        if (state.effects[key] < 0) state.effects[key] = 0;
+      }
+      if (state.effects.shield <= 0) state.shieldCharges = 0;
+      if (state.hitCooldown > 0) state.hitCooldown -= dt;
+      if (state.hitCooldown < 0) state.hitCooldown = 0;
+    }
+
+    function updateUI() {
+      scoreEl.textContent = Math.floor(state.score);
+      livesEl.textContent = state.lives;
+      multEl.textContent = `x${state.multiplier.toFixed(1)}`;
+      timeEl.textContent = formatTime(state.time);
+      bestEl.textContent = Math.floor(state.best);
+      if (bestPlayerEl) bestPlayerEl.textContent = state.bestName || '';
+      pulseEl.textContent = state.pulseCooldown <= 0 ? 'Pret' : `${state.pulseCooldown.toFixed(1)}s`;
+
+      if (peerTopEl && peerTopScoreEl) {
+        const candidates = [
+          { name: state.name || 'Pilote', score: state.best || 0, time: state.bestTime || 0 },
+          ...Array.from(network.peers.values()).map(p => ({ name: p.name || 'Pilote', score: p.score || 0, time: p.time || 0 })),
+        ];
+        const top = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.time || 0) - (a.time || 0))[0];
+        if (top && network.peers.size) {
+          peerTopEl.textContent = top.name || 'Pilote';
+          peerTopScoreEl.textContent = top.score ? `${Math.floor(top.score)} pts` : '';
+        } else {
+          peerTopEl.textContent = 'Solo';
+          peerTopScoreEl.textContent = '';
+        }
+      }
+      if (netStatusEl) {
+        const idle = performance.now() - (network.lastSuccessAt || 0);
+        const online = network.connected && idle < CONFIG.net.heartbeat * 4;
+        netStatusEl.textContent = online ? `${Math.round(network.latencyMs || 0)}ms` : 'Hors ligne';
+      }
+
+      const effects = [];
+      if (state.effects.slow > 0) effects.push('Ralenti');
+      if (state.effects.shield > 0 && state.shieldCharges > 0) {
+        const shieldLabel = state.shieldCharges > 1 ? `Bouclier x${state.shieldCharges}` : 'Bouclier';
+        effects.push(shieldLabel);
+      }
+      if (state.effects.magnet > 0) effects.push('Aimant');
+      effectsEl.textContent = effects.length ? `Bonus: ${effects.join(' | ')}` : 'Bonus: aucun';
+
+      if (state.comboFlash > 0) {
+        multBadge.style.transform = 'scale(1.08)';
+        multBadge.style.boxShadow = '0 0 16px rgba(122, 246, 255, 0.6)';
+      } else {
+        multBadge.style.transform = 'scale(1)';
+        multBadge.style.boxShadow = 'none';
+      }
+
+      maybeUpdateBoards();
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bgCanvas, 0, 0);
+
+      // grille douce pour donner du relief
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.lineWidth = 1;
+      const step = 80;
+      for (let x = (state.time * 18) % step; x < canvas.width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x - 30, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = (state.time * 12) % step; y < canvas.height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y - 30);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      for (const s of state.stars) {
+        ctx.globalAlpha = 0.4 + s.s * 0.12;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawShip(entity, color, hasShield = false, pulseActive = 0, name = '') {
+      const p = entity;
+      const angle = Math.atan2(p.vy, p.vx) || -Math.PI / 2;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle + Math.PI / 2);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, p.r + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = color.replace('hsl', 'hsla').replace(')', ', 0.4)');
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -p.r - 2);
+      ctx.lineTo(p.r, p.r);
+      ctx.lineTo(0, p.r * 0.4);
+      ctx.lineTo(-p.r, p.r);
+      ctx.closePath();
+      const body = ctx.createLinearGradient(-p.r, -p.r, p.r, p.r);
+      body.addColorStop(0, color);
+      body.addColorStop(1, color);
+      ctx.fillStyle = body;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(-p.r * 0.4, p.r * 0.9);
+      ctx.lineTo(0, p.r * 1.7 + Math.random() * 4);
+      ctx.lineTo(p.r * 0.4, p.r * 0.9);
+      ctx.fillStyle = 'rgba(255, 149, 90, 0.8)';
+      ctx.fill();
+
+      if (hasShield) {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r + 12, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(134, 242, 110, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      if (name) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.font = '700 13px "Space Grotesk", "Trebuchet MS", sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillText(name, -ctx.measureText(name).width / 2 + 1, -p.r - 18 + 1);
+        ctx.fillStyle = '#e7f1ff';
+        ctx.fillText(name, -ctx.measureText(name).width / 2, -p.r - 18);
+        ctx.restore();
+      }
+
+      if (pulseActive > 0) {
+        const t = pulseActive / CONFIG.pulse.duration;
+        const radius = (1 - t) * 150 + 40;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(122, 246, 255, ${t * 0.6})`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
+    }
+
+    function drawPlayer() {
+      const hasShield = state.effects.shield > 0 && state.shieldCharges > 0;
+      drawShip(state.player, state.color, hasShield, state.pulseActive, state.name);
+    }
+
+    function drawPeers() {
+      for (const peer of network.peers.values()) {
+        const ghost = { x: peer.x, y: peer.y, vx: 0, vy: 0, r: 12 };
+        const labelScore = peer.score ? ` • ${Math.floor(peer.score)}` : '';
+        drawShip(ghost, peer.color, false, 0, `${peer.name}${labelScore}`);
+      }
+    }
+
+    function drawHazards() {
+      for (const h of state.hazards) {
+        ctx.save();
+        ctx.translate(h.x, h.y);
+        ctx.rotate(h.rot);
+        ctx.beginPath();
+        const sides = h.shape ? h.shape.length : 6;
+        for (let i = 0; i < sides; i++) {
+          const a = (i / sides) * Math.PI * 2;
+          const radial = h.shape ? h.r * h.shape[i] : h.r;
+          const rx = Math.cos(a) * radial;
+          const ry = Math.sin(a) * radial;
+          if (i === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+        const g = ctx.createRadialGradient(0, 0, h.r * 0.15, 0, 0, h.r);
+        g.addColorStop(0, 'rgba(240, 176, 120, 0.9)');
+        g.addColorStop(1, 'rgba(93, 60, 35, 0.9)');
+        ctx.fillStyle = g;
+        ctx.strokeStyle = 'rgba(255, 160, 110, 0.45)';
+        ctx.lineWidth = 1.4;
+        ctx.fill();
+        ctx.stroke();
+
+        // cratères pour un look météorite
+        if (h.craters) {
+          for (const c of h.craters) {
+            const cx = Math.cos(c.a) * h.r * c.dist;
+            const cy = Math.sin(c.a) * h.r * c.dist;
+            ctx.beginPath();
+            ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(38, 22, 12, 0.65)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 210, 160, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+
+        // reflet discret
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(255, 204, 128, 0.16)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.restore();
+      }
+    }
+
+    function drawOrbs() {
+      for (const o of state.orbs) {
+        const blink = 0.5 + Math.sin((10 - o.ttl) * 4) * 0.1;
+        const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * 1.6);
+        g.addColorStop(0, 'rgba(122, 246, 255, 0.9)');
+        g.addColorStop(1, 'rgba(122, 246, 255, 0.15)');
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, o.r * (1 + blink * 0.05), 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+    }
+
+    function drawPowerups() {
+      for (const p of state.powerups) {
+        const colors = { slow: '#7ad2ff', shield: '#86f26e', magnet: '#ff955a', life: '#ff6f9f' };
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 1.65);
+        g.addColorStop(0, colors[p.type] || '#7af6ff');
+        g.addColorStop(1, 'rgba(255,255,255,0.08)');
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // pictogramme net selon le type
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = 'rgba(5, 9, 20, 0.58)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+        ctx.beginPath();
+        if (p.type === 'shield') {
+          ctx.moveTo(0, -p.r * 0.65);
+          ctx.lineTo(p.r * 0.55, -p.r * 0.15);
+          ctx.lineTo(p.r * 0.38, p.r * 0.55);
+          ctx.quadraticCurveTo(0, p.r * 0.8, -p.r * 0.38, p.r * 0.55);
+          ctx.lineTo(-p.r * 0.55, -p.r * 0.15);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.fill();
+        } else if (p.type === 'slow') {
+          ctx.moveTo(-p.r * 0.45, -p.r * 0.5);
+          ctx.lineTo(p.r * 0.45, -p.r * 0.15);
+          ctx.lineTo(-p.r * 0.45, p.r * 0.2);
+          ctx.lineTo(p.r * 0.45, p.r * 0.55);
+          ctx.stroke();
+        } else if (p.type === 'magnet') {
+          ctx.beginPath();
+          ctx.moveTo(-p.r * 0.55, -p.r * 0.5);
+          ctx.arc(-p.r * 0.2, -p.r * 0.5, p.r * 0.35, Math.PI, Math.PI * 1.5);
+          ctx.lineTo(p.r * 0.2, -p.r * 0.85);
+          ctx.arc(p.r * 0.2, -p.r * 0.5, p.r * 0.35, Math.PI * 1.5, 0);
+          ctx.lineTo(p.r * 0.55, p.r * 0.2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(-p.r * 0.55, p.r * 0.35);
+          ctx.lineTo(-p.r * 0.2, p.r * 0.35);
+          ctx.moveTo(p.r * 0.2, p.r * 0.35);
+          ctx.lineTo(p.r * 0.55, p.r * 0.35);
+          ctx.stroke();
+        } else if (p.type === 'life') {
+          const r = p.r * 0.55;
+          ctx.moveTo(0, r * 0.9);
+          ctx.bezierCurveTo(r * 0.9, r * 0.4, r * 0.9, -r * 0.3, 0, -r * 0.1);
+          ctx.bezierCurveTo(-r * 0.9, -r * 0.3, -r * 0.9, r * 0.4, 0, r * 0.9);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawParticles() {
+      for (const p of state.particles) {
+        ctx.globalAlpha = Math.max(p.life * 1.8, 0);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2 + p.life * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawTrail() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (const t of state.trail) {
+        const alpha = clamp(t.life / 0.45, 0, 1) * 0.45;
+        const radius = (t.r || 12) * (1 + (1 - t.life) * 0.6);
+        const g = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, radius * 1.6);
+        g.addColorStop(0, state.color.replace('hsl', 'hsla').replace(')', `, ${alpha})`));
+        g.addColorStop(1, 'rgba(122, 246, 255, 0)');
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function gameStep(dt) {
+      const nowPerf = performance.now();
+      if (network.enabled && nowPerf - network.lastSync > SYNC_INTERVAL) {
+        network.lastSync = nowPerf;
+        syncPlayers();
+      }
+      if (network.enabled && nowPerf - network.lastBoardFetch > CONFIG.boardIntervalMs) {
+        network.lastBoardFetch = nowPerf;
+        fetchBoard();
+      }
+      prunePeers();
+
+      if (!state.running || state.paused) {
+        updateStars(dt);
+        updateUI(); // rafraichit le classement/hud meme en pause ou avant le start
+        drawBackground();
+        drawHazards();
+        drawPowerups();
+        drawOrbs();
+        drawPeers();
+        drawPlayer();
+        drawParticles();
+        return;
+      }
+
+      const difficulty = 1 + Math.min(state.time * 0.04, 2.4);
+      const slowFactor = state.effects.slow > 0 ? 0.6 : 1;
+      const effectiveDt = dt * slowFactor;
+
+      state.time += dt;
+      state.score += dt * 9 * state.multiplier;
+      if (state.score > state.best) {
+        state.best = state.score;
+        state.bestName = state.name || state.bestName;
+      }
+      state.bestTime = Math.max(state.bestTime, state.time);
+
+      state.timers.hazard -= effectiveDt;
+      if (state.timers.hazard <= 0) {
+        const extra = (() => {
+          let bonus = 0;
+          if (state.time > 25 && Math.random() < clamp((state.time - 25) / 50, 0, 0.75)) bonus += 1;
+          if (state.time > 55 && Math.random() < 0.35) bonus += 1;
+          return bonus;
+        })();
+        const waves = 1 + extra;
+        let spawned = 0;
+        for (let i = 0; i < waves; i++) {
+          if (spawnHazard(difficulty)) spawned += 1;
+          else break;
+        }
+
+        const decay = Math.exp(-state.time * CONFIG.spawn.hazardDecay);
+        const base = CONFIG.spawn.hazardBase * decay + CONFIG.spawn.hazardMin;
+        state.timers.hazard = spawned ? base + Math.random() * CONFIG.spawn.hazardJitter : CONFIG.spawn.hazardFallback;
+      }
+
+      state.timers.orb -= effectiveDt;
+      if (state.timers.orb <= 0) {
+        spawnOrb();
+        state.timers.orb = CONFIG.spawn.orbBase + Math.random() * CONFIG.spawn.orbJitter;
+      }
+
+      state.timers.powerup -= effectiveDt;
+      if (state.timers.powerup <= 0) {
+        spawnPowerup();
+        state.timers.powerup = CONFIG.spawn.powerupBase + Math.random() * CONFIG.spawn.powerupJitter;
+      }
+
+      if (state.pulseCooldown > 0) state.pulseCooldown -= dt;
+      if (state.comboFlash > 0) state.comboFlash -= dt;
+
+      updateEffects(dt);
+      updateStars(dt);
+      updatePlayer(dt);
+      updateHazards(dt, difficulty);
+      updatePowerups(dt);
+      updateOrbs(dt);
+      updateTrail(dt);
+      checkPeerCollisions();
+      updateParticles(dt);
+      updateUI();
+      if (state.time - state.lastSave > 2) {
+        saveBests();
+        state.lastSave = state.time;
+      }
+
+      drawBackground();
+      drawHazards();
+      drawPowerups();
+      drawOrbs();
+      drawPeers();
+      drawTrail();
+      drawPlayer();
+      drawParticles();
+    }
+
+    function loop(timestamp) {
+      const dt = Math.min((timestamp - state.last) / 1000, 0.035);
+      state.last = timestamp;
+      gameStep(dt);
+      requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      state.running = false;
+      updateUI();
+      message.classList.remove('hidden');
+      statusEl.textContent = 'Game over';
+      summaryEl.textContent = `Score ${Math.floor(state.score)} | Multiplicateur max x${state.maxMultiplier.toFixed(1)} | Temps ${formatTime(state.time)}`;
+      statsEl.innerHTML = `
+        <div class="stat-row"><span>Temps survie</span><br>${formatTime(state.time)}</div>
+        <div class="stat-row"><span>Meilleur temps</span><br>${formatTime(state.bestTime)}</div>
+        <div class="stat-row"><span>Fragments collectes</span><br>${state.stats.collected}</div>
+        <div class="stat-row"><span>Collisions subies</span><br>${state.stats.hits}</div>
+      `;
+      recordHighscore();
+      saveBests();
+      submitScore();
+    }
+
+    function togglePause() {
+      if (!state.running) return;
+      state.paused = !state.paused;
+      message.classList.toggle('hidden', !state.paused);
+      if (state.paused) {
+        statusEl.textContent = 'Pause';
+        summaryEl.textContent = 'Respire un coup. Appuie sur P ou Entrer pour reprendre.';
+      } else {
+        statusEl.textContent = 'Pret a danser ?';
+        summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
+      }
+    }
+
+    function handleKey(code, pressed) {
+      if (['ArrowUp', 'KeyW', 'KeyZ', 'KeyI'].includes(code)) input.up = pressed;
+      if (['ArrowDown', 'KeyS', 'KeyK'].includes(code)) input.down = pressed;
+      if (['ArrowLeft', 'KeyA', 'KeyQ', 'KeyJ'].includes(code)) input.left = pressed;
+      if (['ArrowRight', 'KeyD', 'KeyL'].includes(code)) input.right = pressed;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      handleKey(e.code, true);
+      if (e.code === 'Space') {
+        e.preventDefault();
+        triggerPulse();
+      }
+      if (e.code === 'KeyP' || e.code === 'Enter') {
+        togglePause();
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      handleKey(e.code, false);
+    });
+
+    startBtn.addEventListener('click', () => {
+      const proposed = (nameInput.value || '').trim();
+      network.name = proposed || `Pilote-${Math.random().toString(36).slice(2, 5)}`;
+      state.name = network.name;
+      resetGame();
+      nameInput.value = network.name;
+    });
+
+    fxToggle.addEventListener('change', (e) => {
+      state.lowFX = e.target.checked;
+    });
+
+    contrastToggle.addEventListener('change', (e) => {
+      document.body.classList.toggle('contrast', e.target.checked);
+    });
+
+    pulseBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); triggerPulse(); });
+
+    document.querySelectorAll('.dpad button[data-dir]').forEach(btn => {
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        const dir = btn.dataset.dir;
+        if (dir === 'up') input.up = true;
+        if (dir === 'down') input.down = true;
+        if (dir === 'left') input.left = true;
+        if (dir === 'right') input.right = true;
+      });
+      btn.addEventListener('pointerup', () => {
+        const dir = btn.dataset.dir;
+        if (dir === 'up') input.up = false;
+        if (dir === 'down') input.down = false;
+        if (dir === 'left') input.left = false;
+        if (dir === 'right') input.right = false;
+      });
+      btn.addEventListener('pointerleave', () => {
+        const dir = btn.dataset.dir;
+        if (dir === 'up') input.up = false;
+        if (dir === 'down') input.down = false;
+        if (dir === 'left') input.left = false;
+        if (dir === 'right') input.right = false;
+      });
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('pagehide', leaveServer);
+    window.addEventListener('beforeunload', leaveServer);
+    window.addEventListener('pageshow', () => { leaveSent = false; });
+
+    loadBests();
+      renderHighscores();
+      renderLiveboard();
+      nameInput.value = network.name;
+      resizeCanvas();
+      initStars();
+    state.last = performance.now();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
