@@ -495,7 +495,12 @@
       },
     };
 
-    const storedClientId = localStorage.getItem('space-cleaner-client-id') || localStorage.getItem('space-cleaner-id');
+    let storedClientId = null;
+    try {
+      storedClientId = localStorage.getItem('space-cleaner-client-id') || localStorage.getItem('space-cleaner-id');
+    } catch (e) {
+      storedClientId = null;
+    }
     const network = {
       clientId: storedClientId || randomId('c'),
       sessionId: randomId('s'),
@@ -513,6 +518,11 @@
       latencyMs: 0,
       connected: false,
     };
+
+    // stabilise l'identité multijoueur (évite de changer de clientId à chaque rechargement)
+    try {
+      localStorage.setItem('space-cleaner-client-id', network.clientId);
+    } catch (e) {}
     let leaveSent = false;
 
     function leaveServer() {
@@ -539,6 +549,12 @@
         // ignore fetch errors
       }
     }
+    // évite de laisser des sessions "fantômes" côté serveur
+    window.addEventListener('pagehide', leaveServer);
+    window.addEventListener('beforeunload', leaveServer);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') leaveServer();
+    });
     const SYNC_INTERVAL = CONFIG.syncIntervalMs;
     const MAX_PEERS = CONFIG.maxPeers;
 
@@ -591,6 +607,17 @@
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
     const lerp = (a, b, t) => a + (b - a) * t;
     const escapeHtml = (str) => String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+
+    function formatClock(seconds) {
+      const s = Math.max(0, Number(seconds) || 0);
+      const total = Math.floor(s);
+      const ss = total % 60;
+      const mmTotal = Math.floor(total / 60);
+      const mm = mmTotal % 60;
+      const hh = Math.floor(mmTotal / 60);
+      if (hh > 0) return `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+      return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+    }
     const particlePool = [];
     const hazardPool = [];
     const bgCanvas = document.createElement('canvas');
@@ -643,8 +670,13 @@
               .sort((a, b) => b.score - a.score)
               .slice(0, 5);
             if (state.highscores[0]) {
-              state.best = Math.max(state.best, state.highscores[0].score);
-              state.bestName = state.highscores[0].name || state.bestName;
+              const top = state.highscores[0];
+              const topTime = Number(top.time) || 0;
+              if (top.score > state.best || (top.score === state.best && topTime > state.bestTime)) {
+                state.best = top.score;
+                state.bestTime = topTime;
+                state.bestName = top.name || state.bestName;
+              }
             }
           }
         }
@@ -667,7 +699,11 @@
         state.bestName = 'Pilote';
       }
       bestEl.textContent = Math.floor(state.best);
-      if (bestPlayerEl) bestPlayerEl.textContent = state.bestName || '';
+      if (bestPlayerEl) {
+        const who = state.bestName || '';
+        const t = state.bestTime ? formatClock(state.bestTime) : '';
+        bestPlayerEl.textContent = who && t ? `${who} • ${t}` : (who || t || '');
+      }
     }
 
     function saveBests() {
