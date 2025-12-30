@@ -27,6 +27,7 @@ LEADERBOARD = []  # liste d'entrées de scores (persistée)
 BOARD_TTL = 30 * 24 * 3600  # seconds, conserve les scores un moment
 MAX_BOARD = 10
 MAX_STORE = 100
+MAX_BODY_BYTES = 16 * 1024
 SAVE_INTERVAL = 2.0  # seconds
 LAST_SAVE = 0.0
 
@@ -179,6 +180,16 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
+    def _write_json(self, status_code, payload):
+        resp = json.dumps(payload).encode()
+        self.send_response(status_code)
+        self._set_cors()
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(resp)))
+        self.end_headers()
+        self.wfile.write(resp)
+
     def do_OPTIONS(self):
         self.send_response(204)
         self._set_cors()
@@ -189,8 +200,18 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path not in ("/api/state", "/api/score", "/api/leave"):
             return super().do_POST()
 
-        length = int(self.headers.get("Content-Length", "0") or 0)
-        raw = self.rfile.read(length)
+        try:
+            length = int(self.headers.get("Content-Length", "0") or 0)
+        except ValueError:
+            self.send_error(400, "bad Content-Length")
+            return
+        if length < 0:
+            self.send_error(400, "bad Content-Length")
+            return
+        if length > MAX_BODY_BYTES:
+            self.send_error(413, "payload too large")
+            return
+        raw = self.rfile.read(length) if length else b""
         try:
             data = json.loads(raw or b"{}")
         except Exception:
@@ -209,13 +230,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not entry:
                 self.send_error(400, "invalid score")
                 return
-            resp = json.dumps({"ok": True, "board": board, "serverTime": now}).encode()
-            self.send_response(200)
-            self._set_cors()
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(resp)))
-            self.end_headers()
-            self.wfile.write(resp)
+            self._write_json(200, {"ok": True, "board": board, "serverTime": now})
             return
 
         if parsed.path == "/api/leave":
@@ -233,13 +248,7 @@ class Handler(SimpleHTTPRequestHandler):
                 removed = PLAYERS.pop(session_id, None) is not None
                 now = time.time()
 
-            resp = json.dumps({"ok": True, "removed": removed, "serverTime": now}).encode()
-            self.send_response(200)
-            self._set_cors()
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(resp)))
-            self.end_headers()
-            self.wfile.write(resp)
+            self._write_json(200, {"ok": True, "removed": removed, "serverTime": now})
             return
 
         session_id = str(
@@ -292,13 +301,7 @@ class Handler(SimpleHTTPRequestHandler):
             _prune_leaderboard(now)
             board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[:MAX_BOARD]
 
-        resp = json.dumps({"ok": True, "players": peers, "board": board, "serverTime": now}).encode()
-        self.send_response(200)
-        self._set_cors()
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(resp)))
-        self.end_headers()
-        self.wfile.write(resp)
+        self._write_json(200, {"ok": True, "players": peers, "board": board, "serverTime": now})
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -308,13 +311,7 @@ class Handler(SimpleHTTPRequestHandler):
             now = time.time()
             _prune_leaderboard(now)
             board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[:MAX_BOARD]
-        resp = json.dumps({"ok": True, "board": board, "serverTime": now}).encode()
-        self.send_response(200)
-        self._set_cors()
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(resp)))
-        self.end_headers()
-        self.wfile.write(resp)
+        self._write_json(200, {"ok": True, "board": board, "serverTime": now})
 
     def log_message(self, format, *args):
         return
@@ -322,6 +319,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 class Server(ThreadingHTTPServer):
     block_on_close = False
+    allow_reuse_address = True
 
 
 def main():

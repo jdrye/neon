@@ -24,6 +24,7 @@ Variables d'environnement utiles :
 
 ## API (JSON)
 Le front appelle l'API sur `http://<host>:<PORT>/api`. L'URL peut etre forcee via le parametre `?api=...` dans l'URL du jeu.
+Par defaut, si le jeu est ouvert en `file://`, il tente `http://localhost:8000`.
 
 - `POST /api/state` : heartbeat + etat du joueur courant.
   - Corps attendu : `sessionId` (obligatoire), `clientId`, `x`, `y`, `color`, `name`, `score`, `time`, `best`, `bestTime`, `since` (timestamp pour recuperer seulement les pairs recents).

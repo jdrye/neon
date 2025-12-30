@@ -461,12 +461,11 @@
     }
 
     const urlParams = new URLSearchParams(location.search);
-    const customApi = urlParams.get('api') || '';
-    const preferredHost = 'http://10.148.6.23:8010';
+    const customApi = (urlParams.get('api') || '').trim();
     const basePath = location.pathname.startsWith('/space-cleaner') ? '/space-cleaner' : '';
     const originApi = !location.origin.startsWith('file') ? `${location.origin}${basePath}` : '';
-    const fallbackHost = location.hostname ? `http://${location.hostname}:8010` : preferredHost;
-    const baseApi = customApi || originApi || preferredHost || fallbackHost;
+    const defaultApi = `http://localhost:8000${basePath}`;
+    const baseApi = customApi || originApi || defaultApi;
     const API_URL = `${baseApi.replace(/\/$/, '')}/api/state`;
 
     const CONFIG = {
