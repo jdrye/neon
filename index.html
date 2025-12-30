@@ -206,6 +206,9 @@
     .badge span { color: var(--muted); font-weight: 500; margin-right: 8px; }
 
     .badge.danger { color: var(--danger); }
+    .badge.danger-low { border-color: rgba(134, 242, 110, 0.35); color: #86f26e; }
+    .badge.danger-med { border-color: rgba(255, 149, 90, 0.45); color: #ff955a; }
+    .badge.danger-high { border-color: rgba(255, 94, 123, 0.65); color: #ff5e7b; box-shadow: 0 0 18px rgba(255, 94, 123, 0.25); }
     .badge.combo { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 
     .effects-badge {
@@ -383,6 +386,7 @@
         <div class="badge"><span>Score</span><strong id="score">0</strong></div>
         <div class="badge combo" id="multBadge"><span>Multiplicateur</span><strong id="mult">x1.0</strong></div>
         <div class="badge"><span>Vies</span><strong id="lives">3</strong></div>
+        <div class="badge danger" id="dangerBadge"><span>Danger</span><strong id="danger">Calme</strong></div>
         <div class="badge"><span>Temps</span><strong id="time">00:00</strong></div>
         <div class="badge"><span>Meilleur</span><div class="badge-stack"><strong id="best">0</strong><div id="bestPlayer" class="badge-note"></div></div></div>
         <div class="badge"><span>Reseau</span><div class="badge-stack"><strong id="peerTop">Solo</strong><div id="peerTopScore" class="badge-note"></div><div id="netStatus" class="badge-note"></div></div></div>
@@ -416,6 +420,8 @@
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const livesEl = document.getElementById('lives');
+    const dangerEl = document.getElementById('danger');
+    const dangerBadge = document.getElementById('dangerBadge');
     const multEl = document.getElementById('mult');
     const multBadge = document.getElementById('multBadge');
     const timeEl = document.getElementById('time');
@@ -568,6 +574,8 @@
       stats: { collected: 0, hits: 0 },
       lowFX: false,
       comboFlash: 0,
+      cameraShake: 0,
+      danger: { level: 'low', nearest: Infinity, density: 0 },
       thrust: 0,
       trail: [],
       highscores: [],
@@ -588,6 +596,21 @@
     const hazardPool = [];
     const bgCanvas = document.createElement('canvas');
     const bgCtx = bgCanvas.getContext('2d');
+
+    function bumpCameraShake(amount = 6) {
+      const cap = 16;
+      state.cameraShake = Math.min(cap, Math.max(state.cameraShake, amount));
+    }
+
+    function getCameraShake(dt) {
+      if (!state.cameraShake || state.cameraShake <= 0) return { x: 0, y: 0 };
+      const intensity = Math.min(state.cameraShake, 14);
+      state.cameraShake = Math.max(0, state.cameraShake - dt * 18);
+      return {
+        x: (Math.random() * 2 - 1) * intensity,
+        y: (Math.random() * 2 - 1) * intensity,
+      };
+    }
 
     function loadBests() {
       try {
@@ -716,6 +739,8 @@
       state.multiplier = 1;
       state.maxMultiplier = 1;
       state.time = 0;
+      state.cameraShake = 0;
+      state.danger = { level: 'low', nearest: Infinity, density: 0 };
       state.stats = { collected: 0, hits: 0 };
       state.pulseCooldown = 0;
       state.pulseActive = 0;
@@ -782,6 +807,21 @@
         `;
       }).join('');
       container.innerHTML = `<div class="hs-title">Meilleurs scores</div>${rows}`;
+    }
+
+    function computeDanger() {
+      const density = state.hazards.length / CONFIG.maxHazards;
+      if (!state.hazards.length) {
+        return { level: 'low', nearest: Infinity, density };
+      }
+      const nearest = state.hazards.reduce((acc, h) => {
+        const dist = Math.hypot((h.x || 0) - state.player.x, (h.y || 0) - state.player.y) - (h.r || 0);
+        return Math.min(acc, dist);
+      }, Infinity);
+      let level = 'low';
+      if (nearest < 140 || density > 0.75) level = 'high';
+      else if (nearest < 240 || density > 0.5) level = 'med';
+      return { level, nearest, density };
     }
 
     function setServerBoard(board) {
@@ -1054,6 +1094,20 @@
       state.powerups.push({ x, y, r: 12, ttl: 9 + Math.random() * 3, type });
     }
 
+    function spawnFragments(x, y, count = 3) {
+      const total = Math.max(1, Math.min(count, 5));
+      for (let i = 0; i < total; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = 8 + Math.random() * 18;
+        state.orbs.push({
+          x: x + Math.cos(a) * d,
+          y: y + Math.sin(a) * d,
+          r: 9,
+          ttl: 5 + Math.random() * 3,
+        });
+      }
+    }
+
     function addParticles(x, y, color, amount = 10, speed = 120) {
       const count = state.lowFX ? Math.ceil(amount * 0.45) : amount;
       for (let i = 0; i < count; i++) {
@@ -1099,6 +1153,7 @@
       if (!force && state.pulseCooldown > 0) return;
       state.pulseActive = CONFIG.pulse.duration;
       state.pulseCooldown = CONFIG.pulse.cooldown;
+      bumpCameraShake(6);
       addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.9)', 26, 220);
     }
 
@@ -1185,6 +1240,7 @@
               if (h.hp <= 0) {
                 h.ttl = 0;
                 addParticles(h.x, h.y, 'rgba(255, 149, 90, 0.8)', 22, 240);
+                bumpCameraShake(7);
                 continue;
               }
             }
@@ -1216,6 +1272,7 @@
             state.shieldCharges -= 1;
             if (state.shieldCharges <= 0) state.effects.shield = 0;
             addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
+            bumpCameraShake(8);
             h.x += Math.sign(dx || 1) * (h.r + 8);
             h.y += Math.sign(dy || 1) * (h.r + 8);
             // renvoyer le bloc a l oppose
@@ -1228,6 +1285,7 @@
           state.lives -= 1;
           state.stats.hits += 1;
           addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 28, 260);
+          bumpCameraShake(12);
           h.x += Math.sign(dx || 1) * (h.r + 8);
           h.y += Math.sign(dy || 1) * (h.r + 8);
           const speed = Math.hypot(h.vx, h.vy) || (120 + Math.random() * 80);
@@ -1242,9 +1300,13 @@
 
       const remaining = [];
       for (const h of state.hazards) {
-        if (h.ttl > 0 && (h.hp === undefined || h.hp > 0)) {
+        const destroyed = h.hp !== undefined && h.hp <= 0;
+        if (h.ttl > 0 && !destroyed) {
           remaining.push(h);
         } else {
+          if (destroyed) {
+            spawnFragments(h.x, h.y, 2 + Math.floor(Math.random() * 2));
+          }
           hazardPool.push(h);
         }
       }
@@ -1302,10 +1364,12 @@
               state.shieldCharges -= 1;
               if (state.shieldCharges <= 0) state.effects.shield = 0;
               addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
+              bumpCameraShake(7);
             } else {
               state.lives -= 1;
               state.stats.hits += 1;
               addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 24, 200);
+              bumpCameraShake(10);
               if (state.lives <= 0) {
                 endGame();
                 return;
@@ -1313,6 +1377,7 @@
             }
           } else {
             addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.7)', 18, 160);
+            bumpCameraShake(6);
           }
 
           triggerPulse(true);
@@ -1408,6 +1473,16 @@
         const idle = performance.now() - (network.lastSuccessAt || 0);
         const online = network.connected && idle < CONFIG.net.heartbeat * 4;
         netStatusEl.textContent = online ? `${Math.round(network.latencyMs || 0)}ms` : 'Hors ligne';
+      }
+      if (dangerEl && dangerBadge) {
+        const danger = state.danger || computeDanger();
+        let label = 'Calme';
+        let cls = 'danger-low';
+        if (danger.level === 'med') { label = 'Alerte'; cls = 'danger-med'; }
+        if (danger.level === 'high') { label = 'Crise'; cls = 'danger-high'; }
+        dangerEl.textContent = label;
+        dangerBadge.classList.remove('danger-low', 'danger-med', 'danger-high');
+        dangerBadge.classList.add(cls);
       }
 
       const effects = [];
@@ -1527,6 +1602,25 @@
     }
 
     function drawPlayer() {
+      const danger = state.danger || computeDanger();
+      if (danger && danger.level !== 'low') {
+        const color = danger.level === 'high' ? '255, 94, 123' : '255, 149, 90';
+        const dangerFactor = clamp((260 - (danger.nearest || 999)) / 260 + (danger.density || 0), 0, 1);
+        const radius = state.player.r + 22 + dangerFactor * 16;
+        const alpha = 0.14 + dangerFactor * 0.32;
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color}, ${alpha})`;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 10]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, radius * 0.72, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${color}, ${alpha * 0.4})`;
+        ctx.fill();
+      }
+
       const hasShield = state.effects.shield > 0 && state.shieldCharges > 0;
       drawShip(state.player, state.color, hasShield, state.pulseActive, state.name);
       if (state.effects.overdrive > 0) {
@@ -1733,15 +1827,20 @@
       prunePeers();
 
       if (!state.running || state.paused) {
+        state.danger = computeDanger();
         updateStars(dt);
         updateUI(); // rafraichit le classement/hud meme en pause ou avant le start
+        const shake = getCameraShake(dt);
         drawBackground();
+        ctx.save();
+        ctx.translate(shake.x, shake.y);
         drawHazards();
         drawPowerups();
         drawOrbs();
         drawPeers();
         drawPlayer();
         drawParticles();
+        ctx.restore();
         return;
       }
 
@@ -1801,13 +1900,17 @@
       updateTrail(dt);
       checkPeerCollisions();
       updateParticles(dt);
+      state.danger = computeDanger();
       updateUI();
       if (state.time - state.lastSave > 2) {
         saveBests();
         state.lastSave = state.time;
       }
 
+      const shake = getCameraShake(dt);
       drawBackground();
+      ctx.save();
+      ctx.translate(shake.x, shake.y);
       drawHazards();
       drawPowerups();
       drawOrbs();
@@ -1815,6 +1918,7 @@
       drawTrail();
       drawPlayer();
       drawParticles();
+      ctx.restore();
     }
 
     function loop(timestamp) {
