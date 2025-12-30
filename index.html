@@ -470,7 +470,7 @@
       maxPeers: 5,
       maxHazards: 26,
       pulse: { duration: 0.28, cooldown: 2.4, reach: 220, force: 620, destroyRatio: 0.55 },
-      powerups: { slow: 4, shield: 8, magnet: 6 },
+      powerups: { slow: 4, shield: 8, magnet: 6, overdrive: 6 },
       magnetReach: 220,
       hazardTTL: { min: 16, jitter: 10 },
       trail: { max: 20, baseLife: 0.18, speedLife: 0.18 },
@@ -564,7 +564,7 @@
       lastUiUpdate: 0,
       lastSave: 0,
       shieldCharges: 0,
-      effects: { slow: 0, shield: 0, magnet: 0 },
+      effects: { slow: 0, shield: 0, magnet: 0, overdrive: 0 },
       stats: { collected: 0, hits: 0 },
       lowFX: false,
       comboFlash: 0,
@@ -1049,7 +1049,7 @@
       const padding = 60;
       const x = padding + Math.random() * (canvas.width - padding * 2);
       const y = padding + Math.random() * (canvas.height - padding * 2);
-      const types = state.lives < 5 ? ['slow', 'shield', 'magnet', 'life'] : ['slow', 'shield', 'magnet'];
+      const types = state.lives < 5 ? ['slow', 'shield', 'magnet', 'life', 'overdrive'] : ['slow', 'shield', 'magnet', 'overdrive'];
       const type = types[Math.floor(Math.random() * types.length)];
       state.powerups.push({ x, y, r: 12, ttl: 9 + Math.random() * 3, type });
     }
@@ -1129,12 +1129,13 @@
         iy /= mag;
       }
 
-      const targetSpeed = lerp(90, 440, state.thrust); // limite haute reduite
-      const accelLerp = lerp(3.5, 7.5, state.thrust); // interpolation plus douce
+      const boost = state.effects.overdrive > 0 ? 1.18 : 1;
+      const targetSpeed = lerp(90, 440, state.thrust) * boost; // limite haute reduite
+      const accelLerp = lerp(3.5, 7.5, state.thrust) * (state.effects.overdrive > 0 ? 1.2 : 1); // interpolation plus douce
       state.player.vx = lerp(state.player.vx, ix * targetSpeed, accelLerp * dt);
       state.player.vy = lerp(state.player.vy, iy * targetSpeed, accelLerp * dt);
 
-      const decay = Math.pow(moving ? 0.994 : 0.94, dt * 60);
+      const decay = Math.pow(moving ? 0.994 : 0.94, dt * 60) * (state.effects.overdrive > 0 ? 0.992 : 1);
       state.player.vx *= decay;
       state.player.vy *= decay;
 
@@ -1332,6 +1333,12 @@
         state.effects.shield = (state.effects.shield || 0) + CONFIG.powerups.shield;
       }
       if (type === 'magnet') state.effects.magnet = CONFIG.powerups.magnet;
+      if (type === 'overdrive') {
+        state.effects.overdrive = CONFIG.powerups.overdrive;
+        state.multiplier = Math.min(state.multiplier + 0.3, 7);
+        state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
+        state.pulseCooldown = Math.max(0, state.pulseCooldown - 0.8);
+      }
       if (type === 'life') {
         state.lives = Math.min(state.lives + 1, 6);
       }
@@ -1340,6 +1347,7 @@
         shield: 'rgba(134, 242, 110, 0.8)',
         magnet: 'rgba(255, 149, 90, 0.8)',
         life: 'rgba(255, 94, 123, 0.8)',
+        overdrive: 'rgba(255, 221, 115, 0.88)',
       };
       addParticles(state.player.x, state.player.y, colors[type] || 'rgba(122, 246, 255, 0.8)', 24, 180);
     }
@@ -1366,6 +1374,9 @@
         if (state.effects[key] < 0) state.effects[key] = 0;
       }
       if (state.effects.shield <= 0) state.shieldCharges = 0;
+      if (state.effects.overdrive > 0 && state.pulseCooldown > 0) {
+        state.pulseCooldown = Math.max(0, state.pulseCooldown - dt * 0.9);
+      }
       if (state.hitCooldown > 0) state.hitCooldown -= dt;
       if (state.hitCooldown < 0) state.hitCooldown = 0;
     }
@@ -1406,6 +1417,7 @@
         effects.push(shieldLabel);
       }
       if (state.effects.magnet > 0) effects.push('Aimant');
+      if (state.effects.overdrive > 0) effects.push('Overdrive');
       effectsEl.textContent = effects.length ? `Bonus: ${effects.join(' | ')}` : 'Bonus: aucun';
 
       if (state.comboFlash > 0) {
@@ -1517,6 +1529,16 @@
     function drawPlayer() {
       const hasShield = state.effects.shield > 0 && state.shieldCharges > 0;
       drawShip(state.player, state.color, hasShield, state.pulseActive, state.name);
+      if (state.effects.overdrive > 0) {
+        const t = clamp(state.effects.overdrive / CONFIG.powerups.overdrive, 0, 1);
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, state.player.r + 18, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 221, 115, ${0.35 + 0.25 * t})`;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 8]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
 
     function drawPeers() {
@@ -1592,7 +1614,7 @@
 
     function drawPowerups() {
       for (const p of state.powerups) {
-        const colors = { slow: '#7ad2ff', shield: '#86f26e', magnet: '#ff955a', life: '#ff6f9f' };
+        const colors = { slow: '#7ad2ff', shield: '#86f26e', magnet: '#ff955a', life: '#ff6f9f', overdrive: '#ffd773' };
         const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 1.65);
         g.addColorStop(0, colors[p.type] || '#7af6ff');
         g.addColorStop(1, 'rgba(255,255,255,0.08)');
@@ -1647,6 +1669,17 @@
           ctx.bezierCurveTo(-r * 0.9, -r * 0.3, -r * 0.9, r * 0.4, 0, r * 0.9);
           ctx.fill();
           ctx.stroke();
+        } else if (p.type === 'overdrive') {
+          ctx.beginPath();
+          ctx.moveTo(-p.r * 0.2, -p.r * 0.7);
+          ctx.lineTo(p.r * 0.1, -p.r * 0.1);
+          ctx.lineTo(-p.r * 0.25, -p.r * 0.1);
+          ctx.lineTo(p.r * 0.2, p.r * 0.75);
+          ctx.lineTo(-p.r * 0.05, p.r * 0.15);
+          ctx.lineTo(p.r * 0.25, p.r * 0.15);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
         }
         ctx.restore();
       }
@@ -1676,6 +1709,13 @@
         ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = g;
         ctx.fill();
+        if (state.effects.overdrive > 0) {
+          const halo = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, radius * 1.2);
+          halo.addColorStop(0, `rgba(255, 221, 115, ${alpha * 0.9})`);
+          halo.addColorStop(1, 'rgba(255, 221, 115, 0)');
+          ctx.fillStyle = halo;
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
