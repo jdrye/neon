@@ -53,6 +53,21 @@ def _normalize_color(color):
     return cleaned[:64]
 
 
+def _normalize_client_id(value):
+    cleaned = " ".join(str(value or "").strip().split())
+    if not cleaned:
+        return None
+    # limite defensive
+    return cleaned[:64]
+
+
+def _normalize_session_id(value):
+    cleaned = " ".join(str(value or "").strip().split())
+    if not cleaned:
+        return None
+    return cleaned[:64]
+
+
 def _score_sort_key(entry):
     return (
         _safe_float(entry.get("score", 0)),
@@ -234,29 +249,40 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         if parsed.path == "/api/leave":
-            session_id = str(
-                data.get("sessionId")
-                or data.get("sid")
-                or data.get("id")
-                or ""
-            ).strip()
-            if not session_id:
-                self.send_error(400, "missing sessionId")
+            session_id = _normalize_session_id(
+                data.get("sessionId") or data.get("sid") or data.get("id")
+            )
+            client_id = _normalize_client_id(data.get("clientId"))
+            if not session_id and not client_id:
+                self.send_error(400, "missing sessionId/clientId")
                 return
 
             with LOCK:
-                removed = PLAYERS.pop(session_id, None) is not None
+                removed_ids = []
+                if client_id:
+                    for sid, player in list(PLAYERS.items()):
+                        if _normalize_client_id(player.get("clientId")) == client_id:
+                            removed_ids.append(sid)
+                            del PLAYERS[sid]
+                if session_id and session_id in PLAYERS:
+                    removed_ids.append(session_id)
+                    del PLAYERS[session_id]
                 now = time.time()
 
-            self._write_json(200, {"ok": True, "removed": removed, "serverTime": now})
+            self._write_json(
+                200,
+                {
+                    "ok": True,
+                    "removed": bool(removed_ids),
+                    "removedIds": removed_ids,
+                    "serverTime": now,
+                },
+            )
             return
 
-        session_id = str(
-            data.get("sessionId")
-            or data.get("sid")
-            or data.get("id")
-            or ""
-        ).strip()
+        session_id = _normalize_session_id(
+            data.get("sessionId") or data.get("sid") or data.get("id")
+        )
         if not session_id:
             self.send_error(400, "missing sessionId")
             return
@@ -265,25 +291,51 @@ class Handler(SimpleHTTPRequestHandler):
         since = _safe_float(data.get("since", 0), 0.0)
         with LOCK:
             prev = PLAYERS.get(session_id, {})
-            incoming_score = _safe_float(data.get("score", 0), 0.0)
-            incoming_time = _safe_float(data.get("time", 0), 0.0)
-            incoming_best = _safe_float(data.get("best", incoming_score), 0.0)
-            incoming_best_time = _safe_float(data.get("bestTime", incoming_time), 0.0)
+            client_id = _normalize_client_id(data.get("clientId") or prev.get("clientId"))
 
-            best_score = max(incoming_best, _safe_float(prev.get("best", 0), 0.0))
-            best_time = max(incoming_best_time, _safe_float(prev.get("bestTime", 0), 0.0))
+            # anti-dup: si un même clientId revient avec une autre session (reload/onglet), on nettoie ses anciennes sessions
+            if client_id:
+                for sid, player in list(PLAYERS.items()):
+                    if sid != session_id and _normalize_client_id(player.get("clientId")) == client_id:
+                        del PLAYERS[sid]
+
+            incoming_score = max(_safe_float(data.get("score", 0), 0.0), 0.0)
+            incoming_time = max(_safe_float(data.get("time", 0), 0.0), 0.0)
+
+            # compat: si le client envoie best/bestTime on les prend en compte
+            incoming_best = max(_safe_float(data.get("best", incoming_score), 0.0), 0.0)
+            incoming_best_time = max(_safe_float(data.get("bestTime", incoming_time), 0.0), 0.0)
+
+            prev_best = max(_safe_float(prev.get("best", 0), 0.0), 0.0)
+            prev_best_time = max(_safe_float(prev.get("bestTime", 0), 0.0), 0.0)
+
+            # meilleur (score, puis time en tie-break)
+            best_score = prev_best
+            best_time = prev_best_time
+            if (incoming_best > best_score) or (
+                incoming_best == best_score and incoming_best_time > best_time
+            ):
+                best_score, best_time = incoming_best, incoming_best_time
+            if (incoming_score > best_score) or (
+                incoming_score == best_score and incoming_time > best_time
+            ):
+                best_score, best_time = incoming_score, incoming_time
 
             PLAYERS[session_id] = {
                 "id": session_id,
-                "clientId": str(data.get("clientId") or prev.get("clientId") or "").strip() or None,
+                "clientId": client_id,
                 "x": _safe_float(data.get("x", 0), 0.0),
                 "y": _safe_float(data.get("y", 0), 0.0),
                 "color": _normalize_color(data.get("color", prev.get("color"))),
                 "name": _normalize_name(data.get("name", prev.get("name"))),
-                "score": incoming_score if incoming_score > 0 else best_score,
-                "time": incoming_time if incoming_time > 0 else best_time,
+                # "score/time" = meilleur de la session (ce que tu veux afficher dans le classement)
+                "score": best_score,
+                "time": best_time,
                 "best": best_score,
                 "bestTime": best_time,
+                # champs additionnels non cassants (utile si tu veux afficher du "live" côté client plus tard)
+                "currentScore": incoming_score,
+                "currentTime": incoming_time,
                 "ts": now,
             }
             # prune stale players
