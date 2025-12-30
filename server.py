@@ -180,6 +180,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
+    def _write_api_error(self, status_code, message):
+        self._write_json(status_code, {"ok": False, "error": str(message)})
+
     def _write_json(self, status_code, payload):
         resp = json.dumps(payload).encode()
         self.send_response(status_code)
@@ -203,19 +206,19 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0") or 0)
         except ValueError:
-            self.send_error(400, "bad Content-Length")
+            self._write_api_error(400, "bad Content-Length")
             return
         if length < 0:
-            self.send_error(400, "bad Content-Length")
+            self._write_api_error(400, "bad Content-Length")
             return
         if length > MAX_BODY_BYTES:
-            self.send_error(413, "payload too large")
+            self._write_api_error(413, "payload too large")
             return
         raw = self.rfile.read(length) if length else b""
         try:
             data = json.loads(raw or b"{}")
         except Exception:
-            self.send_error(400, "bad json")
+            self._write_api_error(400, "bad json")
             return
 
         if parsed.path == "/api/score":
@@ -228,7 +231,7 @@ class Handler(SimpleHTTPRequestHandler):
                 board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[:MAX_BOARD]
                 now = time.time()
             if not entry:
-                self.send_error(400, "invalid score")
+                self._write_api_error(400, "invalid score")
                 return
             self._write_json(200, {"ok": True, "board": board, "serverTime": now})
             return
@@ -241,7 +244,7 @@ class Handler(SimpleHTTPRequestHandler):
                 or ""
             ).strip()
             if not session_id:
-                self.send_error(400, "missing sessionId")
+                self._write_api_error(400, "missing sessionId")
                 return
 
             with LOCK:
@@ -258,7 +261,7 @@ class Handler(SimpleHTTPRequestHandler):
             or ""
         ).strip()
         if not session_id:
-            self.send_error(400, "missing sessionId")
+            self._write_api_error(400, "missing sessionId")
             return
 
         now = time.time()

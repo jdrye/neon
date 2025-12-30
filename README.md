@@ -35,6 +35,8 @@ Par defaut, si le jeu est ouvert en `file://`, il tente `http://localhost:8000`.
 - `POST /api/leave` : retire un joueur (fin de session).
   - Corps : `sessionId`.
   - Reponse : `{ ok, removed, serverTime }`.
+- En cas d'erreur sur les routes `/api/*`, la reponse est toujours au format JSON:
+  `{ ok: false, error: "..." }` avec le code HTTP approprie.
 - `GET /api/state` ou `GET /api/board` : consulte le leaderboard courant.
   - Reponse : `{ ok, board: [...], serverTime }`.
 
