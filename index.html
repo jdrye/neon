@@ -501,8 +501,19 @@
     } catch (e) {
       storedClientId = null;
     }
+    let storedInstanceId = null;
+    try {
+      storedInstanceId = sessionStorage.getItem('space-cleaner-instance-id');
+      if (!storedInstanceId) {
+        storedInstanceId = randomId('t');
+        sessionStorage.setItem('space-cleaner-instance-id', storedInstanceId);
+      }
+    } catch (e) {
+      storedInstanceId = randomId('t');
+    }
     const network = {
       clientId: storedClientId || randomId('c'),
+      instanceId: storedInstanceId,
       sessionId: randomId('s'),
       color: randomColor(),
       name: 'Pilote-' + Math.random().toString(36).slice(2, 5),
@@ -515,8 +526,10 @@
       lastServerTime: 0,
       lastSendAt: 0,
       lastSuccessAt: 0,
+      lastServerPerf: 0,
       latencyMs: 0,
       connected: false,
+      pulseSeq: 0,
     };
 
     // stabilise l'identité multijoueur (évite de changer de clientId à chaque rechargement)
@@ -529,7 +542,11 @@
       if (!network.enabled || leaveSent) return;
       leaveSent = true;
       const url = API_URL.replace('/state', '/leave');
-      const payload = JSON.stringify({ sessionId: network.sessionId, clientId: network.clientId });
+      const payload = JSON.stringify({
+        sessionId: network.sessionId,
+        clientId: network.clientId,
+        instanceId: network.instanceId,
+      });
       try {
         if (navigator.sendBeacon) {
           navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
@@ -819,6 +836,19 @@
       return `${m}:${s}`;
     }
 
+    function trackServerTime(serverTime) {
+      const t = Number(serverTime);
+      if (!Number.isFinite(t) || t <= 0) return;
+      network.lastServerTime = t;
+      network.lastServerPerf = performance.now();
+    }
+
+    function getServerNow() {
+      if (!network.lastServerTime || !network.lastServerPerf) return 0;
+      const delta = Math.max(0, (performance.now() - network.lastServerPerf) / 1000);
+      return network.lastServerTime + delta;
+    }
+
     function renderHighscores() {
       const container = highscoresEl;
       if (!container) return;
@@ -842,6 +872,11 @@
         `;
       }).join('');
       container.innerHTML = `<div class="hs-title">Meilleurs scores</div>${rows}`;
+    }
+
+    function getSelfLeaderboardName() {
+      if (state.best > 0 && state.bestName) return state.bestName;
+      return state.name || 'Pilote';
     }
 
     function computeDanger() {
@@ -886,8 +921,9 @@
     function renderLiveboard() {
       const container = liveboardEl;
       if (!container) return;
+      const selfName = getSelfLeaderboardName();
       const entries = [
-        { id: network.sessionId, name: state.name || 'Pilote', score: state.best || 0, time: state.bestTime || 0, self: true },
+        { id: network.sessionId, name: selfName, score: state.best || 0, time: state.bestTime || 0, self: true },
         ...Array.from(network.peers.values()).map(p => ({
           id: p.id,
           name: p.name || 'Pilote',
@@ -957,7 +993,7 @@
         network.latencyMs = performance.now() - start;
         network.connected = true;
         network.lastSuccessAt = performance.now();
-        network.lastServerTime = Number(data.serverTime) || network.lastServerTime;
+        trackServerTime(data.serverTime);
         setServerBoard(data.board);
         maybeUpdateBoards(true);
       } catch (e) {
@@ -986,7 +1022,7 @@
         if (!res.ok) return;
         const data = await res.json();
         if (!data || !Array.isArray(data.board)) return;
-        network.lastServerTime = Number(data.serverTime) || network.lastServerTime;
+        trackServerTime(data.serverTime);
         setServerBoard(data.board);
         maybeUpdateBoards(true);
       } catch (e) {
@@ -1012,6 +1048,7 @@
             id: network.sessionId,
             sessionId: network.sessionId,
             clientId: network.clientId,
+            instanceId: network.instanceId,
             color: network.color,
             name: network.name,
             x: state.player.x,
@@ -1020,6 +1057,7 @@
             time: Math.floor(state.time),
             best: Math.floor(state.best),
             bestTime: Math.floor(state.bestTime),
+            pulseSeq: network.pulseSeq,
             since: network.lastServerTime || 0,
           }),
         });
@@ -1035,7 +1073,7 @@
         network.latencyMs = performance.now() - start;
         network.connected = true;
         network.lastSuccessAt = performance.now();
-        network.lastServerTime = Number(data.serverTime) || network.lastServerTime;
+        trackServerTime(data.serverTime);
         if (data && Array.isArray(data.players)) {
           const nowMs = Date.now();
           const limited = data.players.slice(0, MAX_PEERS);
@@ -1048,6 +1086,11 @@
             const dtSec = Math.max((nowMs - prevSeen) / 1000, 0.001);
             const speed = Math.hypot((Number(p.x) || 0) - prevX, (Number(p.y) || 0) - prevY) / dtSec;
             const speedAvg = existing ? lerp(existing.speedAvg || speed, speed, CONFIG.speedSmooth) : speed;
+            const incomingPulseSeq = Number(p.pulseSeq) || 0;
+            const incomingPulseAt = Number(p.pulseAt) || 0;
+            const prevPulseSeq = existing ? Number(existing.pulseSeq) || 0 : 0;
+            const pulseSeq = Math.max(incomingPulseSeq, prevPulseSeq);
+            const pulseAt = incomingPulseAt || (existing ? existing.pulseAt : 0);
             network.peers.set(p.id, {
               id: p.id,
               x: Number(p.x) || 0,
@@ -1059,6 +1102,9 @@
               time: Number(p.bestTime || p.time) || 0,
               speed: Number.isFinite(speed) ? speed : 0,
               speedAvg: Number.isFinite(speedAvg) ? speedAvg : 0,
+              pulseSeq,
+              pulseAt,
+              pulseAppliedSeq: existing ? (existing.pulseAppliedSeq || 0) : 0,
             });
           });
           const trimmed = Array.from(network.peers.values()).sort((a, b) => b.lastSeen - a.lastSeen);
@@ -1188,6 +1234,7 @@
       if (!force && state.pulseCooldown > 0) return;
       state.pulseActive = CONFIG.pulse.duration;
       state.pulseCooldown = CONFIG.pulse.cooldown;
+      network.pulseSeq += 1;
       bumpCameraShake(6);
       addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.9)', 26, 220);
     }
@@ -1281,17 +1328,6 @@
             }
           }
         }
-        // pulse detruit les vaisseaux adverses proches
-        const peerReach = 200;
-        for (const [id, peer] of network.peers.entries()) {
-          const dx = peer.x - state.player.x;
-          const dy = peer.y - state.player.y;
-          const dist = Math.hypot(dx, dy) || 0.001;
-          if (dist < peerReach) {
-            network.peers.delete(id);
-            addParticles(peer.x, peer.y, 'rgba(122, 246, 255, 0.8)', 22, 260);
-          }
-        }
         state.pulseActive -= dt;
       }
 
@@ -1380,6 +1416,29 @@
           state.stats.collected += 1;
           addParticles(o.x, o.y, 'rgba(122, 246, 255, 0.9)', 18, 200);
         }
+      }
+    }
+
+    function applyPeerPulseEffects(dt) {
+      const serverNow = getServerNow();
+      if (!serverNow) return;
+      const reach = CONFIG.pulse.reach * 0.9;
+      for (const peer of network.peers.values()) {
+        const pulseSeq = peer.pulseSeq || 0;
+        if (!pulseSeq || peer.pulseAppliedSeq === pulseSeq) continue;
+        const pulseAt = peer.pulseAt || 0;
+        const age = serverNow - pulseAt;
+        if (age < 0 || age > CONFIG.pulse.duration) continue;
+        const dx = state.player.x - peer.x;
+        const dy = state.player.y - peer.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        if (dist < reach) {
+          const force = (1 - dist / reach) * CONFIG.pulse.force * 0.35;
+          state.player.vx += (dx / dist) * force * dt;
+          state.player.vy += (dy / dist) * force * dt;
+          bumpCameraShake(4);
+        }
+        peer.pulseAppliedSeq = pulseSeq;
       }
     }
 
@@ -1491,8 +1550,9 @@
       pulseEl.textContent = state.pulseCooldown <= 0 ? 'Pret' : `${state.pulseCooldown.toFixed(1)}s`;
 
       if (peerTopEl && peerTopScoreEl) {
+        const selfName = getSelfLeaderboardName();
         const candidates = [
-          { name: state.name || 'Pilote', score: state.best || 0, time: state.bestTime || 0 },
+          { name: selfName, score: state.best || 0, time: state.bestTime || 0 },
           ...Array.from(network.peers.values()).map(p => ({ name: p.name || 'Pilote', score: p.score || 0, time: p.time || 0 })),
         ];
         const top = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.time || 0) - (a.time || 0))[0];
@@ -1675,6 +1735,25 @@
         const ghost = { x: peer.x, y: peer.y, vx: 0, vy: 0, r: 12 };
         const labelScore = peer.score ? ` • ${Math.floor(peer.score)}` : '';
         drawShip(ghost, peer.color, false, 0, `${peer.name}${labelScore}`);
+      }
+    }
+
+    function drawPeerPulses() {
+      const serverNow = getServerNow();
+      if (!serverNow) return;
+      for (const peer of network.peers.values()) {
+        const pulseAt = peer.pulseAt || 0;
+        if (!pulseAt) continue;
+        const age = serverNow - pulseAt;
+        if (age < 0 || age > CONFIG.pulse.duration) continue;
+        const t = clamp(age / CONFIG.pulse.duration, 0, 1);
+        const radius = CONFIG.pulse.reach * t;
+        const alpha = (1 - t) * 0.35;
+        ctx.beginPath();
+        ctx.arc(peer.x, peer.y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(122, 246, 255, ${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
     }
 
@@ -1872,6 +1951,7 @@
         drawHazards();
         drawPowerups();
         drawOrbs();
+        drawPeerPulses();
         drawPeers();
         drawPlayer();
         drawParticles();
@@ -1929,6 +2009,7 @@
       updateEffects(dt);
       updateStars(dt);
       updatePlayer(dt);
+      applyPeerPulseEffects(dt);
       updateHazards(dt, difficulty);
       updatePowerups(dt);
       updateOrbs(dt);
@@ -1949,6 +2030,7 @@
       drawHazards();
       drawPowerups();
       drawOrbs();
+      drawPeerPulses();
       drawPeers();
       drawTrail();
       drawPlayer();

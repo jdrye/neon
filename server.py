@@ -39,6 +39,13 @@ def _safe_float(value, default=0.0):
         return default
 
 
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _normalize_name(name):
     cleaned = " ".join(str(name or "").strip().split())
     if not cleaned:
@@ -58,6 +65,13 @@ def _normalize_client_id(value):
     if not cleaned:
         return None
     # limite defensive
+    return cleaned[:64]
+
+
+def _normalize_instance_id(value):
+    cleaned = " ".join(str(value or "").strip().split())
+    if not cleaned:
+        return None
     return cleaned[:64]
 
 
@@ -253,6 +267,7 @@ class Handler(SimpleHTTPRequestHandler):
                 data.get("sessionId") or data.get("sid") or data.get("id")
             )
             client_id = _normalize_client_id(data.get("clientId"))
+            instance_id = _normalize_instance_id(data.get("instanceId"))
             if not session_id and not client_id:
                 self.send_error(400, "missing sessionId/clientId")
                 return
@@ -261,9 +276,17 @@ class Handler(SimpleHTTPRequestHandler):
                 removed_ids = []
                 if client_id:
                     for sid, player in list(PLAYERS.items()):
-                        if _normalize_client_id(player.get("clientId")) == client_id:
-                            removed_ids.append(sid)
-                            del PLAYERS[sid]
+                        if _normalize_client_id(player.get("clientId")) != client_id:
+                            continue
+                        player_instance = _normalize_instance_id(player.get("instanceId"))
+                        if instance_id:
+                            if player_instance != instance_id:
+                                continue
+                        else:
+                            if player_instance:
+                                continue
+                        removed_ids.append(sid)
+                        del PLAYERS[sid]
                 if session_id and session_id in PLAYERS:
                     removed_ids.append(session_id)
                     del PLAYERS[session_id]
@@ -292,12 +315,25 @@ class Handler(SimpleHTTPRequestHandler):
         with LOCK:
             prev = PLAYERS.get(session_id, {})
             client_id = _normalize_client_id(data.get("clientId") or prev.get("clientId"))
+            instance_id = _normalize_instance_id(
+                data.get("instanceId") or prev.get("instanceId")
+            )
 
             # anti-dup: si un même clientId revient avec une autre session (reload/onglet), on nettoie ses anciennes sessions
             if client_id:
                 for sid, player in list(PLAYERS.items()):
-                    if sid != session_id and _normalize_client_id(player.get("clientId")) == client_id:
-                        del PLAYERS[sid]
+                    if sid == session_id:
+                        continue
+                    if _normalize_client_id(player.get("clientId")) != client_id:
+                        continue
+                    player_instance = _normalize_instance_id(player.get("instanceId"))
+                    if instance_id:
+                        if player_instance != instance_id:
+                            continue
+                    else:
+                        if player_instance:
+                            continue
+                    del PLAYERS[sid]
 
             incoming_score = max(_safe_float(data.get("score", 0), 0.0), 0.0)
             incoming_time = max(_safe_float(data.get("time", 0), 0.0), 0.0)
@@ -308,6 +344,13 @@ class Handler(SimpleHTTPRequestHandler):
 
             prev_best = max(_safe_float(prev.get("best", 0), 0.0), 0.0)
             prev_best_time = max(_safe_float(prev.get("bestTime", 0), 0.0), 0.0)
+
+            incoming_pulse_seq = max(_safe_int(data.get("pulseSeq", 0), 0), 0)
+            prev_pulse_seq = max(_safe_int(prev.get("pulseSeq", 0), 0), 0)
+            pulse_seq = max(incoming_pulse_seq, prev_pulse_seq)
+            pulse_at = _safe_float(prev.get("pulseAt", 0), 0.0)
+            if incoming_pulse_seq > prev_pulse_seq:
+                pulse_at = now
 
             # meilleur (score, puis time en tie-break)
             best_score = prev_best
@@ -324,6 +367,7 @@ class Handler(SimpleHTTPRequestHandler):
             PLAYERS[session_id] = {
                 "id": session_id,
                 "clientId": client_id,
+                "instanceId": instance_id,
                 "x": _safe_float(data.get("x", 0), 0.0),
                 "y": _safe_float(data.get("y", 0), 0.0),
                 "color": _normalize_color(data.get("color", prev.get("color"))),
@@ -336,6 +380,8 @@ class Handler(SimpleHTTPRequestHandler):
                 # champs additionnels non cassants (utile si tu veux afficher du "live" côté client plus tard)
                 "currentScore": incoming_score,
                 "currentTime": incoming_time,
+                "pulseSeq": pulse_seq,
+                "pulseAt": pulse_at,
                 "ts": now,
             }
             # prune stale players
