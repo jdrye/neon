@@ -52,3 +52,4 @@ Notes backend :
 ## Developpement rapide
 - Aucune dependance : modifiez `index.html` et rechargez.
 - Pour simuler plusieurs joueurs, ouvrez plusieurs onglets (chaque client genere `sessionId` et `clientId` propres).
+- Pour aller plus loin, voir `IMPROVEMENTS.md` pour une liste d'idees d'evolutions.
