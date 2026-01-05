@@ -489,7 +489,6 @@
         <strong>But</strong> Survis le plus longtemps possible, depasse ton meilleur score et maintiens un multiplicateur eleve.
       </div>
       <div class="toggles">
-        <label class="toggle"><input type="checkbox" id="fxToggle"> Effets legers</label>
         <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste renforce</label>
       </div>
       <div class="toggle-row">
@@ -579,7 +578,6 @@
     const highscoresEl = document.getElementById('highscores');
     const liveboardEl = document.getElementById('liveboard');
     const nameInput = document.getElementById('playerName');
-    const fxToggle = document.getElementById('fxToggle');
     const contrastToggle = document.getElementById('contrastToggle');
     const shakeRange = document.getElementById('shakeRange');
     const shakeValue = document.getElementById('shakeValue');
@@ -644,7 +642,6 @@
     };
 
     const PREF_KEYS = {
-      fx: 'space-cleaner-lowfx',
       contrast: 'space-cleaner-contrast',
       shake: 'space-cleaner-shake',
       tutorialSeen: 'space-cleaner-tutorial-seen',
@@ -787,7 +784,6 @@
       shieldCharges: 0,
       effects: { slow: 0, shield: 0, magnet: 0, overdrive: 0 },
       stats: { collected: 0, hits: 0 },
-      lowFX: false,
       comboFlash: 0,
       cameraShake: 0,
       shakeIntensity: 0,
@@ -1025,10 +1021,6 @@
     }
 
     function applyPreferences() {
-      const lowFx = readBool(PREF_KEYS.fx, false);
-      state.lowFX = lowFx;
-      if (fxToggle) fxToggle.checked = lowFx;
-
       const contrast = readBool(PREF_KEYS.contrast, false);
       if (contrastToggle) contrastToggle.checked = contrast;
       if (contrast) document.body.classList.add('contrast');
@@ -1379,7 +1371,7 @@
     }
 
     function addParticles(x, y, color, amount = 10, speed = 120) {
-      const count = state.lowFX ? Math.ceil(amount * 0.45) : amount;
+      const count = amount;
       for (let i = 0; i < count; i++) {
         const a = Math.random() * Math.PI * 2;
         const s = Math.random() * speed * 0.6 + speed * 0.4;
@@ -2312,11 +2304,6 @@
       state.name = network.name;
       resetGame();
       nameInput.value = network.name;
-    });
-
-    fxToggle.addEventListener('change', (e) => {
-      state.lowFX = e.target.checked;
-      writePref(PREF_KEYS.fx, e.target.checked ? '1' : '0');
     });
 
     contrastToggle.addEventListener('change', (e) => {
