@@ -157,6 +157,49 @@
 
     .toggle input { accent-color: var(--accent); cursor: pointer; }
 
+    .toggle-row {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .toggle-row input[type="range"] {
+      width: 160px;
+      accent-color: var(--accent);
+    }
+
+    .range-value {
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 13px;
+    }
+
+    .ghost-btn {
+      margin-top: 12px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text);
+      box-shadow: none;
+    }
+
+    .ghost-btn:hover { box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25); }
+
+    body.accessibility {
+      font-size: 17px;
+    }
+
+    body.accessibility .panel { padding: 24px 24px 26px; }
+    body.accessibility .controls li { font-size: 15px; }
+    body.accessibility .badge { font-size: 15px; padding: 10px 12px; }
+    body.accessibility .hud { gap: 12px; }
+    body.accessibility .effects-badge { font-size: 13px; }
+    body.accessibility .dpad button { width: 48px; height: 48px; }
+    body.accessibility .pulse-btn { font-size: 16px; }
+
 
     .game-area {
       position: relative;
@@ -176,6 +219,7 @@
       height: 100%;
       max-height: 760px;
       display: block;
+      touch-action: none;
       background: radial-gradient(circle at 50% 30%, rgba(122, 246, 255, 0.08), transparent 35%),
                   radial-gradient(circle at 20% 80%, rgba(255, 149, 90, 0.08), transparent 30%),
                   #0b1223;
@@ -223,6 +267,96 @@
       font-size: 13px;
       pointer-events: none;
       backdrop-filter: blur(6px);
+    }
+
+    .overlay-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 4;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .live-overlay {
+      position: absolute;
+      top: 54px;
+      right: 14px;
+      width: min(280px, 82vw);
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      z-index: 4;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .live-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(10px);
+    }
+
+    .live-overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .overlay-close {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .tutorial {
+      position: absolute;
+      top: 54px;
+      left: 14px;
+      width: min(360px, 86vw);
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 14px 16px 12px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      z-index: 4;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .tutorial.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px);
+    }
+
+    .tutorial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .tutorial ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 14px;
     }
 
     .message {
@@ -377,7 +511,15 @@
       <div class="toggles">
         <label class="toggle"><input type="checkbox" id="fxToggle"> Effets legers</label>
         <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste renforce</label>
+        <label class="toggle"><input type="checkbox" id="accessibilityToggle"> Mode accessibilite</label>
+        <label class="toggle"><input type="checkbox" id="autoPulseToggle"> Auto-pulse</label>
       </div>
+      <div class="toggle-row">
+        <label for="shakeRange">Vibration</label>
+        <input type="range" id="shakeRange" min="0" max="100" value="70">
+        <span class="range-value" id="shakeValue">70%</span>
+      </div>
+      <button class="ghost-btn" id="tutorialBtn">Tutoriel rapide</button>
       <div class="liveboard" id="liveboard"></div>
     </section>
 
@@ -393,6 +535,27 @@
         <div class="badge"><span>Pulse</span><strong id="pulse">Pret</strong></div>
       </div>
       <div class="effects-badge" id="effects">Bonus: aucun</div>
+      <button class="overlay-btn" id="liveToggle" type="button">Classement</button>
+      <div class="live-overlay hidden" id="liveOverlay" aria-hidden="true">
+        <div class="live-overlay-header">
+          <span>Classement live</span>
+          <button class="overlay-close" id="liveClose" type="button">Fermer</button>
+        </div>
+        <div id="liveOverlayBody"></div>
+      </div>
+      <div class="tutorial hidden" id="tutorial" aria-hidden="true">
+        <div class="tutorial-header">
+          <span>Tutoriel express</span>
+          <button class="overlay-close" id="tutorialClose" type="button">Fermer</button>
+        </div>
+        <ul>
+          <li>Deplace-toi avec ZQSD, fleches ou les touches tactiles.</li>
+          <li>Collecte les fragments pour booster le multiplicateur.</li>
+          <li>Declenche la pulse (Espace) pour repousser les meteorites.</li>
+          <li>Les bonus changent le rythme: aimant, bouclier, overdrive.</li>
+          <li>Auto-pulse peut aider sur mobile si tu veux souffler.</li>
+        </ul>
+      </div>
       <canvas id="game" aria-label="Jeu Space Cleaner" role="img"></canvas>
       <div id="message" class="message">
         <div class="card">
@@ -442,6 +605,17 @@
     const nameInput = document.getElementById('playerName');
     const fxToggle = document.getElementById('fxToggle');
     const contrastToggle = document.getElementById('contrastToggle');
+    const accessibilityToggle = document.getElementById('accessibilityToggle');
+    const autoPulseToggle = document.getElementById('autoPulseToggle');
+    const shakeRange = document.getElementById('shakeRange');
+    const shakeValue = document.getElementById('shakeValue');
+    const tutorialBtn = document.getElementById('tutorialBtn');
+    const tutorialEl = document.getElementById('tutorial');
+    const tutorialClose = document.getElementById('tutorialClose');
+    const liveToggle = document.getElementById('liveToggle');
+    const liveOverlay = document.getElementById('liveOverlay');
+    const liveOverlayBody = document.getElementById('liveOverlayBody');
+    const liveClose = document.getElementById('liveClose');
     const pulseBtn = document.getElementById('pulseBtn');
 
     function randomColor() {
@@ -494,6 +668,41 @@
         powerupJitter: 5,
       },
     };
+
+    const PREF_KEYS = {
+      fx: 'space-cleaner-lowfx',
+      contrast: 'space-cleaner-contrast',
+      accessibility: 'space-cleaner-accessibility',
+      autoPulse: 'space-cleaner-auto-pulse',
+      shake: 'space-cleaner-shake',
+      tutorialSeen: 'space-cleaner-tutorial-seen',
+    };
+
+    function readBool(key, fallback = false) {
+      try {
+        const value = localStorage.getItem(key);
+        if (value === null) return fallback;
+        return value === '1' || value === 'true';
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function readNumber(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function writePref(key, value) {
+      try {
+        localStorage.setItem(key, String(value));
+      } catch (e) {}
+    }
 
     let storedClientId = null;
     try {
@@ -607,6 +816,10 @@
       lowFX: false,
       comboFlash: 0,
       cameraShake: 0,
+      shakeIntensity: 0.7,
+      autoPulse: false,
+      liveboardOpen: false,
+      tutorialOpen: false,
       danger: { level: 'low', nearest: Infinity, density: 0 },
       thrust: 0,
       trail: [],
@@ -614,11 +827,22 @@
       bestName: 'Pilote',
     };
 
+    let tutorialSeen = false;
+
     const input = {
       up: false,
       down: false,
       left: false,
       right: false,
+    };
+
+    const touchInput = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      active: false,
+      pointerId: null,
     };
 
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -647,7 +871,8 @@
 
     function getCameraShake(dt) {
       if (!state.cameraShake || state.cameraShake <= 0) return { x: 0, y: 0 };
-      const intensity = Math.min(state.cameraShake, 14);
+      const intensity = Math.min(state.cameraShake, 14) * state.shakeIntensity;
+      if (intensity <= 0.01) return { x: 0, y: 0 };
       state.cameraShake = Math.max(0, state.cameraShake - dt * 18);
       return {
         x: (Math.random() * 2 - 1) * intensity,
@@ -776,6 +1001,7 @@
       state.player = { x: canvas.width / 2, y: canvas.height * 0.65, vx: 0, vy: 0, r: 14 };
       state.color = network.color;
       state.name = network.name;
+      clearTouchInput();
       hazardPool.push(...state.hazards);
       particlePool.push(...state.particles);
       state.hazards = [];
@@ -815,7 +1041,10 @@
       state.running = true;
       state.paused = false;
       state.comboFlash = 0;
+      setLiveOverlay(false);
+      setTutorialOpen(false, false);
       message.classList.add('hidden');
+      maybeShowTutorial();
       statusEl.textContent = 'Pret a danser ?';
       summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
       statsEl.innerHTML = '';
@@ -847,6 +1076,78 @@
       if (!network.lastServerTime || !network.lastServerPerf) return 0;
       const delta = Math.max(0, (performance.now() - network.lastServerPerf) / 1000);
       return network.lastServerTime + delta;
+    }
+
+    function setLiveOverlay(open) {
+      state.liveboardOpen = open;
+      if (!liveOverlay) return;
+      liveOverlay.classList.toggle('hidden', !open);
+      liveOverlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+    }
+
+    function setTutorialOpen(open, persist = true) {
+      state.tutorialOpen = open;
+      if (!tutorialEl) return;
+      tutorialEl.classList.toggle('hidden', !open);
+      tutorialEl.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (!open && persist) {
+        tutorialSeen = true;
+        writePref(PREF_KEYS.tutorialSeen, '1');
+      }
+    }
+
+    function maybeShowTutorial() {
+      if (!tutorialSeen) {
+        setTutorialOpen(true, false);
+      }
+    }
+
+    function updateShake(value) {
+      const v = clamp(value, 0, 1);
+      state.shakeIntensity = v;
+      if (shakeValue) shakeValue.textContent = `${Math.round(v * 100)}%`;
+      if (shakeRange) shakeRange.value = Math.round(v * 100);
+      writePref(PREF_KEYS.shake, v.toFixed(2));
+    }
+
+    function setAccessibility(enabled) {
+      document.body.classList.toggle('accessibility', enabled);
+      if (accessibilityToggle) accessibilityToggle.checked = enabled;
+      if (enabled) {
+        document.body.classList.add('contrast');
+        if (contrastToggle) {
+          contrastToggle.checked = true;
+          contrastToggle.disabled = true;
+        }
+      } else if (contrastToggle) {
+        contrastToggle.disabled = false;
+        if (!contrastToggle.checked) {
+          document.body.classList.remove('contrast');
+        }
+      }
+      writePref(PREF_KEYS.accessibility, enabled ? '1' : '0');
+    }
+
+    function applyPreferences() {
+      const lowFx = readBool(PREF_KEYS.fx, false);
+      state.lowFX = lowFx;
+      if (fxToggle) fxToggle.checked = lowFx;
+
+      const contrast = readBool(PREF_KEYS.contrast, false);
+      if (contrastToggle) contrastToggle.checked = contrast;
+      if (contrast) document.body.classList.add('contrast');
+
+      const access = readBool(PREF_KEYS.accessibility, false);
+      setAccessibility(access);
+
+      const autoPulse = readBool(PREF_KEYS.autoPulse, false);
+      state.autoPulse = autoPulse;
+      if (autoPulseToggle) autoPulseToggle.checked = autoPulse;
+
+      const shake = readNumber(PREF_KEYS.shake, state.shakeIntensity);
+      updateShake(Math.max(0, Math.min(shake, 1)));
+
+      tutorialSeen = readBool(PREF_KEYS.tutorialSeen, false);
     }
 
     function renderHighscores() {
@@ -919,8 +1220,10 @@
     }
 
     function renderLiveboard() {
-      const container = liveboardEl;
-      if (!container) return;
+      const targets = [];
+      if (liveboardEl) targets.push({ el: liveboardEl, withTitle: true });
+      if (liveOverlayBody) targets.push({ el: liveOverlayBody, withTitle: false });
+      if (!targets.length) return;
       const selfName = getSelfLeaderboardName();
       const entries = [
         { id: network.sessionId, name: selfName, score: state.best || 0, time: state.bestTime || 0, self: true },
@@ -934,7 +1237,9 @@
       ].filter(e => e.name);
 
       if (!entries.length) {
-        container.innerHTML = '<div class="live-title">Classement en ligne</div><div class="hs-empty">Aucun joueur connecte</div>';
+        targets.forEach(({ el, withTitle }) => {
+          el.innerHTML = `${withTitle ? '<div class="live-title">Classement en ligne</div>' : ''}<div class="hs-empty">Aucun joueur connecte</div>`;
+        });
         return;
       }
 
@@ -953,7 +1258,9 @@
             </div>
           `;
         }).join('');
-      container.innerHTML = `<div class="live-title">Classement en ligne</div>${rows}`;
+      targets.forEach(({ el, withTitle }) => {
+        el.innerHTML = `${withTitle ? '<div class="live-title">Classement en ligne</div>' : ''}${rows}`;
+      });
     }
 
     function recordHighscore() {
@@ -1250,16 +1557,16 @@
     }
 
     function updatePlayer(dt) {
-      const moving = input.up || input.down || input.left || input.right;
+      const moving = input.up || input.down || input.left || input.right || touchInput.up || touchInput.down || touchInput.left || touchInput.right;
       const targetThrust = moving ? 1 : 0;
       const ramp = moving ? 2.8 : 3.8; // montee/descente plus lente
       state.thrust = clamp(state.thrust + (targetThrust - state.thrust) * ramp * dt, 0, 1);
 
       let ix = 0, iy = 0;
-      if (input.up) iy -= 1;
-      if (input.down) iy += 1;
-      if (input.left) ix -= 1;
-      if (input.right) ix += 1;
+      if (input.up || touchInput.up) iy -= 1;
+      if (input.down || touchInput.down) iy += 1;
+      if (input.left || touchInput.left) ix -= 1;
+      if (input.right || touchInput.right) ix += 1;
       const mag = Math.hypot(ix, iy);
       if (mag > 0) {
         ix /= mag;
@@ -2017,6 +2324,9 @@
       checkPeerCollisions();
       updateParticles(dt);
       state.danger = computeDanger();
+      if (state.autoPulse && state.pulseCooldown <= 0 && state.danger.nearest < 160) {
+        triggerPulse();
+      }
       updateUI();
       if (state.time - state.lastSave > 2) {
         saveBests();
@@ -2082,6 +2392,26 @@
       if (['ArrowRight', 'KeyD', 'KeyL'].includes(code)) input.right = pressed;
     }
 
+    function clearTouchInput() {
+      touchInput.up = false;
+      touchInput.down = false;
+      touchInput.left = false;
+      touchInput.right = false;
+    }
+
+    function updateTouchInput(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const px = (clientX - rect.left) * (canvas.width / rect.width);
+      const py = (clientY - rect.top) * (canvas.height / rect.height);
+      const dx = px - state.player.x;
+      const dy = py - state.player.y;
+      const dead = 18;
+      touchInput.left = dx < -dead;
+      touchInput.right = dx > dead;
+      touchInput.up = dy < -dead;
+      touchInput.down = dy > dead;
+    }
+
     document.addEventListener('keydown', (e) => {
       handleKey(e.code, true);
       if (e.code === 'Space') {
@@ -2090,6 +2420,9 @@
       }
       if (e.code === 'KeyP' || e.code === 'Enter') {
         togglePause();
+      }
+      if (e.code === 'KeyT') {
+        setTutorialOpen(!state.tutorialOpen);
       }
     });
 
@@ -2107,10 +2440,45 @@
 
     fxToggle.addEventListener('change', (e) => {
       state.lowFX = e.target.checked;
+      writePref(PREF_KEYS.fx, e.target.checked ? '1' : '0');
     });
 
     contrastToggle.addEventListener('change', (e) => {
+      if (contrastToggle.disabled) {
+        contrastToggle.checked = true;
+        return;
+      }
       document.body.classList.toggle('contrast', e.target.checked);
+      writePref(PREF_KEYS.contrast, e.target.checked ? '1' : '0');
+    });
+
+    accessibilityToggle.addEventListener('change', (e) => {
+      setAccessibility(e.target.checked);
+    });
+
+    autoPulseToggle.addEventListener('change', (e) => {
+      state.autoPulse = e.target.checked;
+      writePref(PREF_KEYS.autoPulse, e.target.checked ? '1' : '0');
+    });
+
+    shakeRange.addEventListener('input', (e) => {
+      updateShake(Number(e.target.value) / 100);
+    });
+
+    tutorialBtn.addEventListener('click', () => {
+      setTutorialOpen(true);
+    });
+
+    tutorialClose.addEventListener('click', () => {
+      setTutorialOpen(false);
+    });
+
+    liveToggle.addEventListener('click', () => {
+      setLiveOverlay(!state.liveboardOpen);
+    });
+
+    liveClose.addEventListener('click', () => {
+      setLiveOverlay(false);
     });
 
     pulseBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); triggerPulse(); });
@@ -2119,38 +2487,64 @@
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         const dir = btn.dataset.dir;
-        if (dir === 'up') input.up = true;
-        if (dir === 'down') input.down = true;
-        if (dir === 'left') input.left = true;
-        if (dir === 'right') input.right = true;
+        if (dir === 'up') touchInput.up = true;
+        if (dir === 'down') touchInput.down = true;
+        if (dir === 'left') touchInput.left = true;
+        if (dir === 'right') touchInput.right = true;
       });
       btn.addEventListener('pointerup', () => {
         const dir = btn.dataset.dir;
-        if (dir === 'up') input.up = false;
-        if (dir === 'down') input.down = false;
-        if (dir === 'left') input.left = false;
-        if (dir === 'right') input.right = false;
+        if (dir === 'up') touchInput.up = false;
+        if (dir === 'down') touchInput.down = false;
+        if (dir === 'left') touchInput.left = false;
+        if (dir === 'right') touchInput.right = false;
       });
       btn.addEventListener('pointerleave', () => {
         const dir = btn.dataset.dir;
-        if (dir === 'up') input.up = false;
-        if (dir === 'down') input.down = false;
-        if (dir === 'left') input.left = false;
-        if (dir === 'right') input.right = false;
+        if (dir === 'up') touchInput.up = false;
+        if (dir === 'down') touchInput.down = false;
+        if (dir === 'left') touchInput.left = false;
+        if (dir === 'right') touchInput.right = false;
       });
     });
+
+    const endTouch = () => {
+      if (!touchInput.active) return;
+      touchInput.active = false;
+      touchInput.pointerId = null;
+      clearTouchInput();
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      touchInput.active = true;
+      touchInput.pointerId = e.pointerId;
+      canvas.setPointerCapture(e.pointerId);
+      updateTouchInput(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!touchInput.active || e.pointerId !== touchInput.pointerId) return;
+      updateTouchInput(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener('pointerup', endTouch);
+    canvas.addEventListener('pointercancel', endTouch);
 
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('pagehide', leaveServer);
     window.addEventListener('beforeunload', leaveServer);
     window.addEventListener('pageshow', () => { leaveSent = false; });
 
+    applyPreferences();
     loadBests();
-      renderHighscores();
-      renderLiveboard();
-      nameInput.value = network.name;
-      resizeCanvas();
-      initStars();
+    renderHighscores();
+    renderLiveboard();
+    nameInput.value = network.name;
+    resizeCanvas();
+    initStars();
+    setLiveOverlay(false);
+    setTutorialOpen(false, false);
     state.last = performance.now();
     requestAnimationFrame(loop);
   </script>
