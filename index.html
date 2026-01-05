@@ -512,7 +512,6 @@
         <label class="toggle"><input type="checkbox" id="fxToggle"> Effets legers</label>
         <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste renforce</label>
         <label class="toggle"><input type="checkbox" id="accessibilityToggle"> Mode accessibilite</label>
-        <label class="toggle"><input type="checkbox" id="autoPulseToggle"> Auto-pulse</label>
       </div>
       <div class="toggle-row">
         <label for="shakeRange">Vibration</label>
@@ -553,7 +552,6 @@
           <li>Collecte les fragments pour booster le multiplicateur.</li>
           <li>Declenche la pulse (Espace) pour repousser les meteorites.</li>
           <li>Les bonus changent le rythme: aimant, bouclier, overdrive.</li>
-          <li>Auto-pulse peut aider sur mobile si tu veux souffler.</li>
         </ul>
       </div>
       <canvas id="game" aria-label="Jeu Space Cleaner" role="img"></canvas>
@@ -606,7 +604,6 @@
     const fxToggle = document.getElementById('fxToggle');
     const contrastToggle = document.getElementById('contrastToggle');
     const accessibilityToggle = document.getElementById('accessibilityToggle');
-    const autoPulseToggle = document.getElementById('autoPulseToggle');
     const shakeRange = document.getElementById('shakeRange');
     const shakeValue = document.getElementById('shakeValue');
     const tutorialBtn = document.getElementById('tutorialBtn');
@@ -673,7 +670,6 @@
       fx: 'space-cleaner-lowfx',
       contrast: 'space-cleaner-contrast',
       accessibility: 'space-cleaner-accessibility',
-      autoPulse: 'space-cleaner-auto-pulse',
       shake: 'space-cleaner-shake',
       tutorialSeen: 'space-cleaner-tutorial-seen',
     };
@@ -819,7 +815,6 @@
       comboFlash: 0,
       cameraShake: 0,
       shakeIntensity: 0.7,
-      autoPulse: false,
       liveboardOpen: false,
       tutorialOpen: false,
       danger: { level: 'low', nearest: Infinity, density: 0 },
@@ -1083,9 +1078,6 @@
       const access = readBool(PREF_KEYS.accessibility, false);
       setAccessibility(access);
 
-      const autoPulse = readBool(PREF_KEYS.autoPulse, false);
-      state.autoPulse = autoPulse;
-      if (autoPulseToggle) autoPulseToggle.checked = autoPulse;
 
       const shake = readNumber(PREF_KEYS.shake, state.shakeIntensity);
       updateShake(Math.max(0, Math.min(shake, 1)));
@@ -2263,9 +2255,6 @@
       checkPeerCollisions();
       updateParticles(dt);
       state.danger = computeDanger();
-      if (state.autoPulse && state.pulseCooldown <= 0 && state.danger.nearest < 160) {
-        triggerPulse();
-      }
       updateUI();
 
       const shake = getCameraShake(dt);
@@ -2389,10 +2378,6 @@
       setAccessibility(e.target.checked);
     });
 
-    autoPulseToggle.addEventListener('change', (e) => {
-      state.autoPulse = e.target.checked;
-      writePref(PREF_KEYS.autoPulse, e.target.checked ? '1' : '0');
-    });
 
     shakeRange.addEventListener('input', (e) => {
       updateShake(Number(e.target.value) / 100);
