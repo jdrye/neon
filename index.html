@@ -800,6 +800,8 @@
       score: 0,
       best: 0,
       bestTime: 0,
+      sessionBest: 0,
+      sessionBestTime: 0,
       lives: 3,
       multiplier: 1,
       maxMultiplier: 1,
@@ -1013,6 +1015,8 @@
       network.board = [];
       network.lastBoardFetch = 0;
       state.score = 0;
+      state.sessionBest = 0;
+      state.sessionBestTime = 0;
       state.lives = 3;
       state.multiplier = 1;
       state.maxMultiplier = 1;
@@ -1226,7 +1230,7 @@
       if (!targets.length) return;
       const selfName = getSelfLeaderboardName();
       const entries = [
-        { id: network.sessionId, name: selfName, score: state.best || 0, time: state.bestTime || 0, self: true },
+        { id: network.sessionId, name: selfName, score: state.sessionBest || 0, time: state.sessionBestTime || 0, self: true },
         ...Array.from(network.peers.values()).map(p => ({
           id: p.id,
           name: p.name || 'Pilote',
@@ -1362,8 +1366,8 @@
             y: state.player.y,
             score: Math.floor(state.score),
             time: Math.floor(state.time),
-            best: Math.floor(state.best),
-            bestTime: Math.floor(state.bestTime),
+            best: Math.floor(state.sessionBest),
+            bestTime: Math.floor(state.sessionBestTime),
             pulseSeq: network.pulseSeq,
             since: network.lastServerTime || 0,
           }),
@@ -2272,6 +2276,10 @@
 
       state.time += dt;
       state.score += dt * 9 * state.multiplier;
+      if (state.score > state.sessionBest || (state.score === state.sessionBest && state.time > state.sessionBestTime)) {
+        state.sessionBest = state.score;
+        state.sessionBestTime = state.time;
+      }
       if (state.score > state.best) {
         state.best = state.score;
         state.bestName = state.name || state.bestName;
