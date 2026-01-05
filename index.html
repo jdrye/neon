@@ -520,7 +520,7 @@
       <canvas id="game" aria-label="Jeu Space Cleaner" role="img"></canvas>
       <div id="message" class="message">
         <div class="card">
-          <h2 id="status">Pret a danser ?</h2>
+          <h2 id="status"></h2>
           <p id="summary">Choisis ton nom de pilote, esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc.</p>
           <input type="text" id="playerName" maxlength="18" placeholder="Entre ton nom de pilote" aria-label="Nom du pilote">
           <div class="stats" id="stats"></div>
@@ -907,7 +907,7 @@
       setTutorialOpen(false, false);
       message.classList.add('hidden');
       maybeShowTutorial();
-      statusEl.textContent = 'Pret a danser ?';
+      statusEl.textContent = '';
       summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
       statsEl.innerHTML = '';
       renderHighscores();
@@ -2169,7 +2169,7 @@
         statusEl.textContent = 'Pause';
         summaryEl.textContent = 'Respire un coup. Appuie sur P ou Entrer pour reprendre.';
       } else {
-        statusEl.textContent = 'Pret a danser ?';
+        statusEl.textContent = '';
         summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
       }
     }
