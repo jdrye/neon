@@ -188,19 +188,6 @@
 
     .ghost-btn:hover { box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25); }
 
-    body.accessibility {
-      font-size: 17px;
-    }
-
-    body.accessibility .panel { padding: 24px 24px 26px; }
-    body.accessibility .controls li { font-size: 15px; }
-    body.accessibility .badge { font-size: 15px; padding: 10px 12px; }
-    body.accessibility .hud { gap: 12px; }
-    body.accessibility .effects-badge { font-size: 13px; }
-    body.accessibility .dpad button { width: 48px; height: 48px; }
-    body.accessibility .pulse-btn { font-size: 16px; }
-
-
     .game-area {
       position: relative;
       background: var(--panel-strong);
@@ -504,7 +491,6 @@
       <div class="toggles">
         <label class="toggle"><input type="checkbox" id="fxToggle"> Effets legers</label>
         <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste renforce</label>
-        <label class="toggle"><input type="checkbox" id="accessibilityToggle"> Mode accessibilite</label>
       </div>
       <div class="toggle-row">
         <label for="shakeRange">Vibration</label>
@@ -595,7 +581,6 @@
     const nameInput = document.getElementById('playerName');
     const fxToggle = document.getElementById('fxToggle');
     const contrastToggle = document.getElementById('contrastToggle');
-    const accessibilityToggle = document.getElementById('accessibilityToggle');
     const shakeRange = document.getElementById('shakeRange');
     const shakeValue = document.getElementById('shakeValue');
     const tutorialBtn = document.getElementById('tutorialBtn');
@@ -661,7 +646,6 @@
     const PREF_KEYS = {
       fx: 'space-cleaner-lowfx',
       contrast: 'space-cleaner-contrast',
-      accessibility: 'space-cleaner-accessibility',
       shake: 'space-cleaner-shake',
       tutorialSeen: 'space-cleaner-tutorial-seen',
     };
@@ -1040,24 +1024,6 @@
       writePref(PREF_KEYS.shake, v.toFixed(2));
     }
 
-    function setAccessibility(enabled) {
-      document.body.classList.toggle('accessibility', enabled);
-      if (accessibilityToggle) accessibilityToggle.checked = enabled;
-      if (enabled) {
-        document.body.classList.add('contrast');
-        if (contrastToggle) {
-          contrastToggle.checked = true;
-          contrastToggle.disabled = true;
-        }
-      } else if (contrastToggle) {
-        contrastToggle.disabled = false;
-        if (!contrastToggle.checked) {
-          document.body.classList.remove('contrast');
-        }
-      }
-      writePref(PREF_KEYS.accessibility, enabled ? '1' : '0');
-    }
-
     function applyPreferences() {
       const lowFx = readBool(PREF_KEYS.fx, false);
       state.lowFX = lowFx;
@@ -1066,10 +1032,6 @@
       const contrast = readBool(PREF_KEYS.contrast, false);
       if (contrastToggle) contrastToggle.checked = contrast;
       if (contrast) document.body.classList.add('contrast');
-
-      const access = readBool(PREF_KEYS.accessibility, false);
-      setAccessibility(access);
-
 
       const shake = readNumber(PREF_KEYS.shake, state.shakeIntensity);
       updateShake(Math.max(0, Math.min(shake, 1)));
@@ -2358,18 +2320,9 @@
     });
 
     contrastToggle.addEventListener('change', (e) => {
-      if (contrastToggle.disabled) {
-        contrastToggle.checked = true;
-        return;
-      }
       document.body.classList.toggle('contrast', e.target.checked);
       writePref(PREF_KEYS.contrast, e.target.checked ? '1' : '0');
     });
-
-    accessibilityToggle.addEventListener('change', (e) => {
-      setAccessibility(e.target.checked);
-    });
-
 
     shakeRange.addEventListener('input', (e) => {
       updateShake(Number(e.target.value) / 100);
