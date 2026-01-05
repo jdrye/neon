@@ -827,6 +827,9 @@
       trail: [],
       highscores: [],
       bestName: 'Pilote',
+      serverBest: 0,
+      serverBestTime: 0,
+      serverBestName: '',
     };
 
     let tutorialSeen = false;
@@ -883,82 +886,15 @@
     }
 
     function loadBests() {
-      try {
-        const keys = {
-          best: 'space-cleaner-best',
-          bestName: 'space-cleaner-best-name',
-          bestTime: 'space-cleaner-best-time',
-          highs: 'space-cleaner-highscores',
-          legacyBest: 'flux-neon-best',
-          legacyBestName: 'flux-neon-best-name',
-          legacyBestTime: 'flux-neon-best-time',
-          legacyHighs: 'flux-neon-highscores',
-        };
-        const saved = localStorage.getItem(keys.best) || localStorage.getItem(keys.legacyBest);
-        if (saved) state.best = Number(saved) || 0;
-        const bestName = localStorage.getItem(keys.bestName) || localStorage.getItem(keys.legacyBestName);
-        if (bestName) state.bestName = String(bestName);
-        const bestTime = localStorage.getItem(keys.bestTime) || localStorage.getItem(keys.legacyBestTime);
-        if (bestTime) state.bestTime = Number(bestTime) || 0;
-        const highs = localStorage.getItem(keys.highs) || localStorage.getItem(keys.legacyHighs);
-        if (highs) {
-          const parsed = JSON.parse(highs);
-          if (Array.isArray(parsed)) {
-            state.highscores = parsed
-              .map(h => ({
-                name: String(h.name || 'Pilote'),
-                score: Number(h.score) || 0,
-                time: Number(h.time) || 0,
-              }))
-              .filter(h => h.score > 0)
-              .sort((a, b) => b.score - a.score)
-              .slice(0, 5);
-            if (state.highscores[0]) {
-              const top = state.highscores[0];
-              const topTime = Number(top.time) || 0;
-              if (top.score > state.best || (top.score === state.best && topTime > state.bestTime)) {
-                state.best = top.score;
-                state.bestTime = topTime;
-                state.bestName = top.name || state.bestName;
-              }
-            }
-          }
-        }
-        if (!localStorage.getItem(keys.best) && saved) {
-          localStorage.setItem(keys.best, String(Math.floor(state.best)));
-        }
-        if (!localStorage.getItem(keys.bestName) && state.bestName) {
-          localStorage.setItem(keys.bestName, state.bestName);
-        }
-        if (!localStorage.getItem(keys.bestTime) && state.bestTime) {
-          localStorage.setItem(keys.bestTime, String(Math.floor(state.bestTime)));
-        }
-        if (!localStorage.getItem(keys.highs) && state.highscores.length) {
-          localStorage.setItem(keys.highs, JSON.stringify(state.highscores.slice(0, 5)));
-        }
-      } catch (e) {
-        state.best = 0;
-        state.bestTime = 0;
-        state.highscores = [];
-        state.bestName = 'Pilote';
-      }
-      bestEl.textContent = Math.floor(state.best);
-      if (bestPlayerEl) {
-        const who = state.bestName || '';
-        const t = state.bestTime ? formatClock(state.bestTime) : '';
-        bestPlayerEl.textContent = who && t ? `${who} • ${t}` : (who || t || '');
-      }
+      state.best = 0;
+      state.bestTime = 0;
+      state.highscores = [];
+      state.bestName = 'Pilote';
+      updateServerBest();
     }
 
     function saveBests() {
-      try {
-        localStorage.setItem('space-cleaner-best', String(Math.floor(state.best)));
-        localStorage.setItem('space-cleaner-best-time', String(Math.floor(state.bestTime)));
-        localStorage.setItem('space-cleaner-best-name', state.bestName || 'Pilote');
-        localStorage.setItem('space-cleaner-highscores', JSON.stringify(state.highscores.slice(0, 5)));
-      } catch (e) {
-        // stockage non disponible
-      }
+      // scores locaux desactives (leaderboard serveur uniquement)
     }
 
     function resizeCanvas() {
@@ -1017,6 +953,9 @@
       state.score = 0;
       state.sessionBest = 0;
       state.sessionBestTime = 0;
+      state.best = 0;
+      state.bestTime = 0;
+      state.bestName = state.name || 'Pilote';
       state.lives = 3;
       state.multiplier = 1;
       state.maxMultiplier = 1;
@@ -1157,11 +1096,11 @@
     function renderHighscores() {
       const container = highscoresEl;
       if (!container) return;
-      if (!state.highscores.length && (!network.board || !network.board.length)) {
-        container.innerHTML = '<div class="hs-title">Meilleurs scores</div><div class="hs-empty">Aucun score enregistre</div>';
+      if (!network.board || !network.board.length) {
+        container.innerHTML = '<div class="hs-title">Meilleurs scores</div><div class="hs-empty">Aucun score serveur</div>';
         return;
       }
-      const source = (network.board && network.board.length ? network.board.slice(0, 5) : state.highscores).map(h => ({
+      const source = network.board.slice(0, 5).map(h => ({
         name: h.name || 'Pilote',
         score: Math.floor(h.score || h.best || 0),
         time: Math.floor(h.time || h.bestTime || 0),
@@ -1180,8 +1119,7 @@
     }
 
     function getSelfLeaderboardName() {
-      if (state.best > 0 && state.bestName) return state.bestName;
-      return state.name || 'Pilote';
+      return state.name || network.name || 'Pilote';
     }
 
     function computeDanger() {
@@ -1213,6 +1151,20 @@
         .filter(p => p.score > 0)
         .sort((a, b) => b.score - a.score || b.time - a.time)
         .slice(0, 20);
+      updateServerBest();
+    }
+
+    function updateServerBest() {
+      const top = network.board && network.board.length ? network.board[0] : null;
+      if (top) {
+        state.serverBest = Number(top.score) || 0;
+        state.serverBestTime = Number(top.time) || 0;
+        state.serverBestName = top.name || '';
+      } else {
+        state.serverBest = 0;
+        state.serverBestTime = 0;
+        state.serverBestName = '';
+      }
     }
 
     function maybeUpdateBoards(force = false) {
@@ -1265,26 +1217,6 @@
       targets.forEach(({ el, withTitle }) => {
         el.innerHTML = `${withTitle ? '<div class="live-title">Classement en ligne</div>' : ''}${rows}`;
       });
-    }
-
-    function recordHighscore() {
-      const entry = {
-        name: state.name || 'Pilote',
-        score: Math.floor(state.score),
-        time: Math.floor(state.time),
-      };
-      if (entry.score <= 0) return;
-      state.highscores.push(entry);
-      state.highscores = state.highscores
-        .filter(h => h.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-      if (state.highscores[0]) {
-        state.best = state.highscores[0].score;
-        state.bestName = state.highscores[0].name || state.bestName;
-      }
-      saveBests();
-      renderHighscores();
     }
 
     function prunePeers() {
@@ -1856,14 +1788,18 @@
       livesEl.textContent = state.lives;
       multEl.textContent = `x${state.multiplier.toFixed(1)}`;
       timeEl.textContent = formatTime(state.time);
-      bestEl.textContent = Math.floor(state.best);
-      if (bestPlayerEl) bestPlayerEl.textContent = state.bestName || '';
+      bestEl.textContent = Math.floor(state.serverBest || 0);
+      if (bestPlayerEl) {
+        const who = state.serverBestName || '';
+        const t = state.serverBestTime ? formatClock(state.serverBestTime) : '';
+        bestPlayerEl.textContent = who && t ? `${who} • ${t}` : (who || t || '');
+      }
       pulseEl.textContent = state.pulseCooldown <= 0 ? 'Pret' : `${state.pulseCooldown.toFixed(1)}s`;
 
       if (peerTopEl && peerTopScoreEl) {
         const selfName = getSelfLeaderboardName();
         const candidates = [
-          { name: selfName, score: state.best || 0, time: state.bestTime || 0 },
+          { name: selfName, score: state.sessionBest || 0, time: state.sessionBestTime || 0 },
           ...Array.from(network.peers.values()).map(p => ({ name: p.name || 'Pilote', score: p.score || 0, time: p.time || 0 })),
         ];
         const top = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.time || 0) - (a.time || 0))[0];
@@ -2280,11 +2216,6 @@
         state.sessionBest = state.score;
         state.sessionBestTime = state.time;
       }
-      if (state.score > state.best) {
-        state.best = state.score;
-        state.bestName = state.name || state.bestName;
-      }
-      state.bestTime = Math.max(state.bestTime, state.time);
 
       state.timers.hazard -= effectiveDt;
       if (state.timers.hazard <= 0) {
@@ -2336,10 +2267,6 @@
         triggerPulse();
       }
       updateUI();
-      if (state.time - state.lastSave > 2) {
-        saveBests();
-        state.lastSave = state.time;
-      }
 
       const shake = getCameraShake(dt);
       drawBackground();
@@ -2371,12 +2298,10 @@
       summaryEl.textContent = `Score ${Math.floor(state.score)} | Multiplicateur max x${state.maxMultiplier.toFixed(1)} | Temps ${formatTime(state.time)}`;
       statsEl.innerHTML = `
         <div class="stat-row"><span>Temps survie</span><br>${formatTime(state.time)}</div>
-        <div class="stat-row"><span>Meilleur temps</span><br>${formatTime(state.bestTime)}</div>
+        <div class="stat-row"><span>Meilleur temps</span><br>${formatTime(state.sessionBestTime)}</div>
         <div class="stat-row"><span>Fragments collectes</span><br>${state.stats.collected}</div>
         <div class="stat-row"><span>Collisions subies</span><br>${state.stats.hits}</div>
       `;
-      recordHighscore();
-      saveBests();
       submitScore();
     }
 
