@@ -18,13 +18,6 @@
       --shadow: 0 10px 45px rgba(0, 0, 0, 0.45);
     }
 
-    body.contrast {
-      --panel: rgba(6, 10, 22, 0.88);
-      --panel-strong: rgba(6, 10, 22, 0.94);
-      --text: #f5fbff;
-      --muted: #c5d8ff;
-    }
-
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -489,7 +482,6 @@
         <strong>But</strong> Survis le plus longtemps possible, depasse ton meilleur score et maintiens un multiplicateur eleve.
       </div>
       <div class="toggles">
-        <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste renforce</label>
       </div>
       <div class="toggle-row">
         <label for="shakeRange">Vibration</label>
@@ -578,7 +570,6 @@
     const highscoresEl = document.getElementById('highscores');
     const liveboardEl = document.getElementById('liveboard');
     const nameInput = document.getElementById('playerName');
-    const contrastToggle = document.getElementById('contrastToggle');
     const shakeRange = document.getElementById('shakeRange');
     const shakeValue = document.getElementById('shakeValue');
     const tutorialBtn = document.getElementById('tutorialBtn');
@@ -642,7 +633,6 @@
     };
 
     const PREF_KEYS = {
-      contrast: 'space-cleaner-contrast',
       shake: 'space-cleaner-shake',
       tutorialSeen: 'space-cleaner-tutorial-seen',
     };
@@ -1021,10 +1011,6 @@
     }
 
     function applyPreferences() {
-      const contrast = readBool(PREF_KEYS.contrast, false);
-      if (contrastToggle) contrastToggle.checked = contrast;
-      if (contrast) document.body.classList.add('contrast');
-
       const shake = readNumber(PREF_KEYS.shake, state.shakeIntensity);
       updateShake(Math.max(0, Math.min(shake, 1)));
 
@@ -2304,11 +2290,6 @@
       state.name = network.name;
       resetGame();
       nameInput.value = network.name;
-    });
-
-    contrastToggle.addEventListener('change', (e) => {
-      document.body.classList.toggle('contrast', e.target.checked);
-      writePref(PREF_KEYS.contrast, e.target.checked ? '1' : '0');
     });
 
     shakeRange.addEventListener('input', (e) => {
