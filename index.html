@@ -482,11 +482,6 @@
       </div>
       <div class="toggles">
       </div>
-      <div class="toggle-row">
-        <label for="shakeRange">Vibration</label>
-        <input type="range" id="shakeRange" min="0" max="100" value="0">
-        <span class="range-value" id="shakeValue">0%</span>
-      </div>
       <button class="ghost-btn" id="tutorialBtn">Tutoriel rapide</button>
     </section>
 
@@ -569,8 +564,6 @@
     const highscoresEl = document.getElementById('highscores');
     const liveboardEl = document.getElementById('liveboard');
     const nameInput = document.getElementById('playerName');
-    const shakeRange = document.getElementById('shakeRange');
-    const shakeValue = document.getElementById('shakeValue');
     const tutorialBtn = document.getElementById('tutorialBtn');
     const tutorialEl = document.getElementById('tutorial');
     const tutorialClose = document.getElementById('tutorialClose');
@@ -632,7 +625,6 @@
     };
 
     const PREF_KEYS = {
-      shake: 'space-cleaner-shake',
       tutorialSeen: 'space-cleaner-tutorial-seen',
     };
 
@@ -641,16 +633,6 @@
         const value = localStorage.getItem(key);
         if (value === null) return fallback;
         return value === '1' || value === 'true';
-      } catch (e) {
-        return fallback;
-      }
-    }
-
-    function readNumber(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        const value = Number(raw);
-        return Number.isFinite(value) ? value : fallback;
       } catch (e) {
         return fallback;
       }
@@ -774,8 +756,6 @@
       effects: { slow: 0, shield: 0, magnet: 0, overdrive: 0 },
       stats: { collected: 0, hits: 0 },
       comboFlash: 0,
-      cameraShake: 0,
-      shakeIntensity: 0,
       liveboardOpen: false,
       tutorialOpen: false,
       danger: { level: 'low', nearest: Infinity, density: 0 },
@@ -824,22 +804,6 @@
     const hazardPool = [];
     const bgCanvas = document.createElement('canvas');
     const bgCtx = bgCanvas.getContext('2d');
-
-    function bumpCameraShake(amount = 6) {
-      const cap = 16;
-      state.cameraShake = Math.min(cap, Math.max(state.cameraShake, amount));
-    }
-
-    function getCameraShake(dt) {
-      if (!state.cameraShake || state.cameraShake <= 0) return { x: 0, y: 0 };
-      const intensity = Math.min(state.cameraShake, 14) * state.shakeIntensity;
-      if (intensity <= 0.01) return { x: 0, y: 0 };
-      state.cameraShake = Math.max(0, state.cameraShake - dt * 18);
-      return {
-        x: (Math.random() * 2 - 1) * intensity,
-        y: (Math.random() * 2 - 1) * intensity,
-      };
-    }
 
     function loadBests() {
       state.best = 0;
@@ -916,7 +880,6 @@
       state.multiplier = 1;
       state.maxMultiplier = 1;
       state.time = 0;
-      state.cameraShake = 0;
       state.danger = { level: 'low', nearest: Infinity, density: 0 };
       state.stats = { collected: 0, hits: 0 };
       state.pulseCooldown = 0;
@@ -1001,18 +964,7 @@
       }
     }
 
-    function updateShake(value) {
-      const v = clamp(value, 0, 1);
-      state.shakeIntensity = v;
-      if (shakeValue) shakeValue.textContent = `${Math.round(v * 100)}%`;
-      if (shakeRange) shakeRange.value = Math.round(v * 100);
-      writePref(PREF_KEYS.shake, v.toFixed(2));
-    }
-
     function applyPreferences() {
-      const shake = readNumber(PREF_KEYS.shake, state.shakeIntensity);
-      updateShake(Math.max(0, Math.min(shake, 1)));
-
       tutorialSeen = readBool(PREF_KEYS.tutorialSeen, false);
     }
 
@@ -1401,7 +1353,6 @@
       state.pulseActive = CONFIG.pulse.duration;
       state.pulseCooldown = CONFIG.pulse.cooldown;
       network.pulseSeq += 1;
-      bumpCameraShake(6);
       addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.9)', 26, 220);
     }
 
@@ -1488,7 +1439,6 @@
               if (h.hp <= 0) {
                 h.ttl = 0;
                 addParticles(h.x, h.y, 'rgba(255, 149, 90, 0.8)', 22, 240);
-                bumpCameraShake(7);
                 continue;
               }
             }
@@ -1505,13 +1455,12 @@
         const rad = (h.r + state.player.r) ** 2;
         if (dist2 < rad && state.running && !state.paused) {
           const dist = Math.hypot(dx, dy) || 1;
-          if (state.effects.shield > 0 && state.shieldCharges > 0) {
-            state.shieldCharges -= 1;
-            if (state.shieldCharges <= 0) state.effects.shield = 0;
-            addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
-            bumpCameraShake(8);
-            h.x += Math.sign(dx || 1) * (h.r + 8);
-            h.y += Math.sign(dy || 1) * (h.r + 8);
+            if (state.effects.shield > 0 && state.shieldCharges > 0) {
+              state.shieldCharges -= 1;
+              if (state.shieldCharges <= 0) state.effects.shield = 0;
+              addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
+              h.x += Math.sign(dx || 1) * (h.r + 8);
+              h.y += Math.sign(dy || 1) * (h.r + 8);
             // renvoyer le bloc a l oppose
             const speed = Math.hypot(h.vx, h.vy) || (120 + Math.random() * 80);
             h.vx = (dx / dist) * speed;
@@ -1522,7 +1471,6 @@
           state.lives -= 1;
           state.stats.hits += 1;
           addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 28, 260);
-          bumpCameraShake(12);
           h.x += Math.sign(dx || 1) * (h.r + 8);
           h.y += Math.sign(dy || 1) * (h.r + 8);
           const speed = Math.hypot(h.vx, h.vy) || (120 + Math.random() * 80);
@@ -1602,7 +1550,6 @@
           const force = (1 - dist / reach) * CONFIG.pulse.force * 0.35;
           state.player.vx += (dx / dist) * force * dt;
           state.player.vy += (dy / dist) * force * dt;
-          bumpCameraShake(4);
         }
         peer.pulseAppliedSeq = pulseSeq;
       }
@@ -1624,12 +1571,10 @@
               state.shieldCharges -= 1;
               if (state.shieldCharges <= 0) state.effects.shield = 0;
               addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
-              bumpCameraShake(7);
             } else {
               state.lives -= 1;
               state.stats.hits += 1;
               addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 24, 200);
-              bumpCameraShake(10);
               if (state.lives <= 0) {
                 endGame();
                 return;
@@ -1637,7 +1582,6 @@
             }
           } else {
             addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.7)', 18, 160);
-            bumpCameraShake(6);
           }
 
           triggerPulse(true);
@@ -2114,10 +2058,7 @@
         state.danger = computeDanger();
         updateStars(dt);
         updateUI(); // rafraichit le classement/hud meme en pause ou avant le start
-        const shake = getCameraShake(dt);
         drawBackground();
-        ctx.save();
-        ctx.translate(shake.x, shake.y);
         drawHazards();
         drawPowerups();
         drawOrbs();
@@ -2125,7 +2066,6 @@
         drawPeers();
         drawPlayer();
         drawParticles();
-        ctx.restore();
         return;
       }
 
@@ -2188,10 +2128,7 @@
       state.danger = computeDanger();
       updateUI();
 
-      const shake = getCameraShake(dt);
       drawBackground();
-      ctx.save();
-      ctx.translate(shake.x, shake.y);
       drawHazards();
       drawPowerups();
       drawOrbs();
@@ -2200,7 +2137,6 @@
       drawTrail();
       drawPlayer();
       drawParticles();
-      ctx.restore();
     }
 
     function loop(timestamp) {
@@ -2289,10 +2225,6 @@
       state.name = network.name;
       resetGame();
       nameInput.value = network.name;
-    });
-
-    shakeRange.addEventListener('input', (e) => {
-      updateShake(Number(e.target.value) / 100);
     });
 
     tutorialBtn.addEventListener('click', () => {
