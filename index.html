@@ -3,42 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Space Cleaner</title>
+  <title>Ether Relay</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
     :root {
-      --bg: #050914;
-      --panel: rgba(13, 18, 36, 0.72);
-      --panel-strong: rgba(18, 25, 48, 0.9);
-      --accent: #7af6ff;
-      --accent-2: #ff955a;
-      --accent-3: #86f26e;
-      --text: #e7f1ff;
-      --muted: #8aa4c8;
-      --danger: #ff5e7b;
-      --shadow: 0 10px 45px rgba(0, 0, 0, 0.45);
+      --bg: #f7efe4;
+      --panel: rgba(255, 252, 246, 0.94);
+      --panel-strong: rgba(12, 16, 24, 0.94);
+      --accent: #2bb3a6;
+      --accent-2: #f28f3b;
+      --accent-3: #ffd166;
+      --text: #2a1f14;
+      --muted: #6e5c49;
+      --danger: #d64550;
+      --shadow: 0 18px 45px rgba(20, 18, 10, 0.18);
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Space Grotesk", "Trebuchet MS", "Segoe UI", sans-serif;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
       color: var(--text);
-      background: radial-gradient(circle at 18% 22%, rgba(53, 103, 255, 0.18), transparent 38%),
-                  radial-gradient(circle at 82% 0%, rgba(255, 119, 71, 0.18), transparent 30%),
-                  linear-gradient(145deg, #040814 0%, #060b19 42%, #02040a 100%);
+      background: radial-gradient(circle at 18% 16%, rgba(255, 205, 140, 0.45), transparent 42%),
+                  radial-gradient(circle at 82% 8%, rgba(84, 210, 195, 0.3), transparent 36%),
+                  linear-gradient(145deg, #f9f1e4 0%, #f7e2bf 45%, #f4e0d0 100%);
       min-height: 100vh;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle at 22% 24%, rgba(255, 255, 255, 0.6), transparent 55%),
+                        radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.55), transparent 52%),
+                        repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12) 2px, transparent 2px, transparent 38px);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
     }
 
     body.high-contrast {
-      --bg: #02050f;
-      --panel: rgba(5, 8, 20, 0.9);
-      --panel-strong: rgba(5, 8, 20, 0.96);
-      --accent: #b4fbff;
-      --accent-2: #ffb07a;
-      --accent-3: #9bff84;
-      --text: #f5faff;
-      --muted: #c2d3f2;
-      --danger: #ff4a6e;
+      --bg: #f3e9db;
+      --panel: rgba(255, 255, 255, 0.98);
+      --panel-strong: rgba(6, 9, 14, 0.98);
+      --accent: #0f9486;
+      --accent-2: #e07a23;
+      --accent-3: #f7b728;
+      --text: #1f1710;
+      --muted: #4d3f32;
+      --danger: #c1323f;
     }
 
     body.high-contrast .panel { font-size: 16px; }
@@ -61,11 +76,13 @@
       padding: 28px 28px 38px;
       max-width: 1400px;
       margin: 0 auto;
+      position: relative;
+      z-index: 1;
     }
 
     .panel {
       background: var(--panel);
-      border: 1px solid rgba(122, 246, 255, 0.15);
+      border: 1px solid rgba(242, 143, 59, 0.2);
       border-radius: 18px;
       padding: 22px 22px 24px;
       box-shadow: var(--shadow);
@@ -79,8 +96,8 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at 10% 0%, rgba(122, 246, 255, 0.12), transparent 32%),
-                  radial-gradient(circle at 80% 30%, rgba(255, 149, 90, 0.12), transparent 35%);
+      background: radial-gradient(circle at 8% 8%, rgba(242, 143, 59, 0.15), transparent 36%),
+                  radial-gradient(circle at 86% 20%, rgba(43, 179, 166, 0.18), transparent 42%);
       z-index: 0;
     }
 
@@ -92,12 +109,14 @@
       font-size: 12px;
       color: var(--accent);
       margin: 0 0 8px;
+      font-weight: 700;
     }
 
     h1 {
       margin: 0 0 12px;
       font-size: clamp(28px, 3vw, 36px);
       letter-spacing: -0.02em;
+      font-family: "Chakra Petch", "Space Grotesk", sans-serif;
     }
 
     p { color: var(--muted); line-height: 1.5; }
@@ -111,8 +130,8 @@
     }
 
     .controls li {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(0, 0, 0, 0.06);
       border-radius: 12px;
       padding: 10px 12px;
       display: flex;
@@ -129,8 +148,8 @@
       height: 32px;
       padding: 0 10px;
       border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(122, 246, 255, 0.08);
+      border: 1px solid rgba(43, 179, 166, 0.25);
+      background: rgba(43, 179, 166, 0.12);
       color: var(--accent);
       font-weight: 700;
       letter-spacing: 0.04em;
@@ -143,8 +162,8 @@
       gap: 6px;
       padding: 7px 12px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(242, 143, 59, 0.2);
       color: var(--text);
       font-size: 13px;
       margin-top: 12px;
@@ -165,8 +184,8 @@
       gap: 8px;
       padding: 9px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.65);
       color: var(--text);
       font-size: 14px;
       cursor: pointer;
@@ -216,12 +235,28 @@
       background: var(--panel-strong);
       border-radius: 20px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       box-shadow: var(--shadow);
       min-height: 480px;
       display: grid;
       place-items: center;
       isolation: isolate;
+      color: #f7f1e8;
+    }
+
+    .game-area .badge,
+    .game-area .effects-badge,
+    .game-area .overlay-btn,
+    .game-area .live-overlay,
+    .game-area .tutorial,
+    .game-area .wave-banner {
+      color: #f7f1e8;
+    }
+
+    .game-area .badge span,
+    .game-area .badge-note,
+    .game-area .effects-badge {
+      color: rgba(255, 255, 255, 0.7);
     }
 
     canvas {
@@ -230,9 +265,9 @@
       max-height: 760px;
       display: block;
       touch-action: none;
-      background: radial-gradient(circle at 50% 30%, rgba(122, 246, 255, 0.08), transparent 35%),
-                  radial-gradient(circle at 20% 80%, rgba(255, 149, 90, 0.08), transparent 30%),
-                  #0b1223;
+      background: radial-gradient(circle at 45% 28%, rgba(43, 179, 166, 0.14), transparent 40%),
+                  radial-gradient(circle at 18% 78%, rgba(242, 143, 59, 0.14), transparent 35%),
+                  #0a111f;
       border-radius: 14px;
     }
 
@@ -249,12 +284,13 @@
     .badge {
       padding: 9px 14px;
       border-radius: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(10, 14, 22, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       backdrop-filter: blur(6px);
       color: var(--text);
       font-weight: 600;
       letter-spacing: 0.01em;
+      font-family: "Chakra Petch", "Space Grotesk", sans-serif;
     }
 
     .badge span { color: var(--muted); font-weight: 500; margin-right: 8px; }
@@ -272,7 +308,7 @@
       left: 14px;
       bottom: 14px;
       padding: 8px 12px;
-      background: rgba(0, 0, 0, 0.35);
+      background: rgba(10, 14, 22, 0.42);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       color: var(--muted);
@@ -289,7 +325,7 @@
       padding: 8px 12px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      background: rgba(0, 0, 0, 0.35);
+      background: rgba(10, 14, 22, 0.45);
       color: var(--text);
       font-size: 13px;
       cursor: pointer;
@@ -378,8 +414,8 @@
       transform: translate(-50%, -14px);
       padding: 8px 16px;
       border-radius: 999px;
-      border: 1px solid rgba(255, 149, 90, 0.35);
-      background: rgba(0, 0, 0, 0.42);
+      border: 1px solid rgba(242, 143, 59, 0.4);
+      background: rgba(10, 14, 22, 0.5);
       color: var(--text);
       font-weight: 700;
       letter-spacing: 0.02em;
@@ -409,8 +445,8 @@
     .message.hidden { opacity: 0; visibility: hidden; }
 
     .card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 16px;
       padding: 24px 22px;
       max-width: 420px;
@@ -448,32 +484,32 @@
       width: 100%;
       padding: 12px 14px;
       border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background: rgba(255, 255, 255, 0.82);
       color: var(--text);
       font-size: 15px;
       margin: 0 0 12px;
       outline: none;
     }
     input[type=\"text\"]:focus {
-      border-color: rgba(122, 246, 255, 0.45);
-      box-shadow: 0 0 0 3px rgba(122, 246, 255, 0.15);
+      border-color: rgba(43, 179, 166, 0.45);
+      box-shadow: 0 0 0 3px rgba(43, 179, 166, 0.15);
     }
 
     button {
       border: none;
-      background: linear-gradient(120deg, var(--accent), #6fe4f8);
-      color: #041120;
+      background: linear-gradient(120deg, var(--accent), #71d7cd);
+      color: #0b1513;
       font-weight: 800;
       letter-spacing: 0.04em;
       padding: 12px 18px;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 10px 30px rgba(122, 246, 255, 0.25);
+      box-shadow: 0 12px 30px rgba(43, 179, 166, 0.25);
       transition: transform 0.15s ease, box-shadow 0.2s ease;
     }
 
-    button:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 12px 36px rgba(122, 246, 255, 0.35); }
+    button:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 12px 36px rgba(43, 179, 166, 0.35); }
     button:active { transform: translateY(0); }
 
     .mobile-controls {
@@ -495,7 +531,7 @@
     }
 
     .dpad button, .pulse-btn {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.12);
       color: var(--text);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
@@ -506,7 +542,72 @@
       touch-action: none;
     }
 
-    .dpad button:active, .pulse-btn:active { background: rgba(122, 246, 255, 0.18); }
+    .dpad button:active, .pulse-btn:active { background: rgba(43, 179, 166, 0.18); }
+
+    .relay-list {
+      margin: 16px 0 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .relay-card {
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.7);
+      display: grid;
+      gap: 6px;
+    }
+
+    .relay-card.offline { opacity: 0.6; }
+
+    .relay-title {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      color: #241a12;
+    }
+
+    .relay-meter {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .relay-meter span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+
+    .relay-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meter-badge {
+      gap: 10px;
+      align-items: center;
+    }
+
+    .meter {
+      position: relative;
+      width: 88px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #86f26e, #ffd166);
+      transition: width 0.2s ease;
+    }
 
     .pulse-btn { padding: 12px 14px; border-radius: 12px; }
 
@@ -532,9 +633,18 @@
 <body>
   <main class="layout">
     <section class="panel">
-      <h1>Space Cleaner</h1>
+      <div class="eyebrow">Operation solaire</div>
+      <h1>Ether Relay</h1>
+      <p>Tu pilotes un drone qui doit reactiver des relais dans une tempete de debris. Collecte des noyaux, charge les relais et garde ton flux d energie eleve.</p>
+      <div class="relay-list" id="relayList"></div>
+      <ul class="controls">
+        <li><span class="kbd">ZQSD</span><span class="kbd">Fleches</span> Deplacement precis</li>
+        <li><span class="kbd">Espace</span> Onde de choc anti-debris</li>
+        <li><span class="kbd">P</span> Pause / Reprise</li>
+        <li><span class="kbd">T</span> Afficher le briefing</li>
+      </ul>
       <div class="pill">
-        <strong>But</strong> Survis le plus longtemps possible, depasse ton meilleur score et maintiens un multiplicateur eleve.
+        <strong>Objectif</strong> Livrer les noyaux, charger les relais a 100% et maintenir un flux eleve sans perdre l integrite.
       </div>
       <div class="toggles">
         <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste fort</label>
@@ -546,52 +656,55 @@
           <span class="range-value" id="shakeValue">60%</span>
         </div>
       </div>
-      <button class="ghost-btn" id="tutorialBtn">Tutoriel rapide</button>
+      <button class="ghost-btn" id="tutorialBtn">Briefing express</button>
     </section>
 
     <section class="game-area">
       <div class="hud">
         <div class="badge"><span>Score</span><strong id="score">0</strong></div>
-        <div class="badge combo" id="multBadge"><span>Multiplicateur</span><strong id="mult">x1.0</strong></div>
-        <div class="badge"><span>Vies</span><strong id="lives">3</strong></div>
-        <div class="badge danger" id="dangerBadge"><span>Danger</span><strong id="danger">Calme</strong></div>
-        <div class="badge wave" id="waveBadge"><span>Vague</span><strong id="waveLabel">Repos</strong></div>
+        <div class="badge combo" id="flowBadge"><span>Flux</span><strong id="flow">x1.0</strong></div>
+        <div class="badge meter-badge" id="integrityBadge"><span>Integrite</span><div class="meter"><div class="meter-fill" id="integrityFill"></div></div><strong id="integrityLabel">100%</strong></div>
+        <div class="badge"><span>Cargo</span><strong id="cargo">0/5</strong></div>
+        <div class="badge danger" id="dangerBadge"><span>Menace</span><strong id="danger">Calme</strong></div>
+        <div class="badge wave" id="waveBadge"><span>Front</span><strong id="waveLabel">Accalmie</strong></div>
         <div class="badge"><span>Temps</span><strong id="time">00:00</strong></div>
+        <div class="badge"><span>Relais cible</span><div class="badge-stack"><strong id="relayFocus">Aucun</strong><div id="relayHint" class="badge-note"></div></div></div>
         <div class="badge"><span>Meilleur</span><div class="badge-stack"><strong id="best">0</strong><div id="bestPlayer" class="badge-note"></div></div></div>
         <div class="badge"><span>Reseau</span><div class="badge-stack"><strong id="peerTop">Solo</strong><div id="peerTopScore" class="badge-note"></div><div id="netStatus" class="badge-note"></div></div></div>
-        <div class="badge"><span>Pulse</span><strong id="pulse">Pret</strong></div>
+        <div class="badge"><span>Onde</span><strong id="pulse">Pret</strong></div>
       </div>
-      <div class="effects-badge" id="effects">Bonus: aucun</div>
+      <div class="effects-badge" id="effects">Modules: aucun</div>
       <button class="overlay-btn" id="liveToggle" type="button">Classement</button>
       <div class="live-overlay hidden" id="liveOverlay" aria-hidden="true">
         <div class="live-overlay-header">
-          <span>Classement live</span>
+          <span>Classement reseau</span>
           <button class="overlay-close" id="liveClose" type="button">Fermer</button>
         </div>
         <div id="liveOverlayBody"></div>
       </div>
       <div class="tutorial hidden" id="tutorial" aria-hidden="true">
         <div class="tutorial-header">
-          <span>Tutoriel express</span>
+          <span>Briefing express</span>
           <button class="overlay-close" id="tutorialClose" type="button">Fermer</button>
         </div>
         <ul>
           <li>Deplace-toi avec ZQSD, fleches ou les touches tactiles.</li>
-          <li>Collecte les fragments pour booster le multiplicateur.</li>
-          <li>Declenche la pulse (Espace) pour repousser les meteorites.</li>
-          <li>Les bonus changent le rythme: aimant, bouclier, overdrive.</li>
+          <li>Ramasse les noyaux pour remplir ton cargo.</li>
+          <li>Livraison: approche un relais pour le charger.</li>
+          <li>Declenche l onde (Espace) pour repousser les debris.</li>
+          <li>Les modules modifient la tempete: stase, phase, aimant, turbo.</li>
         </ul>
       </div>
       <div class="wave-banner hidden" id="waveBanner" aria-live="polite"></div>
-      <canvas id="game" aria-label="Jeu Space Cleaner" role="img"></canvas>
+      <canvas id="game" aria-label="Jeu Ether Relay" role="img"></canvas>
       <div id="message" class="message">
         <div class="card">
           <h2 id="status"></h2>
-          <p id="summary">Choisis ton nom de pilote, esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc.</p>
-          <input type="text" id="playerName" maxlength="18" placeholder="Entre ton nom de pilote" aria-label="Nom du pilote">
+          <p id="summary">Choisis ton nom, collecte les noyaux, charge les relais et maintiens ton flux d energie sous pression.</p>
+          <input type="text" id="playerName" maxlength="18" placeholder="Entre ton nom d operateur" aria-label="Nom de l operateur">
           <div class="stats" id="stats"></div>
           <div class="highscores" id="highscores"></div>
-          <button id="start">Lancer la partie</button>
+          <button id="start">Lancer la mission</button>
         </div>
       </div>
       <div class="mobile-controls" aria-hidden="true">
@@ -600,7 +713,7 @@
           <button data-dir="left">◀</button><div></div><button data-dir="right">▶</button>
           <div></div><button data-dir="down">▼</button><div></div>
         </div>
-        <button class="pulse-btn" id="pulseBtn">Pulse</button>
+        <button class="pulse-btn" id="pulseBtn">Onde</button>
       </div>
     </section>
   </main>
@@ -609,11 +722,10 @@
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
-    const livesEl = document.getElementById('lives');
     const dangerEl = document.getElementById('danger');
     const dangerBadge = document.getElementById('dangerBadge');
-    const multEl = document.getElementById('mult');
-    const multBadge = document.getElementById('multBadge');
+    const flowEl = document.getElementById('flow');
+    const flowBadge = document.getElementById('flowBadge');
     const timeEl = document.getElementById('time');
     const bestEl = document.getElementById('best');
     const bestPlayerEl = document.getElementById('bestPlayer');
@@ -628,6 +740,7 @@
     const summaryEl = document.getElementById('summary');
     const statsEl = document.getElementById('stats');
     const highscoresEl = document.getElementById('highscores');
+    const relayListEl = document.getElementById('relayList');
     const liveboardEl = document.getElementById('liveboard');
     const nameInput = document.getElementById('playerName');
     const tutorialBtn = document.getElementById('tutorialBtn');
@@ -647,6 +760,11 @@
     const waveLabelEl = document.getElementById('waveLabel');
     const waveBadge = document.getElementById('waveBadge');
     const waveBanner = document.getElementById('waveBanner');
+    const integrityFill = document.getElementById('integrityFill');
+    const integrityLabel = document.getElementById('integrityLabel');
+    const cargoEl = document.getElementById('cargo');
+    const relayFocusEl = document.getElementById('relayFocus');
+    const relayHintEl = document.getElementById('relayHint');
 
     function randomColor() {
       const h = Math.floor(Math.random() * 360);
@@ -666,7 +784,9 @@
 
     const urlParams = new URLSearchParams(location.search);
     const customApi = (urlParams.get('api') || '').trim();
-    const basePath = location.pathname.startsWith('/space-cleaner') ? '/space-cleaner' : '';
+    const basePath = location.pathname.startsWith('/ether-relay')
+      ? '/ether-relay'
+      : (location.pathname.startsWith('/space-cleaner') ? '/space-cleaner' : '');
     const originApi = !location.origin.startsWith('file') ? `${location.origin}${basePath}` : '';
     const defaultApi = `http://localhost:8000${basePath}`;
     const baseApi = customApi || originApi || defaultApi;
@@ -675,55 +795,59 @@
     const CONFIG = {
       syncIntervalMs: 250,
       boardIntervalMs: 2000,
-      uiIntervalMs: 300,
+      uiIntervalMs: 260,
       maxPeers: 5,
-      maxHazards: 26,
-      pulse: { duration: 0.28, cooldown: 2.4, reach: 220, force: 620, destroyRatio: 0.55 },
-      powerups: { slow: 4, shield: 8, magnet: 6, overdrive: 6 },
-      magnetReach: 220,
+      maxHazards: 24,
+      pulse: { duration: 0.3, cooldown: 2.6, reach: 240, force: 640, destroyRatio: 0.45 },
+      powerups: { slow: 4, shield: 8, magnet: 6, overdrive: 6, repair: 0 },
+      magnetReach: 240,
       hazardTTL: { min: 16, jitter: 10 },
-      trail: { max: 20, baseLife: 0.18, speedLife: 0.18 },
-      shake: { max: 14, decay: 3.2 },
+      trail: { max: 22, baseLife: 0.2, speedLife: 0.2 },
+      shake: { max: 15, decay: 3.1 },
       net: { pos: 6, score: 25, time: 1, heartbeat: 1500 },
       speedSmooth: 0.2,
-      speedMargin: 8,
+      speedMargin: 10,
       spawn: {
-        hazardDecay: 0.045,
-        hazardBase: 1.1,
-        hazardMin: 0.35,
-        hazardJitter: 0.3,
-        hazardFallback: 0.4,
-        orbBase: 2.4,
-        orbJitter: 0.8,
-        powerupBase: 8,
-        powerupJitter: 5,
+        hazardDecay: 0.05,
+        hazardBase: 1.2,
+        hazardMin: 0.38,
+        hazardJitter: 0.35,
+        hazardFallback: 0.45,
+        orbBase: 2.1,
+        orbJitter: 0.9,
+        powerupBase: 9,
+        powerupJitter: 5.5,
       },
       waves: {
-        active: 18,
-        rest: 6,
-        announce: 2.4,
+        active: 16,
+        rest: 7,
+        announce: 2.2,
         profiles: [
-          { name: 'Essaim rapide', hazardSpeed: 1.28, hazardSize: 0.92, spawnRate: 0.78, reward: 'slow' },
-          { name: 'Geants lents', hazardSpeed: 0.82, hazardSize: 1.35, spawnRate: 1.05, reward: 'overdrive' },
-          { name: 'Trajectoires folles', hazardSpeed: 1.12, hazardSize: 1.05, spawnRate: 0.9, reward: 'magnet' },
+          { name: 'Front ionique', hazardSpeed: 1.2, hazardSize: 0.95, spawnRate: 0.8, reward: 'slow' },
+          { name: 'Eclats lourds', hazardSpeed: 0.85, hazardSize: 1.35, spawnRate: 1.05, reward: 'overdrive' },
+          { name: 'Courants erratiques', hazardSpeed: 1.1, hazardSize: 1.05, spawnRate: 0.9, reward: 'magnet' },
         ],
       },
+      relay: { count: 3, maxCharge: 100, unitCharge: 20, cooldown: 2.6, surgeRadius: 240 },
+      cargo: { max: 5 },
+      flow: { max: 4.6, decayDelay: 4.5, decayRate: 0.16, bump: 0.14, surgeBonus: 0.4 },
+      integrity: { max: 100, hit: 22 },
     };
 
     const POWERUP_LABELS = {
-      slow: 'Ralenti',
-      shield: 'Bouclier',
+      slow: 'Stase',
+      shield: 'Phase',
       magnet: 'Aimant',
-      life: 'Vie',
-      overdrive: 'Overdrive',
+      repair: 'Reparation',
+      overdrive: 'Turbo',
     };
 
     const PREF_KEYS = {
-      tutorialSeen: 'space-cleaner-tutorial-seen',
-      highContrast: 'space-cleaner-contrast',
-      reducedMotion: 'space-cleaner-reduced-motion',
-      shake: 'space-cleaner-shake',
-      shakeIntensity: 'space-cleaner-shake-intensity',
+      tutorialSeen: 'ether-relay-tutorial-seen',
+      highContrast: 'ether-relay-contrast',
+      reducedMotion: 'ether-relay-reduced-motion',
+      shake: 'ether-relay-shake',
+      shakeIntensity: 'ether-relay-shake-intensity',
     };
 
     function readBool(key, fallback = false) {
@@ -777,16 +901,16 @@
 
     let storedClientId = null;
     try {
-      storedClientId = localStorage.getItem('space-cleaner-client-id') || localStorage.getItem('space-cleaner-id');
+      storedClientId = localStorage.getItem('ether-relay-client-id') || localStorage.getItem('ether-relay-id');
     } catch (e) {
       storedClientId = null;
     }
     let storedInstanceId = null;
     try {
-      storedInstanceId = sessionStorage.getItem('space-cleaner-instance-id');
+      storedInstanceId = sessionStorage.getItem('ether-relay-instance-id');
       if (!storedInstanceId) {
         storedInstanceId = randomId('t');
-        sessionStorage.setItem('space-cleaner-instance-id', storedInstanceId);
+        sessionStorage.setItem('ether-relay-instance-id', storedInstanceId);
       }
     } catch (e) {
       storedInstanceId = randomId('t');
@@ -796,7 +920,7 @@
       instanceId: storedInstanceId,
       sessionId: randomId('s'),
       color: randomColor(),
-      name: 'Pilote-' + Math.random().toString(36).slice(2, 5),
+      name: 'Operateur-' + Math.random().toString(36).slice(2, 5),
       peers: new Map(),
       lastSync: 0,
       enabled: true,
@@ -814,7 +938,7 @@
 
     // stabilise l'identité multijoueur (évite de changer de clientId à chaque rechargement)
     try {
-      localStorage.setItem('space-cleaner-client-id', network.clientId);
+      localStorage.setItem('ether-relay-client-id', network.clientId);
     } catch (e) {}
     let leaveSent = false;
 
@@ -873,9 +997,13 @@
       bestTime: 0,
       sessionBest: 0,
       sessionBestTime: 0,
-      lives: 3,
+      integrity: CONFIG.integrity.max,
+      maxIntegrity: CONFIG.integrity.max,
+      cargo: 0,
+      maxCargo: CONFIG.cargo.max,
       multiplier: 1,
       maxMultiplier: 1,
+      lastDelivery: 0,
       time: 0,
       pulseCooldown: 0,
       pulseActive: 0,
@@ -887,15 +1015,16 @@
       effects: { slow: 0, shield: 0, magnet: 0, overdrive: 0 },
       shake: { power: 0 },
       wave: { index: -1, active: false, profile: null, timeLeft: 0, show: 0 },
-      stats: { collected: 0, hits: 0 },
+      stats: { cores: 0, deliveries: 0, relays: 0, hits: 0 },
       comboFlash: 0,
       liveboardOpen: false,
       tutorialOpen: false,
       danger: { level: 'low', nearest: Infinity, density: 0 },
       thrust: 0,
       trail: [],
+      relays: [],
       highscores: [],
-      bestName: 'Pilote',
+      bestName: 'Operateur',
       serverBest: 0,
       serverBestTime: 0,
       serverBestName: '',
@@ -950,7 +1079,7 @@
       state.best = 0;
       state.bestTime = 0;
       state.highscores = [];
-      state.bestName = 'Pilote';
+      state.bestName = 'Operateur';
       updateServerBest();
     }
 
@@ -964,23 +1093,33 @@
       canvas.width = Math.max(640, w);
       canvas.height = Math.max(420, h);
       renderBackgroundBase();
+      clampRelaysToCanvas();
+    }
+
+    function clampRelaysToCanvas() {
+      if (!state.relays || !state.relays.length) return;
+      const pad = 80;
+      state.relays.forEach(relay => {
+        relay.x = clamp(relay.x, pad, canvas.width - pad);
+        relay.y = clamp(relay.y, pad, canvas.height - pad);
+      });
     }
 
     function renderBackgroundBase() {
       bgCanvas.width = canvas.width;
       bgCanvas.height = canvas.height;
       bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-      bgCtx.fillStyle = '#0a1122';
+      bgCtx.fillStyle = '#090f1a';
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
       const grad = bgCtx.createLinearGradient(0, 0, bgCanvas.width, bgCanvas.height);
-      grad.addColorStop(0, 'rgba(122, 246, 255, 0.05)');
-      grad.addColorStop(1, 'rgba(255, 149, 90, 0.05)');
+      grad.addColorStop(0, 'rgba(43, 179, 166, 0.08)');
+      grad.addColorStop(1, 'rgba(242, 143, 59, 0.08)');
       bgCtx.fillStyle = grad;
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
       const glow = bgCtx.createRadialGradient(bgCanvas.width / 2, bgCanvas.height * 0.35, 80, bgCanvas.width / 2, bgCanvas.height * 0.35, Math.max(bgCanvas.width, bgCanvas.height));
-      glow.addColorStop(0, 'rgba(122, 246, 255, 0.08)');
+      glow.addColorStop(0, 'rgba(43, 179, 166, 0.1)');
       glow.addColorStop(1, 'rgba(5, 9, 20, 0)');
       bgCtx.fillStyle = glow;
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -1016,13 +1155,17 @@
       state.sessionBestTime = 0;
       state.best = 0;
       state.bestTime = 0;
-      state.bestName = state.name || 'Pilote';
-      state.lives = 3;
+      state.bestName = state.name || 'Operateur';
+      state.integrity = CONFIG.integrity.max;
+      state.maxIntegrity = CONFIG.integrity.max;
+      state.cargo = 0;
+      state.maxCargo = CONFIG.cargo.max;
       state.multiplier = 1;
       state.maxMultiplier = 1;
+      state.lastDelivery = 0;
       state.time = 0;
       state.danger = { level: 'low', nearest: Infinity, density: 0 };
-      state.stats = { collected: 0, hits: 0 };
+      state.stats = { cores: 0, deliveries: 0, relays: 0, hits: 0 };
       state.pulseCooldown = 0;
       state.pulseActive = 0;
       state.hitCooldown = 0;
@@ -1035,6 +1178,7 @@
       state.wave = { index: -1, active: false, profile: null, timeLeft: 0, show: 0 };
       state.thrust = 0;
       state.trail = [];
+      state.relays = [];
       state.timers.hazard = 0;
       state.timers.orb = CONFIG.spawn.orbBase * 0.35;
       state.timers.powerup = CONFIG.spawn.powerupBase - 1;
@@ -1051,14 +1195,15 @@
       message.classList.add('hidden');
       maybeShowTutorial();
       statusEl.textContent = '';
-      summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
+      summaryEl.textContent = 'Collecte les noyaux, charge les relais et declenche l onde de choc quand la tempete se resserre.';
       statsEl.innerHTML = '';
       renderHighscores();
-      startBtn.textContent = 'Rejouer';
+      startBtn.textContent = 'Relancer la mission';
       initStars();
+      initRelays();
       try {
-        localStorage.setItem('space-cleaner-client-id', network.clientId);
-        localStorage.setItem('space-cleaner-id', network.clientId);
+        localStorage.setItem('ether-relay-client-id', network.clientId);
+        localStorage.setItem('ether-relay-id', network.clientId);
       } catch (e) {
         // stockage non disponible
       }
@@ -1125,12 +1270,12 @@
         return;
       }
       const source = network.board.slice(0, 5).map(h => ({
-        name: h.name || 'Pilote',
+        name: h.name || 'Operateur',
         score: Math.floor(h.score || h.best || 0),
         time: Math.floor(h.time || h.bestTime || 0),
       }));
       const rows = source.map((h, i) => {
-        const safeName = escapeHtml(h.name || 'Pilote');
+        const safeName = escapeHtml(h.name || 'Operateur');
         return `
           <div class="hs-row">
             <div><span class="hs-rank">#${i + 1}</span><span class="hs-name">${safeName}</span></div>
@@ -1143,7 +1288,7 @@
     }
 
     function getSelfLeaderboardName() {
-      return state.name || network.name || 'Pilote';
+      return state.name || network.name || 'Operateur';
     }
 
     function computeDanger() {
@@ -1207,7 +1352,7 @@
       network.board = board
         .map(p => ({
           id: String(p.id || ''),
-          name: p.name || 'Pilote',
+          name: p.name || 'Operateur',
           score: Math.floor(Number(p.score || p.best || 0) || 0),
           time: Math.floor(Number(p.time || p.bestTime || 0) || 0),
           color: p.color || '#7af6ff',
@@ -1250,7 +1395,7 @@
         { id: network.sessionId, name: selfName, score: state.sessionBest || 0, time: state.sessionBestTime || 0, self: true },
         ...Array.from(network.peers.values()).map(p => ({
           id: p.id,
-          name: p.name || 'Pilote',
+          name: p.name || 'Operateur',
           score: p.score || p.best || 0,
           time: p.time || p.bestTime || 0,
           self: false,
@@ -1259,7 +1404,7 @@
 
       if (!entries.length) {
         targets.forEach(({ el, withTitle }) => {
-          el.innerHTML = `${withTitle ? '<div class="live-title">Classement en ligne</div>' : ''}<div class="hs-empty">Aucun joueur connecte</div>`;
+          el.innerHTML = `${withTitle ? '<div class="live-title">Classement reseau</div>' : ''}<div class="hs-empty">Aucun joueur connecte</div>`;
         });
         return;
       }
@@ -1280,7 +1425,7 @@
           `;
         }).join('');
       targets.forEach(({ el, withTitle }) => {
-        el.innerHTML = `${withTitle ? '<div class="live-title">Classement en ligne</div>' : ''}${rows}`;
+        el.innerHTML = `${withTitle ? '<div class="live-title">Classement reseau</div>' : ''}${rows}`;
       });
     }
 
@@ -1404,7 +1549,7 @@
               x: Number(p.x) || 0,
               y: Number(p.y) || 0,
               color: p.color || '#7af6ff',
-              name: p.name || 'Pilote',
+              name: p.name || 'Operateur',
               lastSeen: nowMs,
               score: Number(p.best || p.score) || 0,
               time: Number(p.bestTime || p.time) || 0,
@@ -1451,6 +1596,7 @@
       }));
       const ttl = CONFIG.hazardTTL.min + Math.random() * CONFIG.hazardTTL.jitter;
       const hp = Math.max(1, Math.round(r / 10));
+      const kind = Math.random() < 0.25 ? 'seeker' : 'drifter';
       const h = hazardPool.pop() || {};
       h.x = x;
       h.y = y;
@@ -1463,6 +1609,7 @@
       h.craters = craters;
       h.ttl = ttl;
       h.hp = hp;
+      h.kind = kind;
       state.hazards.push(h);
       return true;
     }
@@ -1471,15 +1618,22 @@
       const padding = 60;
       const x = padding + Math.random() * (canvas.width - padding * 2);
       const y = padding + Math.random() * (canvas.height - padding * 2);
-      state.orbs.push({ x, y, r: 10, ttl: 10 + Math.random() * 6 });
+      state.orbs.push({
+        x,
+        y,
+        r: 10,
+        ttl: 10 + Math.random() * 6,
+        rot: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 1.2,
+      });
     }
 
     function spawnPowerup(forcedType = '') {
       const padding = 60;
       const x = padding + Math.random() * (canvas.width - padding * 2);
       const y = padding + Math.random() * (canvas.height - padding * 2);
-      const allowLife = state.lives < 6;
-      const types = allowLife ? ['slow', 'shield', 'magnet', 'life', 'overdrive'] : ['slow', 'shield', 'magnet', 'overdrive'];
+      const allowRepair = state.integrity < state.maxIntegrity;
+      const types = allowRepair ? ['slow', 'shield', 'magnet', 'repair', 'overdrive'] : ['slow', 'shield', 'magnet', 'overdrive'];
       const type = forcedType && types.includes(forcedType) ? forcedType : types[Math.floor(Math.random() * types.length)];
       state.powerups.push({ x, y, r: 12, ttl: 9 + Math.random() * 3, type });
     }
@@ -1494,8 +1648,190 @@
           y: y + Math.sin(a) * d,
           r: 9,
           ttl: 5 + Math.random() * 3,
+          rot: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 1.4,
         });
       }
+    }
+
+    const RELAY_NAMES = ['Astra', 'Vega', 'Orion', 'Lumen', 'Helia', 'Nova'];
+
+    function randomPosition(minDist = 160) {
+      const pad = 90;
+      let x = pad;
+      let y = pad;
+      for (let i = 0; i < 12; i++) {
+        x = pad + Math.random() * (canvas.width - pad * 2);
+        y = pad + Math.random() * (canvas.height - pad * 2);
+        if (Math.hypot(x - state.player.x, y - state.player.y) > minDist) break;
+      }
+      return { x, y };
+    }
+
+    function spawnRelay(index) {
+      const pos = randomPosition(180);
+      return {
+        id: index,
+        name: RELAY_NAMES[index % RELAY_NAMES.length],
+        x: pos.x,
+        y: pos.y,
+        r: 24,
+        charge: 0,
+        max: CONFIG.relay.maxCharge,
+        cooldown: 0,
+        pulse: 0,
+        pendingRelocate: false,
+      };
+    }
+
+    function initRelays() {
+      state.relays = Array.from({ length: CONFIG.relay.count }, (_, i) => spawnRelay(i));
+      renderRelayList();
+    }
+
+    function relocateRelay(relay) {
+      const pos = randomPosition(180);
+      relay.x = pos.x;
+      relay.y = pos.y;
+      relay.charge = 0;
+      relay.cooldown = 0;
+      relay.pendingRelocate = false;
+      relay.pulse = 0;
+    }
+
+    function surgeRelay(relay) {
+      relay.charge = relay.max;
+      relay.cooldown = CONFIG.relay.cooldown;
+      relay.pendingRelocate = true;
+      relay.pulse = 1;
+      state.stats.relays += 1;
+      state.score += 600 * state.multiplier;
+      state.multiplier = Math.min(CONFIG.flow.max, state.multiplier + CONFIG.flow.surgeBonus);
+      state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
+      state.comboFlash = 0.5;
+      addParticles(relay.x, relay.y, 'rgba(255, 209, 102, 0.9)', 32, 260);
+
+      const radius = CONFIG.relay.surgeRadius;
+      for (const h of state.hazards) {
+        const dist = Math.hypot(h.x - relay.x, h.y - relay.y);
+        if (dist < radius) {
+          h.hp = 0;
+          h.ttl = 0;
+        }
+      }
+      if (Math.random() < 0.65) spawnPowerup();
+    }
+
+    function deliverCargo(relay) {
+      if (state.cargo <= 0) return;
+      const units = state.cargo;
+      state.cargo = 0;
+      relay.charge += units * CONFIG.relay.unitCharge;
+      state.stats.deliveries += units;
+      state.lastDelivery = state.time;
+      state.score += units * 120 * state.multiplier;
+      state.multiplier = Math.min(CONFIG.flow.max, state.multiplier + units * CONFIG.flow.bump);
+      state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
+      state.comboFlash = 0.35;
+      addParticles(relay.x, relay.y, 'rgba(43, 179, 166, 0.85)', 24, 200);
+      if (relay.charge >= relay.max) {
+        surgeRelay(relay);
+      }
+    }
+
+    function updateRelays(dt) {
+      for (const relay of state.relays) {
+        if (relay.pulse > 0) {
+          relay.pulse = Math.max(0, relay.pulse - dt * 1.4);
+        }
+        if (relay.cooldown > 0) {
+          relay.cooldown = Math.max(0, relay.cooldown - dt);
+          if (relay.cooldown === 0 && relay.pendingRelocate) {
+            relocateRelay(relay);
+          }
+          continue;
+        }
+        const dx = relay.x - state.player.x;
+        const dy = relay.y - state.player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < relay.r + state.player.r + 8 && state.cargo > 0) {
+          deliverCargo(relay);
+        }
+      }
+    }
+
+    function drawRelays() {
+      for (const relay of state.relays) {
+        const ratio = clamp(relay.charge / relay.max, 0, 1);
+        ctx.save();
+        ctx.translate(relay.x, relay.y);
+        ctx.beginPath();
+        ctx.arc(0, 0, relay.r + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = relay.cooldown > 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255, 209, 102, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, relay.r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
+        ctx.strokeStyle = `rgba(255, 209, 102, ${0.4 + ratio * 0.4})`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, relay.r, 0, Math.PI * 2);
+        ctx.fillStyle = relay.cooldown > 0 ? 'rgba(255,255,255,0.08)' : 'rgba(43, 179, 166, 0.2)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        if (relay.pulse > 0) {
+          const t = relay.pulse;
+          ctx.beginPath();
+          ctx.arc(0, 0, relay.r + 20 + (1 - t) * 40, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 209, 102, ${t * 0.5})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = '600 12px "Space Grotesk", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(relay.name, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    function renderRelayList() {
+      if (!relayListEl) return;
+      const items = state.relays.map((relay) => {
+        const ratio = clamp(relay.charge / relay.max, 0, 1);
+        const pct = Math.round(ratio * 100);
+        const status = relay.cooldown > 0 ? `Recalage ${relay.cooldown.toFixed(1)}s` : `${pct}% charge`;
+        return `
+          <div class="relay-card ${relay.cooldown > 0 ? 'offline' : ''}">
+            <div class="relay-title"><span>${relay.name}</span><span>${pct}%</span></div>
+            <div class="relay-meter"><span style="width:${pct}%"></span></div>
+            <div class="relay-note">${status}</div>
+          </div>
+        `;
+      }).join('');
+      relayListEl.innerHTML = items;
+    }
+
+    function getClosestRelay() {
+      let closest = null;
+      let best = Infinity;
+      for (const relay of state.relays) {
+        if (relay.cooldown > 0) continue;
+        const dist = Math.hypot(relay.x - state.player.x, relay.y - state.player.y);
+        if (dist < best) {
+          best = dist;
+          closest = relay;
+        }
+      }
+      return closest;
     }
 
     function addParticles(x, y, color, amount = 10, speed = 120) {
@@ -1574,7 +1910,7 @@
       state.pulseActive = CONFIG.pulse.duration;
       state.pulseCooldown = CONFIG.pulse.cooldown;
       network.pulseSeq += 1;
-      addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.9)', 26, 220);
+      addParticles(state.player.x, state.player.y, 'rgba(43, 179, 166, 0.9)', 26, 220);
       triggerShake(0.22);
     }
 
@@ -1634,6 +1970,14 @@
 
       state.hazards.forEach(h => {
         h.ttl -= dt;
+        if (h.kind === 'seeker') {
+          const dx = state.player.x - h.x;
+          const dy = state.player.y - h.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const pull = 16 + difficulty * 6;
+          h.vx += (dx / dist) * pull * effectiveDt;
+          h.vy += (dy / dist) * pull * effectiveDt;
+        }
         h.x += h.vx * effectiveDt;
         h.y += h.vy * effectiveDt;
         h.rot += h.spin * effectiveDt;
@@ -1677,15 +2021,15 @@
         const dy = h.y - state.player.y;
         const dist2 = dx * dx + dy * dy;
         const rad = (h.r + state.player.r) ** 2;
-          if (dist2 < rad && state.running && !state.paused) {
+        if (dist2 < rad && state.running && !state.paused) {
           const dist = Math.hypot(dx, dy) || 1;
-            if (state.effects.shield > 0 && state.shieldCharges > 0) {
-              state.shieldCharges -= 1;
-              if (state.shieldCharges <= 0) state.effects.shield = 0;
-              addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
-              triggerShake(0.24);
-              h.x += Math.sign(dx || 1) * (h.r + 8);
-              h.y += Math.sign(dy || 1) * (h.r + 8);
+          if (state.effects.shield > 0 && state.shieldCharges > 0) {
+            state.shieldCharges -= 1;
+            if (state.shieldCharges <= 0) state.effects.shield = 0;
+            addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
+            triggerShake(0.24);
+            h.x += Math.sign(dx || 1) * (h.r + 8);
+            h.y += Math.sign(dy || 1) * (h.r + 8);
             // renvoyer le bloc a l oppose
             const speed = Math.hypot(h.vx, h.vy) || (120 + Math.random() * 80);
             h.vx = (dx / dist) * speed;
@@ -1693,9 +2037,11 @@
             triggerPulse(true);
             continue;
           }
-          state.lives -= 1;
+          const damage = Math.max(14, Math.round(CONFIG.integrity.hit + (h.r - 14)));
+          state.integrity = Math.max(0, state.integrity - damage);
           state.stats.hits += 1;
-          addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 28, 260);
+          state.multiplier = Math.max(1, state.multiplier - 0.35);
+          addParticles(state.player.x, state.player.y, 'rgba(214, 69, 80, 0.9)', 28, 260);
           triggerShake(0.52);
           h.x += Math.sign(dx || 1) * (h.r + 8);
           h.y += Math.sign(dy || 1) * (h.r + 8);
@@ -1703,7 +2049,7 @@
           h.vx = (dx / dist) * speed;
           h.vy = (dy / dist) * speed;
           triggerPulse(true);
-          if (state.lives <= 0) {
+          if (state.integrity <= 0) {
             endGame();
           }
         }
@@ -1728,6 +2074,7 @@
       const magnet = state.effects.magnet > 0;
       state.orbs.forEach(o => {
         o.ttl -= dt;
+        o.rot = (o.rot || 0) + (o.spin || 0) * dt;
         if (magnet) {
           const dx = state.player.x - o.x;
           const dy = state.player.y - o.y;
@@ -1749,12 +2096,15 @@
         const dist = Math.hypot(dx, dy);
         if (dist < o.r + state.player.r + 2) {
           state.orbs.splice(i, 1);
-          state.score += 70 * state.multiplier;
-          state.multiplier = Math.min(state.multiplier + 0.15, 6);
-          state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
-          state.comboFlash = 0.35;
-          state.stats.collected += 1;
-          addParticles(o.x, o.y, 'rgba(122, 246, 255, 0.9)', 18, 200);
+          if (state.cargo < state.maxCargo) {
+            state.cargo += 1;
+            state.stats.cores += 1;
+            state.score += 20;
+            addParticles(o.x, o.y, 'rgba(43, 179, 166, 0.9)', 18, 200);
+          } else {
+            state.score += 35 * state.multiplier;
+            addParticles(o.x, o.y, 'rgba(255, 209, 102, 0.9)', 16, 180);
+          }
         }
       }
     }
@@ -1798,16 +2148,18 @@
               if (state.shieldCharges <= 0) state.effects.shield = 0;
               addParticles(state.player.x, state.player.y, 'rgba(134, 242, 110, 0.8)', 26, 240);
             } else {
-              state.lives -= 1;
+              const damage = Math.round(CONFIG.integrity.hit * 0.75);
+              state.integrity = Math.max(0, state.integrity - damage);
               state.stats.hits += 1;
-              addParticles(state.player.x, state.player.y, 'rgba(255, 94, 123, 0.9)', 24, 200);
-              if (state.lives <= 0) {
+              state.multiplier = Math.max(1, state.multiplier - 0.25);
+              addParticles(state.player.x, state.player.y, 'rgba(214, 69, 80, 0.9)', 24, 200);
+              if (state.integrity <= 0) {
                 endGame();
                 return;
               }
             }
           } else {
-            addParticles(state.player.x, state.player.y, 'rgba(122, 246, 255, 0.7)', 18, 160);
+            addParticles(state.player.x, state.player.y, 'rgba(43, 179, 166, 0.7)', 18, 160);
           }
 
           triggerPulse(true);
@@ -1831,21 +2183,21 @@
       if (type === 'magnet') state.effects.magnet = CONFIG.powerups.magnet;
       if (type === 'overdrive') {
         state.effects.overdrive = CONFIG.powerups.overdrive;
-        state.multiplier = Math.min(state.multiplier + 0.3, 7);
+        state.multiplier = Math.min(state.multiplier + 0.3, CONFIG.flow.max);
         state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
         state.pulseCooldown = Math.max(0, state.pulseCooldown - 0.8);
       }
-      if (type === 'life') {
-        state.lives = Math.min(state.lives + 1, 6);
+      if (type === 'repair') {
+        state.integrity = Math.min(state.integrity + 28, state.maxIntegrity);
       }
       const colors = {
-        slow: 'rgba(122, 246, 255, 0.7)',
+        slow: 'rgba(43, 179, 166, 0.7)',
         shield: 'rgba(134, 242, 110, 0.8)',
         magnet: 'rgba(255, 149, 90, 0.8)',
-        life: 'rgba(255, 94, 123, 0.8)',
+        repair: 'rgba(255, 209, 102, 0.9)',
         overdrive: 'rgba(255, 221, 115, 0.88)',
       };
-      addParticles(state.player.x, state.player.y, colors[type] || 'rgba(122, 246, 255, 0.8)', 24, 180);
+      addParticles(state.player.x, state.player.y, colors[type] || 'rgba(43, 179, 166, 0.8)', 24, 180);
       triggerShake(0.18);
     }
 
@@ -1881,9 +2233,16 @@
 
     function updateUI() {
       scoreEl.textContent = Math.floor(state.score);
-      livesEl.textContent = state.lives;
-      multEl.textContent = `x${state.multiplier.toFixed(1)}`;
+      flowEl.textContent = `x${state.multiplier.toFixed(1)}`;
       timeEl.textContent = formatTime(state.time);
+      if (integrityLabel && integrityFill) {
+        const pct = Math.round((state.integrity / state.maxIntegrity) * 100);
+        integrityLabel.textContent = `${pct}%`;
+        integrityFill.style.width = `${pct}%`;
+      }
+      if (cargoEl) {
+        cargoEl.textContent = `${state.cargo}/${state.maxCargo}`;
+      }
       bestEl.textContent = Math.floor(state.serverBest || 0);
       if (bestPlayerEl) {
         const who = state.serverBestName || '';
@@ -1896,11 +2255,11 @@
         const selfName = getSelfLeaderboardName();
         const candidates = [
           { name: selfName, score: state.sessionBest || 0, time: state.sessionBestTime || 0 },
-          ...Array.from(network.peers.values()).map(p => ({ name: p.name || 'Pilote', score: p.score || 0, time: p.time || 0 })),
+          ...Array.from(network.peers.values()).map(p => ({ name: p.name || 'Operateur', score: p.score || 0, time: p.time || 0 })),
         ];
         const top = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.time || 0) - (a.time || 0))[0];
         if (top && network.peers.size) {
-          peerTopEl.textContent = top.name || 'Pilote';
+          peerTopEl.textContent = top.name || 'Operateur';
           peerTopScoreEl.textContent = top.score ? `${Math.floor(top.score)} pts` : '';
         } else {
           peerTopEl.textContent = 'Solo';
@@ -1916,20 +2275,33 @@
         const danger = state.danger || computeDanger();
         let label = 'Calme';
         let cls = 'danger-low';
-        if (danger.level === 'med') { label = 'Alerte'; cls = 'danger-med'; }
-        if (danger.level === 'high') { label = 'Crise'; cls = 'danger-high'; }
+        if (danger.level === 'med') { label = 'Pression'; cls = 'danger-med'; }
+        if (danger.level === 'high') { label = 'Tempete'; cls = 'danger-high'; }
         dangerEl.textContent = label;
         dangerBadge.classList.remove('danger-low', 'danger-med', 'danger-high');
         dangerBadge.classList.add(cls);
       }
 
+      if (relayFocusEl) {
+        const closest = getClosestRelay();
+        if (closest) {
+          relayFocusEl.textContent = closest.name;
+          if (relayHintEl) {
+            relayHintEl.textContent = `${Math.round(closest.charge)}% charge`;
+          }
+        } else {
+          relayFocusEl.textContent = 'Aucun';
+          if (relayHintEl) relayHintEl.textContent = '';
+        }
+      }
+
       if (waveLabelEl) {
         if (state.wave.active && state.wave.profile) {
           const timeLeft = Math.max(0, Math.ceil(state.wave.timeLeft || 0));
-          const name = state.wave.profile.name || 'Vague';
+          const name = state.wave.profile.name || 'Front';
           waveLabelEl.textContent = `${name} ${timeLeft}s`;
         } else {
-          waveLabelEl.textContent = 'Repos';
+          waveLabelEl.textContent = 'Accalmie';
         }
       }
       if (waveBadge) {
@@ -1939,29 +2311,30 @@
         const show = state.wave.show > 0 && state.wave.profile;
         if (show) {
           const reward = state.wave.profile.reward ? POWERUP_LABELS[state.wave.profile.reward] : '';
-          waveBanner.textContent = reward ? `Vague: ${state.wave.profile.name} - Bonus: ${reward}` : `Vague: ${state.wave.profile.name}`;
+          waveBanner.textContent = reward ? `Front: ${state.wave.profile.name} - Module: ${reward}` : `Front: ${state.wave.profile.name}`;
         }
         waveBanner.classList.toggle('hidden', !show);
       }
 
       const effects = [];
-      if (state.effects.slow > 0) effects.push('Ralenti');
+      if (state.effects.slow > 0) effects.push('Stase');
       if (state.effects.shield > 0 && state.shieldCharges > 0) {
-        const shieldLabel = state.shieldCharges > 1 ? `Bouclier x${state.shieldCharges}` : 'Bouclier';
+        const shieldLabel = state.shieldCharges > 1 ? `Phase x${state.shieldCharges}` : 'Phase';
         effects.push(shieldLabel);
       }
       if (state.effects.magnet > 0) effects.push('Aimant');
-      if (state.effects.overdrive > 0) effects.push('Overdrive');
-      effectsEl.textContent = effects.length ? `Bonus: ${effects.join(' | ')}` : 'Bonus: aucun';
+      if (state.effects.overdrive > 0) effects.push('Turbo');
+      effectsEl.textContent = effects.length ? `Modules: ${effects.join(' | ')}` : 'Modules: aucun';
 
       if (state.comboFlash > 0) {
-        multBadge.style.transform = 'scale(1.08)';
-        multBadge.style.boxShadow = '0 0 16px rgba(122, 246, 255, 0.6)';
+        flowBadge.style.transform = 'scale(1.06)';
+        flowBadge.style.boxShadow = '0 0 16px rgba(43, 179, 166, 0.6)';
       } else {
-        multBadge.style.transform = 'scale(1)';
-        multBadge.style.boxShadow = 'none';
+        flowBadge.style.transform = 'scale(1)';
+        flowBadge.style.boxShadow = 'none';
       }
 
+      renderRelayList();
       maybeUpdateBoards();
     }
 
@@ -2024,7 +2397,7 @@
       ctx.moveTo(-p.r * 0.4, p.r * 0.9);
       ctx.lineTo(0, p.r * 1.7 + Math.random() * 4);
       ctx.lineTo(p.r * 0.4, p.r * 0.9);
-      ctx.fillStyle = 'rgba(255, 149, 90, 0.8)';
+      ctx.fillStyle = 'rgba(242, 143, 59, 0.85)';
       ctx.fill();
 
       if (hasShield) {
@@ -2053,7 +2426,7 @@
         const radius = (1 - t) * 150 + 40;
         ctx.beginPath();
         ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(122, 246, 255, ${t * 0.6})`;
+        ctx.strokeStyle = `rgba(43, 179, 166, ${t * 0.6})`;
         ctx.lineWidth = 4;
         ctx.stroke();
       }
@@ -2114,7 +2487,7 @@
         const alpha = (1 - t) * 0.35;
         ctx.beginPath();
         ctx.arc(peer.x, peer.y, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(122, 246, 255, ${alpha})`;
+        ctx.strokeStyle = `rgba(43, 179, 166, ${alpha})`;
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -2137,10 +2510,12 @@
         }
         ctx.closePath();
         const g = ctx.createRadialGradient(0, 0, h.r * 0.15, 0, 0, h.r);
-        g.addColorStop(0, 'rgba(240, 176, 120, 0.9)');
-        g.addColorStop(1, 'rgba(93, 60, 35, 0.9)');
+        const core = h.kind === 'seeker' ? 'rgba(72, 200, 190, 0.92)' : 'rgba(255, 186, 120, 0.92)';
+        const shell = h.kind === 'seeker' ? 'rgba(18, 54, 58, 0.95)' : 'rgba(93, 60, 35, 0.92)';
+        g.addColorStop(0, core);
+        g.addColorStop(1, shell);
         ctx.fillStyle = g;
-        ctx.strokeStyle = 'rgba(255, 160, 110, 0.45)';
+        ctx.strokeStyle = h.kind === 'seeker' ? 'rgba(43, 179, 166, 0.5)' : 'rgba(242, 143, 59, 0.45)';
         ctx.lineWidth = 1.4;
         ctx.fill();
         ctx.stroke();
@@ -2152,9 +2527,9 @@
             const cy = Math.sin(c.a) * h.r * c.dist;
             ctx.beginPath();
             ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(38, 22, 12, 0.65)';
+            ctx.fillStyle = h.kind === 'seeker' ? 'rgba(8, 28, 30, 0.7)' : 'rgba(38, 22, 12, 0.65)';
             ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 210, 160, 0.25)';
+            ctx.strokeStyle = h.kind === 'seeker' ? 'rgba(157, 255, 234, 0.25)' : 'rgba(255, 210, 160, 0.25)';
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -2162,7 +2537,7 @@
 
         // reflet discret
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = 'rgba(255, 204, 128, 0.16)';
+        ctx.strokeStyle = h.kind === 'seeker' ? 'rgba(72, 200, 190, 0.2)' : 'rgba(255, 204, 128, 0.16)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
@@ -2172,20 +2547,35 @@
 
     function drawOrbs() {
       for (const o of state.orbs) {
-        const blink = 0.5 + Math.sin((10 - o.ttl) * 4) * 0.1;
-        const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * 1.6);
-        g.addColorStop(0, 'rgba(122, 246, 255, 0.9)');
-        g.addColorStop(1, 'rgba(122, 246, 255, 0.15)');
+        const blink = 0.5 + Math.sin((10 - o.ttl) * 4) * 0.12;
+        const r = o.r * (1 + blink * 0.08);
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.rotate(o.rot || 0);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.8);
+        g.addColorStop(0, 'rgba(43, 179, 166, 0.95)');
+        g.addColorStop(1, 'rgba(255, 209, 102, 0.12)');
         ctx.beginPath();
-        ctx.arc(o.x, o.y, o.r * (1 + blink * 0.05), 0, Math.PI * 2);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          const rx = Math.cos(a) * r;
+          const ry = Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
         ctx.fillStyle = g;
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
       }
     }
 
     function drawPowerups() {
       for (const p of state.powerups) {
-        const colors = { slow: '#7ad2ff', shield: '#86f26e', magnet: '#ff955a', life: '#ff6f9f', overdrive: '#ffd773' };
+        const colors = { slow: '#7ad2ff', shield: '#86f26e', magnet: '#ff955a', repair: '#ffd166', overdrive: '#ffd773' };
         const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 1.65);
         g.addColorStop(0, colors[p.type] || '#7af6ff');
         g.addColorStop(1, 'rgba(255,255,255,0.08)');
@@ -2233,7 +2623,7 @@
           ctx.moveTo(p.r * 0.2, p.r * 0.35);
           ctx.lineTo(p.r * 0.55, p.r * 0.35);
           ctx.stroke();
-        } else if (p.type === 'life') {
+        } else if (p.type === 'repair') {
           const r = p.r * 0.55;
           ctx.moveTo(0, r * 0.9);
           ctx.bezierCurveTo(r * 0.9, r * 0.4, r * 0.9, -r * 0.3, 0, -r * 0.1);
@@ -2275,7 +2665,7 @@
         const radius = (t.r || 12) * (1 + (1 - t.life) * 0.6);
         const g = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, radius * 1.6);
         g.addColorStop(0, state.color.replace('hsl', 'hsla').replace(')', `, ${alpha})`));
-        g.addColorStop(1, 'rgba(122, 246, 255, 0)');
+        g.addColorStop(1, 'rgba(43, 179, 166, 0)');
         ctx.beginPath();
         ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = g;
@@ -2314,6 +2704,7 @@
         ctx.save();
         ctx.translate(shake.x, shake.y);
         drawBackground();
+        drawRelays();
         drawHazards();
         drawPowerups();
         drawOrbs();
@@ -2330,7 +2721,13 @@
       const effectiveDt = dt * slowFactor;
 
       state.time += dt;
-      state.score += dt * 9 * state.multiplier;
+      state.score += dt * 6.5 * state.multiplier;
+      if (state.multiplier > 1) {
+        const idle = state.time - state.lastDelivery;
+        if (idle > CONFIG.flow.decayDelay) {
+          state.multiplier = Math.max(1, state.multiplier - dt * CONFIG.flow.decayRate);
+        }
+      }
       if (state.score > state.sessionBest || (state.score === state.sessionBest && state.time > state.sessionBestTime)) {
         state.sessionBest = state.score;
         state.sessionBestTime = state.time;
@@ -2378,6 +2775,7 @@
       updateStars(dt);
       updatePlayer(dt);
       applyPeerPulseEffects(dt);
+      updateRelays(dt);
       updateHazards(dt, difficulty);
       updatePowerups(dt);
       updateOrbs(dt);
@@ -2393,6 +2791,7 @@
       ctx.save();
       ctx.translate(shake.x, shake.y);
       drawBackground();
+      drawRelays();
       drawHazards();
       drawPowerups();
       drawOrbs();
@@ -2415,12 +2814,14 @@
       state.running = false;
       updateUI();
       message.classList.remove('hidden');
-      statusEl.textContent = 'Game over';
-      summaryEl.textContent = `Score ${Math.floor(state.score)} | Multiplicateur max x${state.maxMultiplier.toFixed(1)} | Temps ${formatTime(state.time)}`;
+      statusEl.textContent = 'Mission terminee';
+      summaryEl.textContent = `Score ${Math.floor(state.score)} | Flux max x${state.maxMultiplier.toFixed(1)} | Temps ${formatTime(state.time)}`;
       statsEl.innerHTML = `
-        <div class="stat-row"><span>Temps survie</span><br>${formatTime(state.time)}</div>
+        <div class="stat-row"><span>Temps mission</span><br>${formatTime(state.time)}</div>
         <div class="stat-row"><span>Meilleur temps</span><br>${formatTime(state.sessionBestTime)}</div>
-        <div class="stat-row"><span>Fragments collectes</span><br>${state.stats.collected}</div>
+        <div class="stat-row"><span>Noyaux collectes</span><br>${state.stats.cores}</div>
+        <div class="stat-row"><span>Livraisons</span><br>${state.stats.deliveries}</div>
+        <div class="stat-row"><span>Relais charges</span><br>${state.stats.relays}</div>
         <div class="stat-row"><span>Collisions subies</span><br>${state.stats.hits}</div>
       `;
       submitScore();
@@ -2435,7 +2836,7 @@
         summaryEl.textContent = 'Respire un coup. Appuie sur P ou Entrer pour reprendre.';
       } else {
         statusEl.textContent = '';
-        summaryEl.textContent = 'Esquive, collecte les fragments, surveille les bonus et declenche ton onde de choc pour respirer.';
+        summaryEl.textContent = 'Collecte les noyaux, charge les relais et declenche l onde de choc quand la tempete se resserre.';
       }
     }
 
@@ -2486,7 +2887,7 @@
 
     startBtn.addEventListener('click', () => {
       const proposed = (nameInput.value || '').trim();
-      network.name = proposed || `Pilote-${Math.random().toString(36).slice(2, 5)}`;
+      network.name = proposed || `Operateur-${Math.random().toString(36).slice(2, 5)}`;
       state.name = network.name;
       resetGame();
       nameInput.value = network.name;
@@ -2604,6 +3005,7 @@
     nameInput.value = network.name;
     resizeCanvas();
     initStars();
+    initRelays();
     setLiveOverlay(false);
     setTutorialOpen(false, false);
     state.last = performance.now();

@@ -1,12 +1,12 @@
-# Space Cleaner
+# Ether Relay
 
-Jeu d action spatial jouable dans le navigateur. Le front est un fichier statique et le backend Python (stdlib) expose une API JSON pour les sessions live et le leaderboard.
+Jeu d action spatial jouable dans le navigateur. Tu pilotes un drone pour recharger des relais en pleine tempete de debris. Le front est un fichier statique et le backend Python (stdlib) expose une API JSON pour les sessions live et le leaderboard.
 
 ## Points cles
-- Canvas HTML5, zero dependance front.
-- Backend Python stdlib, sert les fichiers et l API.
-- Leaderboard 100% serveur (pas de stockage local cote client).
-- Sessions live: presence des joueurs, nettoyage a l expiration.
+- Boucle de jeu: collecter des noyaux, livrer aux relais, declencher des surges.
+- Flux d energie (multiplicateur) qui monte avec les livraisons rapides et decroit en cas de choc.
+- Modules temporaires: stase, phase, aimant, turbo, reparation.
+- Leaderboard 100% serveur et presence live.
 
 ## Structure du depot
 - `index.html` : jeu + interface.
@@ -25,6 +25,12 @@ python3 server.py
 
 Si le front est ouvert en `file://`, il tentera `http://localhost:8000` par defaut.
 
+## Commandes
+- Deplacement: ZQSD ou fleches.
+- Onde de choc: Espace.
+- Pause: P ou Entrer.
+- Briefing: T.
+
 ### Configuration (variables d environnement)
 - `PORT` (defaut `8000`)
 - `IDLE_TIMEOUT` (defaut `15`)
@@ -38,7 +44,7 @@ Si le front est ouvert en `file://`, il tentera `http://localhost:8000` par defa
 
 ## API
 Base: `http://<host>:<port>/api`. Le client peut forcer l API avec `?api=https://...`.
-Si le front est heberge sous `/space-cleaner`, ce prefixe est ajoute automatiquement.
+Si le front est heberge sous `/ether-relay`, ce prefixe est ajoute automatiquement (compatibilite `/space-cleaner` conservee).
 
 - `POST /api/state`
   - body: `sessionId` (obligatoire), `clientId`, `instanceId`, `x`, `y`, `color`, `name`, `score`, `time`, `best`, `bestTime`, `since`
