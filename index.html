@@ -731,7 +731,7 @@
         <li><span class="kbd">T</span> Afficher le briefing</li>
       </ul>
       <div class="pill">
-        <strong>Objectif</strong> Livrer les noyaux, charger les relais a 100% et maintenir un flux eleve sans perdre l integrite.
+        <strong>Objectif</strong> Livrer les noyaux, charger les relais a 100% et maintenir un flux eleve. Chaque livraison recharge l onde, chaque relais sature restaure l integrite.
       </div>
       <div class="toggles">
         <label class="toggle"><input type="checkbox" id="contrastToggle"> Contraste fort</label>
@@ -778,6 +778,7 @@
           <li>Deplace-toi avec ZQSD, fleches ou les touches tactiles.</li>
           <li>Ramasse les noyaux pour remplir ton cargo.</li>
           <li>Livraison: approche un relais pour le charger.</li>
+          <li>Chaque livraison recharge l onde, et un relais sature restaure l integrite.</li>
           <li>Declenche l onde (Espace) pour repousser les debris.</li>
           <li>Les modules modifient la tempete: stase, phase, aimant, turbo.</li>
         </ul>
@@ -905,6 +906,7 @@
         powerupBase: 9,
         powerupJitter: 5.5,
       },
+      assist: { hitSlow: 1.4, relayRepair: 12 },
       waves: {
         active: 16,
         rest: 7,
@@ -1095,6 +1097,7 @@
       pulseCooldown: 0,
       pulseActive: 0,
       hitCooldown: 0,
+      assistSlow: 0,
       playerSpeedAvg: 0,
       lastUiUpdate: 0,
       lastSave: 0,
@@ -1294,6 +1297,7 @@
       state.pulseCooldown = 0;
       state.pulseActive = 0;
       state.hitCooldown = 0;
+      state.assistSlow = 0;
       state.playerSpeedAvg = 0;
       state.lastUiUpdate = 0;
       state.lastSave = 0;
@@ -1304,7 +1308,7 @@
       state.thrust = 0;
       state.trail = [];
       state.relays = [];
-      state.timers.hazard = 0;
+      state.timers.hazard = Math.max(1, CONFIG.spawn.hazardMin + 0.8);
       state.timers.orb = CONFIG.spawn.orbBase * 0.35;
       state.timers.powerup = CONFIG.spawn.powerupBase - 1;
       network.lastServerTime = 0;
@@ -1428,6 +1432,14 @@
       if (nearest < 140 || density > 0.75) level = 'high';
       else if (nearest < 240 || density > 0.5) level = 'med';
       return { level, nearest, density };
+    }
+
+    function getSpawnEase() {
+      const density = state.hazards.length / CONFIG.maxHazards;
+      const integrityRatio = state.maxIntegrity ? state.integrity / state.maxIntegrity : 1;
+      const densityEase = clamp((density - 0.35) / 0.55, 0, 1);
+      const integrityEase = clamp((0.7 - integrityRatio) / 0.7, 0, 1);
+      return 1 + densityEase * 0.9 + integrityEase * 0.7;
     }
 
     function updateWave(dt) {
@@ -1834,6 +1846,10 @@
       state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
       state.comboFlash = 0.5;
       addParticles(relay.x, relay.y, 'rgba(255, 209, 102, 0.9)', 32, 260);
+      if (state.integrity < state.maxIntegrity) {
+        state.integrity = Math.min(state.integrity + CONFIG.assist.relayRepair, state.maxIntegrity);
+        addParticles(relay.x, relay.y, 'rgba(134, 242, 110, 0.6)', 18, 180);
+      }
 
       const radius = CONFIG.relay.surgeRadius;
       for (const h of state.hazards) {
@@ -1857,6 +1873,7 @@
       state.multiplier = Math.min(CONFIG.flow.max, state.multiplier + units * CONFIG.flow.bump);
       state.maxMultiplier = Math.max(state.maxMultiplier, state.multiplier);
       state.comboFlash = 0.35;
+      state.pulseCooldown = Math.max(0, state.pulseCooldown - units * 0.4);
       addParticles(relay.x, relay.y, 'rgba(43, 179, 166, 0.85)', 24, 200);
       if (relay.charge >= relay.max) {
         surgeRelay(relay);
@@ -1931,6 +1948,37 @@
         ctx.fillText(relay.name, 0, 0);
         ctx.restore();
       }
+    }
+
+    function drawGuides() {
+      if (state.cargo <= 0) return;
+      const relay = getClosestRelay();
+      if (!relay) return;
+      const dx = relay.x - state.player.x;
+      const dy = relay.y - state.player.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 120) return;
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.setLineDash([10, 12]);
+      ctx.strokeStyle = 'rgba(255, 209, 102, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(state.player.x, state.player.y);
+      ctx.lineTo(relay.x, relay.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const angle = Math.atan2(dy, dx);
+      const tipX = relay.x - Math.cos(angle) * (relay.r + 18);
+      const tipY = relay.y - Math.sin(angle) * (relay.r + 18);
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX - Math.cos(angle - 0.5) * 10, tipY - Math.sin(angle - 0.5) * 10);
+      ctx.lineTo(tipX - Math.cos(angle + 0.5) * 10, tipY - Math.sin(angle + 0.5) * 10);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.5)';
+      ctx.fill();
+      ctx.restore();
     }
 
     function renderRelayList() {
@@ -2101,7 +2149,7 @@
     }
 
     function updateHazards(dt, difficulty) {
-      const slowFactor = state.effects.slow > 0 ? 0.6 : 1;
+      const slowFactor = state.effects.slow > 0 ? 0.6 : (state.assistSlow > 0 ? 0.82 : 1);
       const effectiveDt = dt * slowFactor;
 
       state.hazards.forEach(h => {
@@ -2177,6 +2225,7 @@
           state.integrity = Math.max(0, state.integrity - damage);
           state.stats.hits += 1;
           state.multiplier = Math.max(1, state.multiplier - 0.35);
+          state.assistSlow = Math.max(state.assistSlow, CONFIG.assist.hitSlow);
           addParticles(state.player.x, state.player.y, 'rgba(214, 69, 80, 0.9)', 28, 260);
           triggerShake(0.52);
           h.x += Math.sign(dx || 1) * (h.r + 8);
@@ -2288,6 +2337,7 @@
               state.integrity = Math.max(0, state.integrity - damage);
               state.stats.hits += 1;
               state.multiplier = Math.max(1, state.multiplier - 0.25);
+              state.assistSlow = Math.max(state.assistSlow, CONFIG.assist.hitSlow);
               addParticles(state.player.x, state.player.y, 'rgba(214, 69, 80, 0.9)', 24, 200);
               if (state.integrity <= 0) {
                 endGame();
@@ -2362,6 +2412,8 @@
       if (state.effects.overdrive > 0 && state.pulseCooldown > 0) {
         state.pulseCooldown = Math.max(0, state.pulseCooldown - dt * 0.9);
       }
+      if (state.assistSlow > 0) state.assistSlow -= dt;
+      if (state.assistSlow < 0) state.assistSlow = 0;
       if (state.hitCooldown > 0) state.hitCooldown -= dt;
       if (state.hitCooldown < 0) state.hitCooldown = 0;
       updateShake(dt);
@@ -2454,6 +2506,7 @@
 
       const effects = [];
       if (state.effects.slow > 0) effects.push('Stase');
+      if (state.assistSlow > 0) effects.push('Stabilisation');
       if (state.effects.shield > 0 && state.shieldCharges > 0) {
         const shieldLabel = state.shieldCharges > 1 ? `Phase x${state.shieldCharges}` : 'Phase';
         effects.push(shieldLabel);
@@ -2630,6 +2683,22 @@
         ctx.fill();
         ctx.restore();
       }
+
+      const pulseRatio = clamp(1 - (state.pulseCooldown / CONFIG.pulse.cooldown), 0, 1);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(state.player.x, state.player.y, state.player.r + 20, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      if (pulseRatio > 0) {
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, state.player.r + 20, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pulseRatio);
+        ctx.strokeStyle = `rgba(39, 194, 177, ${0.2 + pulseRatio * 0.45})`;
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+      }
+      ctx.restore();
 
       const hasShield = state.effects.shield > 0 && state.shieldCharges > 0;
       drawShip(state.player, state.color, hasShield, state.pulseActive, state.name, state.thrust);
@@ -2911,6 +2980,7 @@
         ctx.save();
         ctx.translate(shake.x, shake.y);
         drawBackground();
+        drawGuides();
         drawRelays();
         drawHazards();
         drawPowerups();
@@ -2924,7 +2994,7 @@
       }
 
       const difficulty = 1 + Math.min(state.time * 0.03, 2.0);
-      const slowFactor = state.effects.slow > 0 ? 0.6 : 1;
+      const slowFactor = state.effects.slow > 0 ? 0.6 : (state.assistSlow > 0 ? 0.82 : 1);
       const effectiveDt = dt * slowFactor;
 
       state.time += dt;
@@ -2944,7 +3014,10 @@
 
       state.timers.hazard -= effectiveDt;
       if (state.timers.hazard <= 0) {
+        const density = state.hazards.length / CONFIG.maxHazards;
+        const integrityRatio = state.maxIntegrity ? state.integrity / state.maxIntegrity : 1;
         const extra = (() => {
+          if (density > 0.65 || integrityRatio < 0.45) return 0;
           let bonus = 0;
           if (state.time > 35 && Math.random() < clamp((state.time - 35) / 70, 0, 0.45)) bonus += 1;
           if (state.time > 80 && Math.random() < 0.2) bonus += 1;
@@ -2960,7 +3033,8 @@
         const decay = Math.exp(-state.time * CONFIG.spawn.hazardDecay);
         const base = CONFIG.spawn.hazardBase * decay + CONFIG.spawn.hazardMin;
         const rate = waveMods.spawnRate || 1;
-        state.timers.hazard = (spawned ? base + Math.random() * CONFIG.spawn.hazardJitter : CONFIG.spawn.hazardFallback) * rate;
+        const ease = getSpawnEase();
+        state.timers.hazard = (spawned ? base + Math.random() * CONFIG.spawn.hazardJitter : CONFIG.spawn.hazardFallback) * rate * ease;
       }
 
       state.timers.orb -= effectiveDt;
@@ -2998,6 +3072,7 @@
       ctx.save();
       ctx.translate(shake.x, shake.y);
       drawBackground();
+      drawGuides();
       drawRelays();
       drawHazards();
       drawPowerups();
