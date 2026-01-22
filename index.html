@@ -8,16 +8,20 @@
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
     :root {
-      --bg: #f7efe4;
-      --panel: rgba(255, 252, 246, 0.94);
-      --panel-strong: rgba(12, 16, 24, 0.94);
-      --accent: #2bb3a6;
-      --accent-2: #f28f3b;
-      --accent-3: #ffd166;
-      --text: #2a1f14;
-      --muted: #6e5c49;
-      --danger: #d64550;
-      --shadow: 0 18px 45px rgba(20, 18, 10, 0.18);
+      --bg: #f6efe3;
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: #0a1322;
+      --accent: #27c2b1;
+      --accent-2: #f29b3c;
+      --accent-3: #ffd86f;
+      --text: #261d14;
+      --muted: #5d4f3f;
+      --danger: #d94b5a;
+      --shadow: 0 20px 50px rgba(7, 11, 21, 0.18);
+      --glow: rgba(39, 194, 177, 0.35);
+      --glow-warm: rgba(242, 155, 60, 0.35);
+      --panel-stroke: rgba(242, 155, 60, 0.22);
+      --glass: rgba(255, 255, 255, 0.7);
     }
 
     * { box-sizing: border-box; }
@@ -25,9 +29,11 @@
       margin: 0;
       font-family: "Space Grotesk", "Segoe UI", sans-serif;
       color: var(--text);
-      background: radial-gradient(circle at 18% 16%, rgba(255, 205, 140, 0.45), transparent 42%),
-                  radial-gradient(circle at 82% 8%, rgba(84, 210, 195, 0.3), transparent 36%),
-                  linear-gradient(145deg, #f9f1e4 0%, #f7e2bf 45%, #f4e0d0 100%);
+      background:
+        radial-gradient(900px 520px at 12% 10%, rgba(255, 214, 150, 0.62), transparent 60%),
+        radial-gradient(780px 520px at 85% 12%, rgba(39, 194, 177, 0.28), transparent 55%),
+        radial-gradient(720px 640px at 70% 85%, rgba(255, 187, 122, 0.24), transparent 60%),
+        linear-gradient(145deg, #f8f1e5 0%, #f3e2c9 45%, #f5e8d8 100%);
       min-height: 100vh;
       position: relative;
     }
@@ -36,10 +42,23 @@
       content: "";
       position: fixed;
       inset: 0;
-      background-image: radial-gradient(circle at 22% 24%, rgba(255, 255, 255, 0.6), transparent 55%),
-                        radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.55), transparent 52%),
-                        repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12) 2px, transparent 2px, transparent 38px);
-      opacity: 0.35;
+      background-image: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.62), transparent 55%),
+                        radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.5), transparent 58%),
+                        linear-gradient(120deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 65%),
+                        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1) 2px, transparent 2px, transparent 42px);
+      opacity: 0.38;
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: -12%;
+      background-image: radial-gradient(420px 380px at 12% 68%, rgba(39, 194, 177, 0.22), transparent 70%),
+                        radial-gradient(520px 420px at 88% 78%, rgba(242, 155, 60, 0.2), transparent 70%);
+      opacity: 0.65;
       pointer-events: none;
       z-index: 0;
     }
@@ -54,6 +73,10 @@
       --text: #1f1710;
       --muted: #4d3f32;
       --danger: #c1323f;
+      --glow: rgba(15, 148, 134, 0.35);
+      --glow-warm: rgba(224, 122, 35, 0.35);
+      --panel-stroke: rgba(224, 122, 35, 0.3);
+      --glass: rgba(255, 255, 255, 0.82);
     }
 
     body.high-contrast .panel { font-size: 16px; }
@@ -69,6 +92,28 @@
       transition: none;
     }
 
+    body.reduce-motion .panel,
+    body.reduce-motion .game-area,
+    body.reduce-motion .panel::before,
+    body.reduce-motion .controls li {
+      animation: none;
+    }
+
+    @keyframes panel-rise {
+      from { opacity: 0; transform: translateY(18px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes panel-sheen {
+      0%, 100% { transform: translateX(-35%) rotate(-8deg); opacity: 0.25; }
+      50% { transform: translateX(45%) rotate(-8deg); opacity: 0.45; }
+    }
+
+    @keyframes list-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .layout {
       display: grid;
       grid-template-columns: 340px 1fr;
@@ -81,23 +126,36 @@
     }
 
     .panel {
-      background: var(--panel);
-      border: 1px solid rgba(242, 143, 59, 0.2);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.86));
+      border: 1px solid var(--panel-stroke);
       border-radius: 18px;
       padding: 22px 22px 24px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+      backdrop-filter: blur(16px) saturate(1.05);
       position: relative;
       overflow: hidden;
       isolation: isolate;
+      animation: panel-rise 0.8s ease both;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: -40% -30% auto;
+      height: 70%;
+      background: linear-gradient(110deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0));
+      opacity: 0.35;
+      transform: translateX(-35%) rotate(-8deg);
+      animation: panel-sheen 9s ease-in-out infinite;
+      z-index: 0;
     }
 
     .panel::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at 8% 8%, rgba(242, 143, 59, 0.15), transparent 36%),
-                  radial-gradient(circle at 86% 20%, rgba(43, 179, 166, 0.18), transparent 42%);
+      background: radial-gradient(circle at 8% 8%, rgba(242, 155, 60, 0.16), transparent 36%),
+                  radial-gradient(circle at 86% 20%, rgba(39, 194, 177, 0.2), transparent 42%);
       z-index: 0;
     }
 
@@ -108,8 +166,13 @@
       letter-spacing: 0.12em;
       font-size: 12px;
       color: var(--accent);
-      margin: 0 0 8px;
+      margin: 0 0 10px;
       font-weight: 700;
+      display: inline-flex;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(39, 194, 177, 0.12);
+      border: 1px solid rgba(39, 194, 177, 0.2);
     }
 
     h1 {
@@ -117,6 +180,8 @@
       font-size: clamp(28px, 3vw, 36px);
       letter-spacing: -0.02em;
       font-family: "Chakra Petch", "Space Grotesk", sans-serif;
+      color: #201812;
+      text-shadow: 0 12px 26px rgba(24, 15, 8, 0.12);
     }
 
     p { color: var(--muted); line-height: 1.5; }
@@ -130,15 +195,23 @@
     }
 
     .controls li {
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.85);
       border: 1px solid rgba(0, 0, 0, 0.06);
+      border-left: 3px solid rgba(39, 194, 177, 0.35);
       border-radius: 12px;
       padding: 10px 12px;
       display: flex;
       align-items: center;
       gap: 10px;
       color: var(--text);
+      box-shadow: 0 10px 18px rgba(12, 16, 24, 0.08);
+      animation: list-in 0.6s ease both;
     }
+
+    .controls li:nth-child(1) { animation-delay: 0.08s; }
+    .controls li:nth-child(2) { animation-delay: 0.16s; }
+    .controls li:nth-child(3) { animation-delay: 0.24s; }
+    .controls li:nth-child(4) { animation-delay: 0.32s; }
 
     .kbd {
       display: inline-flex;
@@ -149,11 +222,12 @@
       padding: 0 10px;
       border-radius: 10px;
       border: 1px solid rgba(43, 179, 166, 0.25);
-      background: rgba(43, 179, 166, 0.12);
+      background: linear-gradient(135deg, rgba(39, 194, 177, 0.2), rgba(39, 194, 177, 0.08));
       color: var(--accent);
       font-weight: 700;
       letter-spacing: 0.04em;
       font-size: 13px;
+      box-shadow: inset 0 0 0 1px rgba(39, 194, 177, 0.25), 0 6px 14px rgba(39, 194, 177, 0.2);
     }
 
     .pill {
@@ -162,11 +236,12 @@
       gap: 6px;
       padding: 7px 12px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.7);
-      border: 1px solid rgba(242, 143, 59, 0.2);
+      background: linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+      border: 1px solid rgba(242, 155, 60, 0.22);
       color: var(--text);
       font-size: 13px;
       margin-top: 12px;
+      box-shadow: 0 8px 20px rgba(242, 155, 60, 0.12);
     }
 
     .pill strong { color: var(--accent); }
@@ -185,11 +260,18 @@
       padding: 9px 12px;
       border-radius: 12px;
       border: 1px solid rgba(0, 0, 0, 0.08);
-      background: rgba(255, 255, 255, 0.65);
+      background: rgba(255, 255, 255, 0.75);
       color: var(--text);
       font-size: 14px;
       cursor: pointer;
       user-select: none;
+      box-shadow: 0 10px 20px rgba(12, 16, 24, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .toggle:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(12, 16, 24, 0.12);
     }
 
     .toggle input { accent-color: var(--accent); cursor: pointer; }
@@ -223,7 +305,7 @@
     .ghost-btn {
       margin-top: 12px;
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(39, 194, 177, 0.3);
       color: var(--text);
       box-shadow: none;
     }
@@ -232,16 +314,18 @@
 
     .game-area {
       position: relative;
-      background: var(--panel-strong);
+      background: linear-gradient(160deg, rgba(11, 18, 32, 0.98), rgba(8, 12, 22, 0.98));
       border-radius: 20px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.18);
-      box-shadow: var(--shadow);
+      box-shadow: 0 26px 60px rgba(7, 9, 16, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 40px rgba(39, 194, 177, 0.15);
       min-height: 480px;
       display: grid;
       place-items: center;
       isolation: isolate;
       color: #f7f1e8;
+      animation: panel-rise 0.8s ease both;
+      animation-delay: 0.12s;
     }
 
     .game-area .badge,
@@ -265,10 +349,11 @@
       max-height: 760px;
       display: block;
       touch-action: none;
-      background: radial-gradient(circle at 45% 28%, rgba(43, 179, 166, 0.14), transparent 40%),
-                  radial-gradient(circle at 18% 78%, rgba(242, 143, 59, 0.14), transparent 35%),
+      background: radial-gradient(circle at 45% 28%, rgba(39, 194, 177, 0.16), transparent 40%),
+                  radial-gradient(circle at 18% 78%, rgba(242, 155, 60, 0.14), transparent 35%),
                   #0a111f;
       border-radius: 14px;
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.35);
     }
 
     .hud {
@@ -284,13 +369,14 @@
     .badge {
       padding: 9px 14px;
       border-radius: 12px;
-      background: rgba(10, 14, 22, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(8, 12, 20, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       backdrop-filter: blur(6px);
       color: var(--text);
       font-weight: 600;
       letter-spacing: 0.01em;
       font-family: "Chakra Petch", "Space Grotesk", sans-serif;
+      box-shadow: inset 0 0 14px rgba(255, 255, 255, 0.04);
     }
 
     .badge span { color: var(--muted); font-weight: 500; margin-right: 8px; }
@@ -498,14 +584,14 @@
 
     button {
       border: none;
-      background: linear-gradient(120deg, var(--accent), #71d7cd);
+      background: linear-gradient(120deg, var(--accent), #6fe3d6);
       color: #0b1513;
       font-weight: 800;
       letter-spacing: 0.04em;
       padding: 12px 18px;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 12px 30px rgba(43, 179, 166, 0.25);
+      box-shadow: 0 14px 34px rgba(39, 194, 177, 0.3);
       transition: transform 0.15s ease, box-shadow 0.2s ease;
     }
 
@@ -554,9 +640,10 @@
       border-radius: 14px;
       padding: 12px 12px 10px;
       border: 1px solid rgba(0, 0, 0, 0.08);
-      background: rgba(255, 255, 255, 0.7);
+      background: linear-gradient(130deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72));
       display: grid;
       gap: 6px;
+      box-shadow: 0 12px 22px rgba(12, 16, 24, 0.08);
     }
 
     .relay-card.offline { opacity: 0.6; }
@@ -797,22 +884,22 @@
       boardIntervalMs: 2000,
       uiIntervalMs: 260,
       maxPeers: 5,
-      maxHazards: 24,
+      maxHazards: 18,
       pulse: { duration: 0.3, cooldown: 2.6, reach: 240, force: 640, destroyRatio: 0.45 },
       powerups: { slow: 4, shield: 8, magnet: 6, overdrive: 6, repair: 0 },
       magnetReach: 240,
-      hazardTTL: { min: 16, jitter: 10 },
+      hazardTTL: { min: 13, jitter: 8 },
       trail: { max: 22, baseLife: 0.2, speedLife: 0.2 },
       shake: { max: 15, decay: 3.1 },
       net: { pos: 6, score: 25, time: 1, heartbeat: 1500 },
       speedSmooth: 0.2,
       speedMargin: 10,
       spawn: {
-        hazardDecay: 0.05,
-        hazardBase: 1.2,
-        hazardMin: 0.38,
-        hazardJitter: 0.35,
-        hazardFallback: 0.45,
+        hazardDecay: 0.03,
+        hazardBase: 1.6,
+        hazardMin: 0.65,
+        hazardJitter: 0.45,
+        hazardFallback: 0.7,
         orbBase: 2.1,
         orbJitter: 0.9,
         powerupBase: 9,
@@ -1093,6 +1180,7 @@
       canvas.width = Math.max(640, w);
       canvas.height = Math.max(420, h);
       renderBackgroundBase();
+      initStars();
       clampRelaysToCanvas();
     }
 
@@ -1109,29 +1197,66 @@
       bgCanvas.width = canvas.width;
       bgCanvas.height = canvas.height;
       bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-      bgCtx.fillStyle = '#090f1a';
+      const base = bgCtx.createLinearGradient(0, 0, bgCanvas.width, bgCanvas.height);
+      base.addColorStop(0, '#0a111f');
+      base.addColorStop(0.5, '#0c1a2b');
+      base.addColorStop(1, '#0a0f1b');
+      bgCtx.fillStyle = base;
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
-      const grad = bgCtx.createLinearGradient(0, 0, bgCanvas.width, bgCanvas.height);
-      grad.addColorStop(0, 'rgba(43, 179, 166, 0.08)');
-      grad.addColorStop(1, 'rgba(242, 143, 59, 0.08)');
-      bgCtx.fillStyle = grad;
-      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-
-      const glow = bgCtx.createRadialGradient(bgCanvas.width / 2, bgCanvas.height * 0.35, 80, bgCanvas.width / 2, bgCanvas.height * 0.35, Math.max(bgCanvas.width, bgCanvas.height));
-      glow.addColorStop(0, 'rgba(43, 179, 166, 0.1)');
+      const glow = bgCtx.createRadialGradient(bgCanvas.width * 0.55, bgCanvas.height * 0.3, 80, bgCanvas.width * 0.55, bgCanvas.height * 0.3, Math.max(bgCanvas.width, bgCanvas.height));
+      glow.addColorStop(0, 'rgba(39, 194, 177, 0.12)');
       glow.addColorStop(1, 'rgba(5, 9, 20, 0)');
       bgCtx.fillStyle = glow;
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+      bgCtx.save();
+      bgCtx.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 6; i++) {
+        const x = Math.random() * bgCanvas.width;
+        const y = Math.random() * bgCanvas.height;
+        const r = (Math.random() * 0.35 + 0.25) * Math.max(bgCanvas.width, bgCanvas.height);
+        const tint = Math.random() < 0.6 ? 'rgba(39, 194, 177, 0.12)' : 'rgba(242, 155, 60, 0.12)';
+        const nebula = bgCtx.createRadialGradient(x, y, 0, x, y, r);
+        nebula.addColorStop(0, tint);
+        nebula.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        bgCtx.fillStyle = nebula;
+        bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      }
+      bgCtx.restore();
+
+      bgCtx.save();
+      bgCtx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 240; i++) {
+        const x = Math.random() * bgCanvas.width;
+        const y = Math.random() * bgCanvas.height;
+        const r = Math.random() * 1.2 + 0.2;
+        const hue = Math.random() < 0.7 ? 190 + Math.random() * 30 : 30 + Math.random() * 20;
+        const alpha = Math.random() * 0.5 + 0.2;
+        bgCtx.fillStyle = `hsla(${hue}, 80%, 85%, ${alpha})`;
+        bgCtx.beginPath();
+        bgCtx.arc(x, y, r, 0, Math.PI * 2);
+        bgCtx.fill();
+      }
+      bgCtx.restore();
     }
 
     function initStars() {
-      state.stars = Array.from({ length: 60 }, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        s: Math.random() * 2 + 0.5,
-        speed: Math.random() * 18 + 8,
-      }));
+      const total = Math.min(110, Math.round(60 + (canvas.width * canvas.height) / 22000));
+      state.stars = Array.from({ length: total }, () => {
+        const depth = Math.random();
+        const hue = Math.random() < 0.7 ? 190 + Math.random() * 30 : 30 + Math.random() * 25;
+        return {
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          s: lerp(0.4, 2.6, depth),
+          speed: lerp(8, 42, depth),
+          depth,
+          hue,
+          tw: Math.random() * Math.PI * 2,
+          drift: (Math.random() - 0.5) * 12,
+        };
+      });
     }
 
     function resetGame() {
@@ -1199,7 +1324,6 @@
       statsEl.innerHTML = '';
       renderHighscores();
       startBtn.textContent = 'Relancer la mission';
-      initStars();
       initRelays();
       try {
         localStorage.setItem('ether-relay-client-id', network.clientId);
@@ -1779,7 +1903,10 @@
 
         ctx.beginPath();
         ctx.arc(0, 0, relay.r, 0, Math.PI * 2);
-        ctx.fillStyle = relay.cooldown > 0 ? 'rgba(255,255,255,0.08)' : 'rgba(43, 179, 166, 0.2)';
+        const core = ctx.createRadialGradient(0, 0, relay.r * 0.2, 0, 0, relay.r);
+        core.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+        core.addColorStop(1, relay.cooldown > 0 ? 'rgba(255,255,255,0.06)' : 'rgba(39, 194, 177, 0.22)');
+        ctx.fillStyle = core;
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.15)';
         ctx.lineWidth = 1.5;
@@ -1787,11 +1914,14 @@
 
         if (relay.pulse > 0) {
           const t = relay.pulse;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
           ctx.beginPath();
           ctx.arc(0, 0, relay.r + 20 + (1 - t) * 40, 0, Math.PI * 2);
           ctx.strokeStyle = `rgba(255, 209, 102, ${t * 0.5})`;
           ctx.lineWidth = 2;
           ctx.stroke();
+          ctx.restore();
         }
 
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
@@ -1847,6 +1977,7 @@
         p.vy = Math.sin(a) * s;
         p.life = 0.5 + Math.random() * 0.4;
         p.color = color;
+        p.r = 1.4 + Math.random() * 2.6;
         state.particles.push(p);
       }
     }
@@ -1915,12 +2046,17 @@
     }
 
     function updateStars(dt) {
+      const drift = clamp(state.playerSpeedAvg / 420, 0, 1);
       for (const star of state.stars) {
-        star.y += star.speed * dt;
-        if (star.y > canvas.height) {
-          star.y = -2;
+        const flow = star.speed + drift * 140 * star.depth;
+        star.y += flow * dt;
+        star.x += Math.sin(state.time * 0.2 + star.tw) * star.depth * 6 * dt + star.drift * dt * 0.2;
+        if (star.y > canvas.height + 24) {
+          star.y = -24;
           star.x = Math.random() * canvas.width;
         }
+        if (star.x < -40) star.x = canvas.width + 40;
+        if (star.x > canvas.width + 40) star.x = -40;
       }
     }
 
@@ -2341,34 +2477,43 @@
     function drawBackground() {
       ctx.drawImage(bgCanvas, 0, 0);
 
+      const drift = clamp(state.playerSpeedAvg / 420, 0, 1);
+
       // grille douce pour donner du relief
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.save();
+      ctx.globalAlpha = 0.05 + drift * 0.06;
+      ctx.strokeStyle = 'rgba(120, 210, 220, 0.35)';
       ctx.lineWidth = 1;
-      const step = 80;
-      for (let x = (state.time * 18) % step; x < canvas.width; x += step) {
+      const step = 120;
+      for (let x = (state.time * 18) % step; x < canvas.width + step; x += step) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x - 30, canvas.height);
+        ctx.lineTo(x - 36, canvas.height);
         ctx.stroke();
       }
-      for (let y = (state.time * 12) % step; y < canvas.height; y += step) {
+      ctx.strokeStyle = 'rgba(255, 187, 122, 0.28)';
+      for (let y = (state.time * 12) % step; y < canvas.height + step; y += step) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y - 30);
         ctx.stroke();
       }
+      ctx.restore();
 
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
       for (const s of state.stars) {
-        ctx.globalAlpha = 0.4 + s.s * 0.12;
+        const twinkle = 0.65 + Math.sin(state.time * 1.2 + s.tw) * 0.25;
+        const alpha = (0.18 + s.depth * 0.5) * twinkle;
+        ctx.fillStyle = `hsla(${s.hue}, 80%, 88%, ${alpha})`;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
     }
 
-    function drawShip(entity, color, hasShield = false, pulseActive = 0, name = '') {
+    function drawShip(entity, color, hasShield = false, pulseActive = 0, name = '', thrust = 0) {
       const p = entity;
       const angle = Math.atan2(p.vy, p.vx) || -Math.PI / 2;
       ctx.save();
@@ -2376,36 +2521,64 @@
       ctx.rotate(angle + Math.PI / 2);
 
       ctx.beginPath();
-      ctx.arc(0, 0, p.r + 6, 0, Math.PI * 2);
-      ctx.strokeStyle = color.replace('hsl', 'hsla').replace(')', ', 0.4)');
-      ctx.lineWidth = 3;
+      ctx.arc(0, 0, p.r + 7, 0, Math.PI * 2);
+      const glow = color.replace('hsl', 'hsla').replace(')', ', 0.55)');
+      ctx.strokeStyle = glow;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(0, -p.r - 2);
-      ctx.lineTo(p.r, p.r);
+      ctx.moveTo(0, -p.r - 3);
+      ctx.lineTo(p.r * 1.02, p.r * 0.9);
       ctx.lineTo(0, p.r * 0.4);
-      ctx.lineTo(-p.r, p.r);
+      ctx.lineTo(-p.r * 1.02, p.r * 0.9);
       ctx.closePath();
-      const body = ctx.createLinearGradient(-p.r, -p.r, p.r, p.r);
-      body.addColorStop(0, color);
-      body.addColorStop(1, color);
+      const body = ctx.createLinearGradient(-p.r, -p.r, p.r, p.r * 1.2);
+      body.addColorStop(0, color.replace('hsl', 'hsla').replace(')', ', 0.95)'));
+      body.addColorStop(1, 'rgba(8, 12, 20, 0.9)');
       ctx.fillStyle = body;
       ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(-p.r * 0.4, p.r * 0.9);
-      ctx.lineTo(0, p.r * 1.7 + Math.random() * 4);
-      ctx.lineTo(p.r * 0.4, p.r * 0.9);
-      ctx.fillStyle = 'rgba(242, 143, 59, 0.85)';
+      ctx.ellipse(0, -p.r * 0.2, p.r * 0.32, p.r * 0.55, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.strokeStyle = 'rgba(8, 12, 20, 0.55)';
+      ctx.lineWidth = 1;
       ctx.fill();
+      ctx.stroke();
+
+      const thrustPower = clamp(thrust, 0, 1);
+      if (thrustPower > 0.05) {
+        const flicker = 0.6 + Math.random() * 0.4;
+        const flameLen = p.r * (1.1 + thrustPower * 1.6) * flicker;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const flame = ctx.createRadialGradient(0, p.r * 0.9, 2, 0, p.r * 1.1 + flameLen, p.r * 2.2 + flameLen);
+        flame.addColorStop(0, 'rgba(255, 238, 180, 0.95)');
+        flame.addColorStop(0.35, 'rgba(255, 174, 96, 0.75)');
+        flame.addColorStop(1, 'rgba(255, 116, 90, 0)');
+        ctx.fillStyle = flame;
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 0.45, p.r * 0.9);
+        ctx.lineTo(0, p.r * 1.3 + flameLen);
+        ctx.lineTo(p.r * 0.45, p.r * 0.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (hasShield) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
         ctx.beginPath();
-        ctx.arc(0, 0, p.r + 12, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(134, 242, 110, 0.8)';
-        ctx.lineWidth = 3;
+        ctx.arc(0, 0, p.r + 14, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(134, 242, 110, 0.75)';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
+        ctx.restore();
       }
 
       ctx.restore();
@@ -2424,11 +2597,14 @@
       if (pulseActive > 0) {
         const t = pulseActive / CONFIG.pulse.duration;
         const radius = (1 - t) * 150 + 40;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
         ctx.beginPath();
         ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(43, 179, 166, ${t * 0.6})`;
         ctx.lineWidth = 4;
         ctx.stroke();
+        ctx.restore();
       }
     }
 
@@ -2439,6 +2615,8 @@
         const dangerFactor = clamp((260 - (danger.nearest || 999)) / 260 + (danger.density || 0), 0, 1);
         const radius = state.player.r + 22 + dangerFactor * 16;
         const alpha = 0.14 + dangerFactor * 0.32;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
         ctx.beginPath();
         ctx.arc(state.player.x, state.player.y, radius, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(${color}, ${alpha})`;
@@ -2450,12 +2628,15 @@
         ctx.arc(state.player.x, state.player.y, radius * 0.72, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${color}, ${alpha * 0.4})`;
         ctx.fill();
+        ctx.restore();
       }
 
       const hasShield = state.effects.shield > 0 && state.shieldCharges > 0;
-      drawShip(state.player, state.color, hasShield, state.pulseActive, state.name);
+      drawShip(state.player, state.color, hasShield, state.pulseActive, state.name, state.thrust);
       if (state.effects.overdrive > 0) {
         const t = clamp(state.effects.overdrive / CONFIG.powerups.overdrive, 0, 1);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
         ctx.beginPath();
         ctx.arc(state.player.x, state.player.y, state.player.r + 18, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(255, 221, 115, ${0.35 + 0.25 * t})`;
@@ -2463,6 +2644,7 @@
         ctx.setLineDash([6, 8]);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.restore();
       }
     }
 
@@ -2470,7 +2652,8 @@
       for (const peer of network.peers.values()) {
         const ghost = { x: peer.x, y: peer.y, vx: 0, vy: 0, r: 12 };
         const labelScore = peer.score ? ` • ${Math.floor(peer.score)}` : '';
-        drawShip(ghost, peer.color, false, 0, `${peer.name}${labelScore}`);
+        const thrust = clamp((peer.speedAvg || 0) / 260, 0.15, 0.85);
+        drawShip(ghost, peer.color, false, 0, `${peer.name}${labelScore}`, thrust);
       }
     }
 
@@ -2485,11 +2668,14 @@
         const t = clamp(age / CONFIG.pulse.duration, 0, 1);
         const radius = CONFIG.pulse.reach * t;
         const alpha = (1 - t) * 0.35;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
         ctx.beginPath();
         ctx.arc(peer.x, peer.y, radius, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(43, 179, 166, ${alpha})`;
         ctx.lineWidth = 2;
         ctx.stroke();
+        ctx.restore();
       }
     }
 
@@ -2569,6 +2755,14 @@
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 1;
         ctx.stroke();
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(39, 194, 177, 0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
         ctx.restore();
       }
     }
@@ -2586,6 +2780,15 @@
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
+        const pulse = 0.6 + Math.sin(state.time * 2.6 + p.x * 0.01 + p.y * 0.01) * 0.4;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (1.5 + pulse * 0.4), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 + pulse * 0.18})`;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.restore();
 
         // pictogramme net selon le type
         ctx.save();
@@ -2647,14 +2850,18 @@
     }
 
     function drawParticles() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
       for (const p of state.particles) {
-        ctx.globalAlpha = Math.max(p.life * 1.8, 0);
+        const alpha = Math.max(p.life * 1.8, 0);
+        const r = (p.r || 2) * (1 + (1 - p.life) * 0.6);
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 2 + p.life * 3, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
     }
 
     function drawTrail() {
@@ -2716,7 +2923,7 @@
         return;
       }
 
-      const difficulty = 1 + Math.min(state.time * 0.04, 2.4);
+      const difficulty = 1 + Math.min(state.time * 0.03, 2.0);
       const slowFactor = state.effects.slow > 0 ? 0.6 : 1;
       const effectiveDt = dt * slowFactor;
 
@@ -2739,8 +2946,8 @@
       if (state.timers.hazard <= 0) {
         const extra = (() => {
           let bonus = 0;
-          if (state.time > 25 && Math.random() < clamp((state.time - 25) / 50, 0, 0.75)) bonus += 1;
-          if (state.time > 55 && Math.random() < 0.35) bonus += 1;
+          if (state.time > 35 && Math.random() < clamp((state.time - 35) / 70, 0, 0.45)) bonus += 1;
+          if (state.time > 80 && Math.random() < 0.2) bonus += 1;
           return bonus;
         })();
         const waves = 1 + extra;
@@ -3004,7 +3211,6 @@
     renderLiveboard();
     nameInput.value = network.name;
     resizeCanvas();
-    initStars();
     initRelays();
     setLiveOverlay(false);
     setTutorialOpen(false, false);
