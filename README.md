@@ -24,10 +24,8 @@ Jeu d action spatial jouable dans le navigateur. Tu pilotes un drone chargeur qu
 ## Structure du depot
 - `index.html` : jeu + interface + logique front.
 - `server.py` : serveur HTTP + API JSON.
-- `Dockerfile` / `docker-compose.yml` : containerisation simple.
 - `scripts/` : utilitaires (lint scores).
 - `tests/` : tests unitaires backend.
-- `scores.json` : genere au runtime, ignore par git.
 
 ## Demarrage rapide
 ```bash
@@ -73,12 +71,6 @@ Si le front est heberge sous `/ether-relay`, ce prefixe est ajoute automatiqueme
 - Le leaderboard expose le top 10 (`MAX_BOARD`) et conserve jusqu a 100 scores (`MAX_STORE`).
 - Tri: `score` desc, puis `time` desc, puis `created`.
 - Purge automatique des scores vieux de 30 jours (`BOARD_TTL`).
-
-## Docker
-```bash
-docker compose up --build
-```
-Le volume `./scores.json` est monte dans le conteneur pour persister les scores.
 
 ## Tests
 ```bash
