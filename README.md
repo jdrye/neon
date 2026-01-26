@@ -1,40 +1,43 @@
 # Ether Relay
 
-Jeu d action spatial jouable dans le navigateur. Tu pilotes un drone chargeur qui traverse une tempete de debris pour realimenter des relais. Le front est un fichier statique unique, le backend Python (stdlib) expose une API JSON pour la presence live et le leaderboard.
+Ether Relay est un jeu d action spatial one‑page jouable dans le navigateur. Tu pilotes un drone de ravitaillement dans une tempete de debris pour recharger des relais, maintenir un flux d energie eleve et survivre aux fronts successifs. Le front est un unique `index.html` (HTML/CSS/JS), tandis que le backend Python (stdlib) fournit la presence live et le leaderboard.
 
-## Apercu
-- Boucle de jeu: collecter des noyaux, remplir le cargo, livrer aux relais, declencher un surge.
-- Flux d energie (multiplicateur) qui monte avec les livraisons rapides et chute apres collision.
-- Integrite remplace les vies; le drone est repare via modules.
-- Leaderboard 100% serveur et classement live en surcouche.
+## Ce qui rend le jeu unique
+- **Boucle nerveuse** : collecte → livraison → surge, avec un multiplicateur de flux a proteger.
+- **Boost tactique** : un burst court qui permet d eviter un pic de danger ou de franchir la tempete.
+- **Anomalies de flux** : zones temporaires qui recompensent la prise de risque (points + recharge d onde).
+- **Fronts climatiques** : vagues distinctes qui modifient la vitesse, la taille et la densite des debris.
+- **HUD clair** : objectif contextuel, etats d onde/boost, integrite et relais cible.
 
 ## Controles
-- Deplacement: ZQSD ou fleches.
-- Onde de choc: Espace.
-- Pause: P ou Entrer.
-- Briefing: T.
-- Mobile: pad directionnel + bouton Onde.
+- Deplacement : ZQSD ou fleches.
+- Onde de choc : Espace.
+- Boost : Shift ou B.
+- Pause : P ou Entrer.
+- Briefing : T.
+- Mobile : pad directionnel + boutons Onde et Boost.
 
 ## Gameplay rapide
-1. Collecte des noyaux lumineux pour charger le cargo.
-2. Approche un relais pour livrer et recharger sa jauge.
-3. Un relais a 100% declenche un surge (nettoyage local + gros bonus).
-4. La tempete s intensifie par fronts; adapte tes modules (stase, phase, aimant, turbo, reparation).
+1. Ramasse des noyaux pour remplir le cargo.
+2. Livrer un cargo charge un relais et augmente le flux (multiplicateur).
+3. Un relais sature declenche un surge (nettoyage local + gros bonus).
+4. Utilise le boost quand la densite de debris devient critique.
+5. Reste dans une anomalie de flux pour engranger des points et recharger l onde.
 
 ## Structure du depot
-- `index.html` : jeu + interface + logique front.
-- `server.py` : serveur HTTP + API JSON.
-- `scripts/` : utilitaires (lint scores).
+- `index.html` : interface, rendu, moteur de jeu et logique gameplay.
+- `server.py` : serveur HTTP + API JSON (presence live + leaderboard).
+- `scripts/` : utilitaires de maintenance (ex: lint des scores).
 - `tests/` : tests unitaires backend.
 
 ## Demarrage rapide
 ```bash
-cd /opt/neon
+cd /workspace/neon
 python3 server.py
 # http://localhost:8000
 ```
 
-Si le front est ouvert en `file://`, il tentera `http://localhost:8000` par defaut.
+> Si le front est ouvert en `file://`, il utilise `http://localhost:8000` par defaut.
 
 ## Variables d environnement
 - `PORT` (defaut `8000`)
@@ -48,7 +51,7 @@ Si le front est ouvert en `file://`, il tentera `http://localhost:8000` par defa
 - `CACHE_MAX_AGE` (defaut `300`)
 
 ## API
-Base: `http://<host>:<port>/api`. Le client peut forcer l API avec `?api=https://...`.
+Base: `http://<host>:<port>/api`. Le client peut forcer l API via `?api=https://...`.
 Si le front est heberge sous `/ether-relay`, ce prefixe est ajoute automatiquement (compatibilite `/space-cleaner` conservee).
 
 - `POST /api/state`
