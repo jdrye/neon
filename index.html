@@ -388,6 +388,12 @@
     .badge.combo { transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .badge.wave strong { color: var(--accent-2); }
     .badge.wave.wave-active { border-color: rgba(255, 149, 90, 0.45); box-shadow: 0 0 16px rgba(255, 149, 90, 0.2); }
+    .badge.objective { border-color: rgba(39, 194, 177, 0.45); box-shadow: 0 0 18px rgba(39, 194, 177, 0.12); }
+    .badge.objective strong { color: #7af6ff; }
+    .badge.objective.is-urgent { border-color: rgba(255, 94, 123, 0.7); box-shadow: 0 0 20px rgba(255, 94, 123, 0.25); }
+    .badge.objective.is-urgent strong { color: #ff8aa0; }
+    .badge.objective.is-pulse { border-color: rgba(255, 209, 102, 0.6); box-shadow: 0 0 18px rgba(255, 209, 102, 0.25); }
+    .badge.objective.is-pulse strong { color: #ffd166; }
 
     .effects-badge {
       position: absolute;
@@ -752,6 +758,7 @@
         <div class="badge combo" id="flowBadge"><span>Flux</span><strong id="flow">x1.0</strong></div>
         <div class="badge meter-badge" id="integrityBadge"><span>Integrite</span><div class="meter"><div class="meter-fill" id="integrityFill"></div></div><strong id="integrityLabel">100%</strong></div>
         <div class="badge"><span>Cargo</span><strong id="cargo">0/5</strong></div>
+        <div class="badge objective" id="objectiveBadge"><span>Priorite</span><div class="badge-stack"><strong id="objectiveLabel">Collecte</strong><div id="objectiveNote" class="badge-note"></div></div></div>
         <div class="badge danger" id="dangerBadge"><span>Menace</span><strong id="danger">Calme</strong></div>
         <div class="badge wave" id="waveBadge"><span>Front</span><strong id="waveLabel">Accalmie</strong></div>
         <div class="badge"><span>Temps</span><strong id="time">00:00</strong></div>
@@ -851,6 +858,9 @@
     const integrityFill = document.getElementById('integrityFill');
     const integrityLabel = document.getElementById('integrityLabel');
     const cargoEl = document.getElementById('cargo');
+    const objectiveBadge = document.getElementById('objectiveBadge');
+    const objectiveLabelEl = document.getElementById('objectiveLabel');
+    const objectiveNoteEl = document.getElementById('objectiveNote');
     const relayFocusEl = document.getElementById('relayFocus');
     const relayHintEl = document.getElementById('relayHint');
 
@@ -1770,6 +1780,11 @@
       const y = padding + Math.random() * (canvas.height - padding * 2);
       const allowRepair = state.integrity < state.maxIntegrity;
       const types = allowRepair ? ['slow', 'shield', 'magnet', 'repair', 'overdrive'] : ['slow', 'shield', 'magnet', 'overdrive'];
+      if (allowRepair) {
+        const integrityRatio = state.integrity / state.maxIntegrity;
+        if (integrityRatio < 0.6) types.push('repair');
+        if (integrityRatio < 0.4) types.push('repair');
+      }
       const type = forcedType && types.includes(forcedType) ? forcedType : types[Math.floor(Math.random() * types.length)];
       state.powerups.push({ x, y, r: 12, ttl: 9 + Math.random() * 3, type });
     }
@@ -1951,32 +1966,35 @@
     }
 
     function drawGuides() {
-      if (state.cargo <= 0) return;
-      const relay = getClosestRelay();
-      if (!relay) return;
-      const dx = relay.x - state.player.x;
-      const dy = relay.y - state.player.y;
+      const hasCargo = state.cargo > 0;
+      const relay = hasCargo ? getClosestRelay() : null;
+      const orbData = !hasCargo ? getClosestOrbData() : null;
+      const target = relay || (orbData ? orbData.orb : null);
+      if (!target) return;
+      const dx = target.x - state.player.x;
+      const dy = target.y - state.player.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 120) return;
+      if (dist < (hasCargo ? 120 : 140)) return;
       ctx.save();
       ctx.globalAlpha = 0.6;
       ctx.setLineDash([10, 12]);
-      ctx.strokeStyle = 'rgba(255, 209, 102, 0.3)';
+      ctx.strokeStyle = hasCargo ? 'rgba(255, 209, 102, 0.3)' : 'rgba(43, 179, 166, 0.35)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(state.player.x, state.player.y);
-      ctx.lineTo(relay.x, relay.y);
+      ctx.lineTo(target.x, target.y);
       ctx.stroke();
       ctx.setLineDash([]);
       const angle = Math.atan2(dy, dx);
-      const tipX = relay.x - Math.cos(angle) * (relay.r + 18);
-      const tipY = relay.y - Math.sin(angle) * (relay.r + 18);
+      const tipOffset = (target.r || 10) + (hasCargo ? 18 : 12);
+      const tipX = target.x - Math.cos(angle) * tipOffset;
+      const tipY = target.y - Math.sin(angle) * tipOffset;
       ctx.beginPath();
       ctx.moveTo(tipX, tipY);
       ctx.lineTo(tipX - Math.cos(angle - 0.5) * 10, tipY - Math.sin(angle - 0.5) * 10);
       ctx.lineTo(tipX - Math.cos(angle + 0.5) * 10, tipY - Math.sin(angle + 0.5) * 10);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(255, 209, 102, 0.5)';
+      ctx.fillStyle = hasCargo ? 'rgba(255, 209, 102, 0.5)' : 'rgba(43, 179, 166, 0.55)';
       ctx.fill();
       ctx.restore();
     }
@@ -2010,6 +2028,19 @@
         }
       }
       return closest;
+    }
+
+    function getClosestOrbData() {
+      let closest = null;
+      let best = Infinity;
+      for (const orb of state.orbs) {
+        const dist = Math.hypot(orb.x - state.player.x, orb.y - state.player.y);
+        if (dist < best) {
+          best = dist;
+          closest = orb;
+        }
+      }
+      return closest ? { orb: closest, dist: best } : null;
     }
 
     function addParticles(x, y, color, amount = 10, speed = 120) {
@@ -2430,6 +2461,41 @@
       }
       if (cargoEl) {
         cargoEl.textContent = `${state.cargo}/${state.maxCargo}`;
+      }
+      if (objectiveLabelEl && objectiveBadge) {
+        const integrityRatio = state.integrity / state.maxIntegrity;
+        const objectiveDanger = state.danger || computeDanger();
+        let label = 'Collecte';
+        let note = 'Ramasse les noyaux';
+        let mode = '';
+        if (integrityRatio <= 0.35) {
+          label = 'Reparer';
+          note = 'Trouve un module reparation';
+          mode = 'urgent';
+        } else if (state.cargo >= state.maxCargo) {
+          label = 'Livrer';
+          const closest = getClosestRelay();
+          note = closest ? `Vers relais ${closest.name}` : 'Cherche un relais';
+        } else if (state.cargo > 0) {
+          label = 'Livrer';
+          const closest = getClosestRelay();
+          note = closest ? `Relais ${closest.name} en vue` : 'Rejoins un relais';
+        } else if (state.pulseCooldown <= 0 && objectiveDanger.level === 'high') {
+          label = 'Onde';
+          note = 'Appuie sur Espace';
+          mode = 'pulse';
+        } else {
+          const orbData = getClosestOrbData();
+          if (orbData) {
+            note = `Noyau a ${Math.round(orbData.dist)}m`;
+          } else {
+            note = 'Patrouille la zone';
+          }
+        }
+        objectiveLabelEl.textContent = label;
+        if (objectiveNoteEl) objectiveNoteEl.textContent = note;
+        objectiveBadge.classList.toggle('is-urgent', mode === 'urgent');
+        objectiveBadge.classList.toggle('is-pulse', mode === 'pulse');
       }
       bestEl.textContent = Math.floor(state.serverBest || 0);
       if (bestPlayerEl) {
