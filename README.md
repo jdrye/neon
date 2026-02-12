@@ -49,6 +49,10 @@ python3 server.py
 - `RATE_LIMIT_RPS` (defaut `20`)
 - `RATE_LIMIT_BURST` (defaut `40`, calcule si absent)
 - `CACHE_MAX_AGE` (defaut `300`)
+- `MAX_SCORE_PER_SECOND` (defaut `900`)
+- `SCORE_GRACE_POINTS` (defaut `1500`)
+- `MAX_SCORE_CAP` (defaut `5000000`)
+- `MAX_SCORE_TIME` (defaut `28800`, 8h)
 
 ## API
 Base: `http://<host>:<port>/api`. Le client peut forcer l API via `?api=https://...`.
@@ -56,10 +60,10 @@ Si le front est heberge sous `/ether-relay`, ce prefixe est ajoute automatiqueme
 
 - `POST /api/state`
   - body: `sessionId` (obligatoire), `clientId`, `instanceId`, `x`, `y`, `color`, `name`, `score`, `time`, `best`, `bestTime`, `since`
-  - reply: `{ ok, players, board, serverTime }`
+  - reply: `{ ok, players, board, boardDaily, serverTime }`
 - `POST /api/score`
-  - body: `name`, `score`, `time`, `color`, `sessionId` (optionnel)
-  - reply: `{ ok, board, serverTime }`
+  - body: `name`, `score`, `time`, `color`, `clientId`, `sessionId` (optionnel)
+  - reply: `{ ok, board, boardDaily, serverTime }`
 - `POST /api/leave`
   - body: `sessionId` ou `clientId` (+ `instanceId` optionnel)
   - reply: `{ ok, removed, removedIds, serverTime }`
@@ -67,11 +71,13 @@ Si le front est heberge sous `/ether-relay`, ce prefixe est ajoute automatiqueme
   - body: `token` (ou header `X-Admin-Token`), requiert `ADMIN_TOKEN`
   - reply: `{ ok, cleared, serverTime }`
 - `GET /api/state` ou `GET /api/board`
-  - reply: `{ ok, board, serverTime }`
+  - reply: `{ ok, board, boardDaily, serverTime }`
 
 ## Scores et retention
 - `scores.json` est cree et mis a jour par le serveur (non versionne).
 - Le leaderboard expose le top 10 (`MAX_BOARD`) et conserve jusqu a 100 scores (`MAX_STORE`).
+- Le serveur garde une seule meilleure entree par joueur (`clientId` prioritaire, sinon nom normalise).
+- Deux vues sont renvoyees: classement global (30 jours) et classement 24h.
 - Tri: `score` desc, puis `time` desc, puis `created`.
 - Purge automatique des scores vieux de 30 jours (`BOARD_TTL`).
 

@@ -907,7 +907,7 @@
     const CONFIG = {
       syncIntervalMs: 250,
       boardIntervalMs: 2000,
-      uiIntervalMs: 260,
+      uiIntervalMs: 140,
       maxPeers: 5,
       maxHazards: 18,
       pulse: { duration: 0.3, cooldown: 2.6, reach: 240, force: 640, destroyRatio: 0.45 },
@@ -917,7 +917,7 @@
       hazardTTL: { min: 13, jitter: 8 },
       trail: { max: 22, baseLife: 0.2, speedLife: 0.2 },
       shake: { max: 15, decay: 3.1 },
-      net: { pos: 6, score: 25, time: 1, heartbeat: 1500 },
+      net: { pos: 6, score: 25, time: 1, heartbeat: 1500, requestTimeoutMs: 2600, backoffBaseMs: 320, backoffMaxMs: 5000 },
       speedSmooth: 0.2,
       speedMargin: 10,
       spawn: {
@@ -931,7 +931,7 @@
         powerupBase: 9,
         powerupJitter: 5.5,
       },
-      assist: { hitSlow: 1.4, relayRepair: 12 },
+      assist: { hitSlow: 1.4, relayRepair: 12, pityRepairThreshold: 0.34, pityRepairCooldown: 20 },
       waves: {
         active: 16,
         rest: 7,
@@ -949,6 +949,7 @@
       flow: { max: 4.6, decayDelay: 4.5, decayRate: 0.16, bump: 0.14, surgeBonus: 0.4 },
       integrity: { max: 100, hit: 22 },
       anomaly: { cooldown: 26, duration: 12, radius: 170, rewardRate: 28, pulseRecharge: 0.45 },
+      onboarding: { sessions: 3, duration: 45, difficultyScale: 0.82, spawnEase: 1.22, reward: 420 },
     };
 
     const POWERUP_LABELS = {
@@ -965,6 +966,7 @@
       reducedMotion: 'ether-relay-reduced-motion',
       shake: 'ether-relay-shake',
       shakeIntensity: 'ether-relay-shake-intensity',
+      sessionsPlayed: 'ether-relay-sessions-played',
     };
 
     function readBool(key, fallback = false) {
@@ -1043,6 +1045,7 @@
       enabled: true,
       lastSent: { x: 0, y: 0, score: 0, time: 0 },
       board: [],
+      boardDaily: [],
       lastBoardFetch: 0,
       lastServerTime: 0,
       lastSendAt: 0,
@@ -1051,6 +1054,14 @@
       latencyMs: 0,
       connected: false,
       pulseSeq: 0,
+      syncInFlight: false,
+      boardInFlight: false,
+      syncAbort: null,
+      boardAbort: null,
+      syncFailures: 0,
+      boardFailures: 0,
+      syncBackoffUntil: 0,
+      boardBackoffUntil: 0,
     };
 
     // stabilise l'identité multijoueur (évite de changer de clientId à chaque rechargement)
@@ -1062,6 +1073,8 @@
     function leaveServer() {
       if (!network.enabled || leaveSent) return;
       leaveSent = true;
+      if (network.syncAbort) network.syncAbort.abort();
+      if (network.boardAbort) network.boardAbort.abort();
       const url = API_URL.replace('/state', '/leave');
       const payload = JSON.stringify({
         sessionId: network.sessionId,
@@ -1108,7 +1121,7 @@
       powerups: [],
       particles: [],
       stars: [],
-      timers: { hazard: 0, orb: 0, powerup: 7, anomaly: 0 },
+      timers: { hazard: 0, orb: 0, powerup: 7, anomaly: 0, pityRepair: 0 },
       score: 0,
       best: 0,
       bestTime: 0,
@@ -1129,7 +1142,8 @@
       hitCooldown: 0,
       assistSlow: 0,
       playerSpeedAvg: 0,
-      lastUiUpdate: 0,
+      lastHudUpdate: 0,
+      lastBoardUiUpdate: 0,
       lastSave: 0,
       shieldCharges: 0,
       effects: { slow: 0, shield: 0, magnet: 0, overdrive: 0 },
@@ -1144,11 +1158,14 @@
       thrust: 0,
       trail: [],
       relays: [],
+      relaySnapshot: '',
       highscores: [],
       bestName: 'Operateur',
       serverBest: 0,
       serverBestTime: 0,
       serverBestName: '',
+      sessionsPlayed: 0,
+      onboarding: { active: false, duration: CONFIG.onboarding.duration, completed: true, rewardGiven: false },
     };
 
     let tutorialSeen = false;
@@ -1307,8 +1324,20 @@
       state.particles = [];
       network.peers.clear();
       network.lastSent = { x: 0, y: 0, score: 0, time: 0 };
+      network.lastSync = 0;
       network.board = [];
+      network.boardDaily = [];
       network.lastBoardFetch = 0;
+      network.syncInFlight = false;
+      network.boardInFlight = false;
+      network.syncFailures = 0;
+      network.boardFailures = 0;
+      network.syncBackoffUntil = 0;
+      network.boardBackoffUntil = 0;
+      if (network.syncAbort) network.syncAbort.abort();
+      if (network.boardAbort) network.boardAbort.abort();
+      network.syncAbort = null;
+      network.boardAbort = null;
       state.score = 0;
       state.sessionBest = 0;
       state.sessionBestTime = 0;
@@ -1332,7 +1361,8 @@
       state.hitCooldown = 0;
       state.assistSlow = 0;
       state.playerSpeedAvg = 0;
-      state.lastUiUpdate = 0;
+      state.lastHudUpdate = 0;
+      state.lastBoardUiUpdate = 0;
       state.lastSave = 0;
       state.shieldCharges = 0;
       state.effects = { slow: 0, shield: 0, magnet: 0, overdrive: 0 };
@@ -1342,10 +1372,19 @@
       state.thrust = 0;
       state.trail = [];
       state.relays = [];
+      state.relaySnapshot = '';
+      const onboardingActive = state.sessionsPlayed < CONFIG.onboarding.sessions;
+      state.onboarding = {
+        active: onboardingActive,
+        duration: CONFIG.onboarding.duration,
+        completed: !onboardingActive,
+        rewardGiven: false,
+      };
       state.timers.hazard = Math.max(1, CONFIG.spawn.hazardMin + 0.8);
       state.timers.orb = CONFIG.spawn.orbBase * 0.35;
       state.timers.powerup = CONFIG.spawn.powerupBase - 1;
       state.timers.anomaly = CONFIG.anomaly.cooldown * 0.6;
+      state.timers.pityRepair = 0;
       network.lastServerTime = 0;
       network.lastSendAt = 0;
       network.lastSuccessAt = 0;
@@ -1359,7 +1398,9 @@
       message.classList.add('hidden');
       maybeShowTutorial();
       statusEl.textContent = '';
-      summaryEl.textContent = 'Collecte les noyaux, charge les relais, profite des anomalies et declenche l onde de choc quand la tempete se resserre.';
+      summaryEl.textContent = onboardingActive
+        ? `Phase de calibration (${Math.round(CONFIG.onboarding.duration)}s): survie assistee et bonus a la cle.`
+        : 'Collecte les noyaux, charge les relais, profite des anomalies et declenche l onde de choc quand la tempete se resserre.';
       statsEl.innerHTML = '';
       renderHighscores();
       startBtn.textContent = 'Relancer la mission';
@@ -1370,6 +1411,7 @@
       } catch (e) {
         // stockage non disponible
       }
+      updateUI(true);
     }
 
     function formatTime(sec) {
@@ -1389,6 +1431,14 @@
       if (!network.lastServerTime || !network.lastServerPerf) return 0;
       const delta = Math.max(0, (performance.now() - network.lastServerPerf) / 1000);
       return network.lastServerTime + delta;
+    }
+
+    function computeBackoffMs(failures) {
+      const count = Math.max(0, Math.floor(failures));
+      if (!count) return 0;
+      const base = CONFIG.net.backoffBaseMs || 300;
+      const max = CONFIG.net.backoffMaxMs || 5000;
+      return Math.min(max, base * Math.pow(2, Math.max(0, count - 1)));
     }
 
     function setLiveOverlay(open) {
@@ -1421,6 +1471,7 @@
       prefs.reducedMotion = readBool(PREF_KEYS.reducedMotion, false);
       prefs.shake = readBool(PREF_KEYS.shake, true);
       prefs.shakeIntensity = Math.min(Math.max(readNumber(PREF_KEYS.shakeIntensity, 0.6), 0), 1);
+      state.sessionsPlayed = Math.max(0, Math.floor(readNumber(PREF_KEYS.sessionsPlayed, 0)));
       applyPreferenceClasses();
       syncPreferenceControls();
     }
@@ -1428,26 +1479,31 @@
     function renderHighscores() {
       const container = highscoresEl;
       if (!container) return;
-      if (!network.board || !network.board.length) {
+      const allTime = Array.isArray(network.board) ? network.board : [];
+      const daily = Array.isArray(network.boardDaily) ? network.boardDaily : [];
+      if (!allTime.length && !daily.length) {
         container.innerHTML = '<div class="hs-title">Meilleurs scores</div><div class="hs-empty">Aucun score serveur</div>';
         return;
       }
-      const source = network.board.slice(0, 5).map(h => ({
-        name: h.name || 'Operateur',
-        score: Math.floor(h.score || h.best || 0),
-        time: Math.floor(h.time || h.bestTime || 0),
-      }));
-      const rows = source.map((h, i) => {
-        const safeName = escapeHtml(h.name || 'Operateur');
-        return `
-          <div class="hs-row">
-            <div><span class="hs-rank">#${i + 1}</span><span class="hs-name">${safeName}</span></div>
-            <div class="hs-score">${Math.floor(h.score)}</div>
-            <div class="hs-time">${formatTime(h.time || 0)}</div>
-          </div>
-        `;
-      }).join('');
-      container.innerHTML = `<div class="hs-title">Meilleurs scores</div>${rows}`;
+
+      const renderRows = (source, title) => {
+        if (!source.length) {
+          return `<div class="hs-title">${title}</div><div class="hs-empty">Aucun score</div>`;
+        }
+        const rows = source.slice(0, 5).map((h, i) => {
+          const safeName = escapeHtml(h.name || 'Operateur');
+          return `
+            <div class="hs-row">
+              <div><span class="hs-rank">#${i + 1}</span><span class="hs-name">${safeName}</span></div>
+              <div class="hs-score">${Math.floor(h.score || 0)}</div>
+              <div class="hs-time">${formatTime(h.time || 0)}</div>
+            </div>
+          `;
+        }).join('');
+        return `<div class="hs-title">${title}</div>${rows}`;
+      };
+
+      container.innerHTML = `${renderRows(daily, 'Top 24h')}${renderRows(allTime, 'Top 30j')}`;
     }
 
     function getSelfLeaderboardName() {
@@ -1518,9 +1574,9 @@
       return { speed: 1, size: 1, spawnRate: 1 };
     }
 
-    function setServerBoard(board) {
-      if (!Array.isArray(board)) return;
-      network.board = board
+    function normalizeBoard(board) {
+      if (!Array.isArray(board)) return [];
+      return board
         .map(p => ({
           id: String(p.id || ''),
           name: p.name || 'Operateur',
@@ -1532,6 +1588,17 @@
         .filter(p => p.score > 0)
         .sort((a, b) => b.score - a.score || b.time - a.time)
         .slice(0, 20);
+    }
+
+    function setServerBoard(board, boardDaily = null) {
+      if (Array.isArray(board)) {
+        network.board = normalizeBoard(board);
+      }
+      if (Array.isArray(boardDaily)) {
+        network.boardDaily = normalizeBoard(boardDaily);
+      } else if (!Array.isArray(boardDaily)) {
+        network.boardDaily = [];
+      }
       updateServerBest();
     }
 
@@ -1550,8 +1617,8 @@
 
     function maybeUpdateBoards(force = false) {
       const now = performance.now();
-      if (!force && state.lastUiUpdate && now - state.lastUiUpdate < CONFIG.uiIntervalMs) return;
-      state.lastUiUpdate = now;
+      if (!force && state.lastBoardUiUpdate && now - state.lastBoardUiUpdate < CONFIG.uiIntervalMs) return;
+      state.lastBoardUiUpdate = now;
       renderLiveboard();
       renderHighscores();
     }
@@ -1607,21 +1674,45 @@
       }
     }
 
-    async function fetchBoard() {
+    async function fetchBoard(nowPerf = performance.now()) {
+      if (!network.enabled || network.boardInFlight) return;
+      if (network.boardBackoffUntil && nowPerf < network.boardBackoffUntil) return;
+      network.lastBoardFetch = nowPerf;
+      const controller = new AbortController();
+      if (network.boardAbort) network.boardAbort.abort();
+      network.boardAbort = controller;
+      network.boardInFlight = true;
+      let timedOut = false;
+      const timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, CONFIG.net.requestTimeoutMs);
       try {
         const start = performance.now();
-        const res = await fetch(API_URL.replace('/state', '/board'), { method: 'GET' });
-        if (!res.ok) return;
+        const res = await fetch(API_URL.replace('/state', '/board'), {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('board failed');
         const data = await res.json();
-        if (!data || !Array.isArray(data.board)) return;
+        if (!data || !Array.isArray(data.board)) throw new Error('invalid board');
         network.latencyMs = performance.now() - start;
         network.connected = true;
         network.lastSuccessAt = performance.now();
+        network.boardFailures = 0;
+        network.boardBackoffUntil = 0;
         trackServerTime(data.serverTime);
-        setServerBoard(data.board);
+        setServerBoard(data.board, data.boardDaily);
         maybeUpdateBoards(true);
       } catch (e) {
-        // ignore fetch errors, retry later
+        if (timedOut || !(e && e.name === 'AbortError')) {
+          network.boardFailures += 1;
+          network.boardBackoffUntil = performance.now() + computeBackoffMs(network.boardFailures);
+        }
+      } finally {
+        clearTimeout(timeoutId);
+        network.boardInFlight = false;
+        if (network.boardAbort === controller) network.boardAbort = null;
       }
     }
 
@@ -1630,10 +1721,13 @@
       const score = Math.floor(state.score);
       const t = Math.floor(state.time);
       if (score <= 0) return;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONFIG.net.requestTimeoutMs);
       try {
         const res = await fetch(API_URL.replace('/state', '/score'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             sessionId: network.sessionId,
             clientId: network.clientId,
@@ -1647,27 +1741,41 @@
         const data = await res.json();
         if (!data || !Array.isArray(data.board)) return;
         trackServerTime(data.serverTime);
-        setServerBoard(data.board);
+        setServerBoard(data.board, data.boardDaily);
         maybeUpdateBoards(true);
       } catch (e) {
         // ignore submit errors
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 
-    async function syncPlayers() {
-      if (!network.enabled) return;
-      const now = performance.now();
+    async function syncPlayers(now = performance.now()) {
+      if (!network.enabled || network.syncInFlight) return;
+      if (network.syncBackoffUntil && now < network.syncBackoffUntil) return;
       const dx = Math.abs(state.player.x - network.lastSent.x);
       const dy = Math.abs(state.player.y - network.lastSent.y);
       const dScore = Math.abs(Math.floor(state.score) - (network.lastSent.score || 0));
       const dTime = Math.abs(Math.floor(state.time) - (network.lastSent.time || 0));
       const moved = dx > CONFIG.net.pos || dy > CONFIG.net.pos || dScore > CONFIG.net.score || dTime > CONFIG.net.time;
       if (!moved && now - network.lastSendAt < CONFIG.net.heartbeat) return;
+      network.lastSync = now;
+      network.lastSendAt = now;
+      network.syncInFlight = true;
+      const controller = new AbortController();
+      if (network.syncAbort) network.syncAbort.abort();
+      network.syncAbort = controller;
+      let timedOut = false;
+      const timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, CONFIG.net.requestTimeoutMs);
       try {
         const start = performance.now();
         const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             id: network.sessionId,
             sessionId: network.sessionId,
@@ -1691,12 +1799,13 @@
           score: Math.floor(state.score),
           time: Math.floor(state.time),
         };
-        network.lastSendAt = now;
         if (!res.ok) throw new Error('sync failed');
         const data = await res.json();
         network.latencyMs = performance.now() - start;
         network.connected = true;
         network.lastSuccessAt = performance.now();
+        network.syncFailures = 0;
+        network.syncBackoffUntil = 0;
         trackServerTime(data.serverTime);
         if (data && Array.isArray(data.players)) {
           const nowMs = Date.now();
@@ -1735,12 +1844,20 @@
           trimmed.slice(MAX_PEERS).forEach(p => network.peers.delete(p.id));
 
           if (Array.isArray(data.board)) {
-            setServerBoard(data.board);
+            setServerBoard(data.board, data.boardDaily);
           }
           maybeUpdateBoards(true);
         }
       } catch (e) {
-        network.connected = false;
+        if (timedOut || !(e && e.name === 'AbortError')) {
+          network.connected = false;
+          network.syncFailures += 1;
+          network.syncBackoffUntil = performance.now() + computeBackoffMs(network.syncFailures);
+        }
+      } finally {
+        clearTimeout(timeoutId);
+        network.syncInFlight = false;
+        if (network.syncAbort === controller) network.syncAbort = null;
       }
     }
 
@@ -1862,7 +1979,7 @@
 
     function initRelays() {
       state.relays = Array.from({ length: CONFIG.relay.count }, (_, i) => spawnRelay(i));
-      renderRelayList();
+      renderRelayList(true);
     }
 
     function relocateRelay(relay) {
@@ -2024,8 +2141,20 @@
       ctx.restore();
     }
 
-    function renderRelayList() {
+    function getRelaySnapshot() {
+      return state.relays.map((relay) => {
+        const ratio = clamp(relay.charge / relay.max, 0, 1);
+        const pct = Math.round(ratio * 100);
+        const cooldownTick = Math.max(0, Math.round((relay.cooldown || 0) * 10));
+        return `${relay.id}:${pct}:${cooldownTick}`;
+      }).join('|');
+    }
+
+    function renderRelayList(force = false) {
       if (!relayListEl) return;
+      const snapshot = getRelaySnapshot();
+      if (!force && state.relaySnapshot === snapshot) return;
+      state.relaySnapshot = snapshot;
       const items = state.relays.map((relay) => {
         const ratio = clamp(relay.charge / relay.max, 0, 1);
         const pct = Math.round(ratio * 100);
@@ -2147,9 +2276,16 @@
     }
 
     function updateTrail(dt) {
-      state.trail = state.trail
-        .map(t => ({ ...t, life: t.life - dt }))
-        .filter(t => t.life > 0);
+      let write = 0;
+      for (let i = 0; i < state.trail.length; i++) {
+        const item = state.trail[i];
+        item.life -= dt;
+        if (item.life > 0) {
+          state.trail[write] = item;
+          write += 1;
+        }
+      }
+      state.trail.length = write;
       const maxTrail = getTrailMax();
       if (state.trail.length > maxTrail) {
         state.trail.splice(0, state.trail.length - maxTrail);
@@ -2537,7 +2673,10 @@
       updateShake(dt);
     }
 
-    function updateUI() {
+    function updateUI(force = false) {
+      const now = performance.now();
+      if (!force && state.lastHudUpdate && now - state.lastHudUpdate < CONFIG.uiIntervalMs) return;
+      state.lastHudUpdate = now;
       scoreEl.textContent = Math.floor(state.score);
       flowEl.textContent = `x${state.multiplier.toFixed(1)}`;
       timeEl.textContent = formatTime(state.time);
@@ -2555,7 +2694,12 @@
         let label = 'Collecte';
         let note = 'Ramasse les noyaux';
         let mode = '';
-        if (integrityRatio <= 0.35) {
+        const onboardingActive = state.onboarding && state.onboarding.active && !state.onboarding.completed;
+        if (onboardingActive) {
+          const left = Math.max(0, Math.ceil(state.onboarding.duration - state.time));
+          label = 'Calibration';
+          note = `Survie assistee ${left}s`;
+        } else if (integrityRatio <= 0.35) {
           label = 'Reparer';
           note = 'Trouve un module reparation';
           mode = 'urgent';
@@ -3174,12 +3318,10 @@
     function gameStep(dt) {
       const nowPerf = performance.now();
       if (network.enabled && nowPerf - network.lastSync > SYNC_INTERVAL) {
-        network.lastSync = nowPerf;
-        syncPlayers();
+        syncPlayers(nowPerf);
       }
       if (network.enabled && nowPerf - network.lastBoardFetch > CONFIG.boardIntervalMs) {
-        network.lastBoardFetch = nowPerf;
-        fetchBoard();
+        fetchBoard(nowPerf);
       }
       prunePeers();
 
@@ -3208,11 +3350,31 @@
         return;
       }
 
-      const difficulty = 1 + Math.min(state.time * 0.03, 2.0);
       const slowFactor = state.effects.slow > 0 ? 0.6 : (state.assistSlow > 0 ? 0.82 : 1);
       const effectiveDt = dt * slowFactor;
 
       state.time += dt;
+      let onboardingNow = state.onboarding && state.onboarding.active && !state.onboarding.completed;
+      if (onboardingNow && state.time >= state.onboarding.duration) {
+        state.onboarding.active = false;
+        state.onboarding.completed = true;
+        if (!state.onboarding.rewardGiven) {
+          state.onboarding.rewardGiven = true;
+          state.score += CONFIG.onboarding.reward;
+          state.comboFlash = Math.max(state.comboFlash, 0.65);
+          state.wave.show = Math.max(state.wave.show, 2.1);
+          if (waveBanner) {
+            waveBanner.textContent = `Calibration terminee • Bonus ${CONFIG.onboarding.reward}`;
+          }
+        }
+        onboardingNow = false;
+      }
+      const onboardingProgress = onboardingNow ? clamp(state.time / state.onboarding.duration, 0, 1) : 1;
+      const onboardingDifficultyScale = onboardingNow
+        ? lerp(CONFIG.onboarding.difficultyScale, 1, onboardingProgress)
+        : 1;
+      const difficulty = (1 + Math.min(state.time * 0.03, 2.0)) * onboardingDifficultyScale;
+
       state.score += dt * 6.5 * state.multiplier;
       if (state.multiplier > 1) {
         const idle = state.time - state.lastDelivery;
@@ -3226,6 +3388,13 @@
       }
 
       const waveMods = updateWave(dt);
+      const waveSpawnMods = onboardingNow
+        ? {
+            speed: (waveMods.speed || 1) * lerp(0.88, 1, onboardingProgress),
+            size: waveMods.size || 1,
+            spawnRate: (waveMods.spawnRate || 1) * lerp(1.18, 1, onboardingProgress),
+          }
+        : waveMods;
       updateAnomaly(dt);
 
       state.timers.hazard -= effectiveDt;
@@ -3242,14 +3411,14 @@
         const waves = 1 + extra;
         let spawned = 0;
         for (let i = 0; i < waves; i++) {
-          if (spawnHazard(difficulty, waveMods)) spawned += 1;
+          if (spawnHazard(difficulty, waveSpawnMods)) spawned += 1;
           else break;
         }
 
         const decay = Math.exp(-state.time * CONFIG.spawn.hazardDecay);
         const base = CONFIG.spawn.hazardBase * decay + CONFIG.spawn.hazardMin;
-        const rate = waveMods.spawnRate || 1;
-        const ease = getSpawnEase();
+        const rate = waveSpawnMods.spawnRate || 1;
+        const ease = getSpawnEase() * (onboardingNow ? lerp(CONFIG.onboarding.spawnEase, 1, onboardingProgress) : 1);
         state.timers.hazard = (spawned ? base + Math.random() * CONFIG.spawn.hazardJitter : CONFIG.spawn.hazardFallback) * rate * ease;
       }
 
@@ -3263,6 +3432,12 @@
       if (state.timers.powerup <= 0) {
         spawnPowerup();
         state.timers.powerup = CONFIG.spawn.powerupBase + Math.random() * CONFIG.spawn.powerupJitter;
+      }
+      if (state.timers.pityRepair > 0) state.timers.pityRepair = Math.max(0, state.timers.pityRepair - dt);
+      const integrityRatio = state.maxIntegrity ? state.integrity / state.maxIntegrity : 1;
+      if (integrityRatio <= CONFIG.assist.pityRepairThreshold && state.timers.pityRepair <= 0) {
+        spawnPowerup('repair');
+        state.timers.pityRepair = CONFIG.assist.pityRepairCooldown;
       }
 
       if (state.pulseCooldown > 0) state.pulseCooldown -= dt;
@@ -3311,7 +3486,7 @@
 
     function endGame() {
       state.running = false;
-      updateUI();
+      updateUI(true);
       message.classList.remove('hidden');
       statusEl.textContent = 'Mission terminee';
       summaryEl.textContent = `Score ${Math.floor(state.score)} | Flux max x${state.maxMultiplier.toFixed(1)} | Temps ${formatTime(state.time)}`;
@@ -3323,6 +3498,8 @@
         <div class="stat-row"><span>Relais charges</span><br>${state.stats.relays}</div>
         <div class="stat-row"><span>Collisions subies</span><br>${state.stats.hits}</div>
       `;
+      state.sessionsPlayed = Math.max(0, Math.floor(state.sessionsPlayed || 0)) + 1;
+      writePref(PREF_KEYS.sessionsPlayed, state.sessionsPlayed);
       submitScore();
     }
 
@@ -3499,8 +3676,6 @@
     canvas.addEventListener('pointercancel', endTouch);
 
     window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('pagehide', leaveServer);
-    window.addEventListener('beforeunload', leaveServer);
     window.addEventListener('pageshow', () => { leaveSent = false; });
 
     applyPreferences();

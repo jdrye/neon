@@ -41,12 +41,29 @@ try:
     CACHE_MAX_AGE = int(os.environ.get("CACHE_MAX_AGE", "300"))
 except (TypeError, ValueError):
     CACHE_MAX_AGE = 300
+try:
+    MAX_SCORE_PER_SECOND = float(os.environ.get("MAX_SCORE_PER_SECOND", "900"))
+except (TypeError, ValueError):
+    MAX_SCORE_PER_SECOND = 900.0
+try:
+    SCORE_GRACE_POINTS = float(os.environ.get("SCORE_GRACE_POINTS", "1500"))
+except (TypeError, ValueError):
+    SCORE_GRACE_POINTS = 1500.0
+try:
+    MAX_SCORE_CAP = float(os.environ.get("MAX_SCORE_CAP", "5000000"))
+except (TypeError, ValueError):
+    MAX_SCORE_CAP = 5000000.0
+try:
+    MAX_SCORE_TIME = float(os.environ.get("MAX_SCORE_TIME", "28800"))
+except (TypeError, ValueError):
+    MAX_SCORE_TIME = 28800.0
 
 PLAYERS = {}  # sessionId -> player state (éphémère)
 LEADERBOARD = []  # liste d'entrées de scores (persistée)
 IP_LIMITER = {}  # ip -> {tokens, last}
 
 BOARD_TTL = 30 * 24 * 3600  # seconds, conserve les scores un moment
+BOARD_DAILY_TTL = 24 * 3600
 MAX_BOARD = 10
 MAX_STORE = 100
 MAX_BODY_BYTES = 16 * 1024
@@ -104,6 +121,28 @@ def _normalize_session_id(value):
     return cleaned[:64]
 
 
+def _normalize_player_key(value):
+    cleaned = " ".join(str(value or "").strip().split()).lower()
+    if not cleaned:
+        return None
+    return cleaned[:64]
+
+
+def _derive_player_key(name, client_id=None):
+    normalized_client = _normalize_player_key(client_id)
+    if normalized_client:
+        return f"client:{normalized_client}"
+    normalized_name = _normalize_player_key(_normalize_name(name))
+    return f"name:{normalized_name or 'pilote'}"
+
+
+def _coerce_player_key(raw_key, name, client_id=None):
+    cleaned = _normalize_player_key(raw_key)
+    if cleaned and (cleaned.startswith("client:") or cleaned.startswith("name:")):
+        return cleaned
+    return _derive_player_key(name=name, client_id=client_id or raw_key)
+
+
 def _get_client_ip(handler):
     if TRUST_PROXY:
         forwarded = handler.headers.get("X-Forwarded-For", "")
@@ -145,6 +184,42 @@ def _score_sort_key(entry):
     )
 
 
+def _is_new_score_better(candidate, existing):
+    return _score_sort_key(candidate) > _score_sort_key(existing)
+
+
+def _sanitize_score_time(score, t):
+    clean_score = max(_safe_float(score, 0.0), 0.0)
+    clean_time = max(_safe_float(t, 0.0), 0.0)
+    if MAX_SCORE_TIME > 0:
+        clean_time = min(clean_time, MAX_SCORE_TIME)
+    if MAX_SCORE_CAP > 0:
+        clean_score = min(clean_score, MAX_SCORE_CAP)
+    if clean_score <= 0:
+        return 0.0, clean_time
+    if clean_time <= 0:
+        return 0.0, 0.0
+    max_allowed = MAX_SCORE_PER_SECOND * clean_time + SCORE_GRACE_POINTS
+    if max_allowed > 0:
+        clean_score = min(clean_score, max_allowed)
+    return clean_score, clean_time
+
+
+def _is_score_plausible(score, t):
+    clean_score = max(_safe_float(score, 0.0), 0.0)
+    clean_time = max(_safe_float(t, 0.0), 0.0)
+    if clean_score <= 0:
+        return False
+    if clean_time <= 0:
+        return False
+    if MAX_SCORE_TIME > 0 and clean_time > MAX_SCORE_TIME:
+        return False
+    if MAX_SCORE_CAP > 0 and clean_score > MAX_SCORE_CAP:
+        return False
+    max_allowed = MAX_SCORE_PER_SECOND * clean_time + SCORE_GRACE_POINTS
+    return clean_score <= max_allowed
+
+
 def _prune_leaderboard(now):
     if BOARD_TTL <= 0:
         return
@@ -175,7 +250,7 @@ def load_board():
     if not isinstance(data, list):
         return
 
-    loaded = []
+    loaded_by_key = {}
     now = time.time()
     for raw in data:
         if not isinstance(raw, dict):
@@ -190,17 +265,26 @@ def load_board():
         entry_id = str(raw.get("id") or "").strip()
         if not entry_id:
             entry_id = f"s-{int(created * 1000)}-{secrets.token_urlsafe(6)}"
-        loaded.append(
-            {
-                "id": entry_id,
-                "name": _normalize_name(raw.get("name")),
-                "color": _normalize_color(raw.get("color")),
-                "score": max(_safe_float(score, 0.0), 0.0),
-                "time": max(_safe_float(t, 0.0), 0.0),
-                "created": created,
-            }
+        player_key = _coerce_player_key(
+            raw.get("playerKey"), raw.get("name"), raw.get("clientId")
         )
+        clean_score, clean_time = _sanitize_score_time(score, t)
+        if clean_score <= 0:
+            continue
+        entry = {
+            "id": entry_id,
+            "playerKey": player_key,
+            "name": _normalize_name(raw.get("name")),
+            "color": _normalize_color(raw.get("color")),
+            "score": clean_score,
+            "time": clean_time,
+            "created": created,
+        }
+        existing = loaded_by_key.get(player_key)
+        if existing is None or _is_new_score_better(entry, existing):
+            loaded_by_key[player_key] = entry
 
+    loaded = list(loaded_by_key.values())
     loaded.sort(key=_score_sort_key, reverse=True)
     LEADERBOARD = loaded[:MAX_STORE]
 
@@ -223,25 +307,59 @@ def save_board(force=False):
         return
 
 
-def _add_score_entry(name, score, t, color=None):
+def _get_boards(now):
+    _prune_leaderboard(now)
+    board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)
+    top = board[:MAX_BOARD]
+    if BOARD_DAILY_TTL <= 0:
+        return top, top
+    cutoff = now - BOARD_DAILY_TTL
+    daily = [e for e in board if _safe_float(e.get("created", now), now) >= cutoff][
+        :MAX_BOARD
+    ]
+    return top, daily
+
+
+def _upsert_score_entry(name, score, t, color=None, client_id=None):
     now = time.time()
+    clean_score, clean_time = _sanitize_score_time(score, t)
+    if clean_score <= 0 or not _is_score_plausible(clean_score, clean_time):
+        return None
+    player_key = _derive_player_key(name=name, client_id=client_id)
     entry = {
         "id": f"s-{int(now * 1000)}-{secrets.token_urlsafe(6)}",
+        "playerKey": player_key,
         "name": _normalize_name(name),
         "color": _normalize_color(color),
-        "score": max(_safe_float(score, 0.0), 0.0),
-        "time": max(_safe_float(t, 0.0), 0.0),
+        "score": clean_score,
+        "time": clean_time,
         "created": now,
     }
-    if entry["score"] <= 0:
-        return None
-    LEADERBOARD.append(entry)
+
+    existing = None
+    existing_idx = -1
+    for idx, current in enumerate(LEADERBOARD):
+        if current.get("playerKey") == player_key:
+            existing = current
+            existing_idx = idx
+            break
+
+    final_entry = entry
+    if existing is not None:
+        if _is_new_score_better(entry, existing):
+            LEADERBOARD[existing_idx] = entry
+        else:
+            existing["name"] = _normalize_name(name)
+            existing["color"] = _normalize_color(color)
+            final_entry = existing
+    else:
+        LEADERBOARD.append(entry)
+
     _prune_leaderboard(now)
     LEADERBOARD.sort(key=_score_sort_key, reverse=True)
     del LEADERBOARD[MAX_STORE:]
-    # sur une soumission explicite de score, on force la persistance (le rythme est faible)
     save_board(force=True)
-    return entry
+    return final_entry
 
 
 def _record_session_best(player):
@@ -249,18 +367,19 @@ def _record_session_best(player):
         return None
     if player.get("scoreRecorded"):
         return None
-    best_score = max(_safe_float(player.get("best", player.get("score", 0)), 0.0), 0.0)
-    best_time = max(
-        _safe_float(player.get("bestTime", player.get("time", 0)), 0.0), 0.0
+    best_score, best_time = _sanitize_score_time(
+        player.get("best", player.get("score", 0)),
+        player.get("bestTime", player.get("time", 0)),
     )
     player["scoreRecorded"] = True
     if best_score <= 0:
         return None
-    return _add_score_entry(
+    return _upsert_score_entry(
         name=player.get("name"),
         score=best_score,
         t=best_time,
         color=player.get("color"),
+        client_id=player.get("clientId"),
     )
 
 
@@ -383,6 +502,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return
                 with LOCK:
                     LEADERBOARD.clear()
+                    PLAYERS.clear()
                     save_board(force=True)
                     now = time.time()
                 self._write_json(200, {"ok": True, "cleared": True, "serverTime": now})
@@ -393,16 +513,34 @@ class Handler(SimpleHTTPRequestHandler):
                 score = _safe_float(data.get("score", 0), 0.0)
                 t = _safe_float(data.get("time", 0), 0.0)
                 color = _normalize_color(data.get("color"))
+                client_id = _normalize_client_id(data.get("clientId"))
                 session_id = _normalize_session_id(
                     data.get("sessionId") or data.get("sid") or data.get("id")
                 )
                 with LOCK:
-                    entry = _add_score_entry(name=name, score=score, t=t, color=color)
-                    if session_id and session_id in PLAYERS and entry:
-                        player = PLAYERS[session_id]
+                    player = PLAYERS.get(session_id) if session_id else None
+                    if player:
+                        client_id = client_id or _normalize_client_id(
+                            player.get("clientId")
+                        )
+                        name = _normalize_name(player.get("name") or name)
+                        color = _normalize_color(player.get("color") or color)
+                        score, t = _sanitize_score_time(
+                            player.get("best", player.get("score", 0)),
+                            player.get("bestTime", player.get("time", 0)),
+                        )
+                    entry = _upsert_score_entry(
+                        name=name,
+                        score=score,
+                        t=t,
+                        color=color,
+                        client_id=client_id,
+                    )
+                    if player and entry:
                         player["scoreRecorded"] = True
-                        prev_best = max(_safe_float(player.get("best", 0), 0.0), 0.0)
-                        prev_time = max(_safe_float(player.get("bestTime", 0), 0.0), 0.0)
+                        prev_best, prev_time = _sanitize_score_time(
+                            player.get("best", 0), player.get("bestTime", 0)
+                        )
                         if entry["score"] > prev_best or (
                             entry["score"] == prev_best and entry["time"] > prev_time
                         ):
@@ -410,12 +548,20 @@ class Handler(SimpleHTTPRequestHandler):
                             player["bestTime"] = entry["time"]
                             player["score"] = entry["score"]
                             player["time"] = entry["time"]
-                    board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[:MAX_BOARD]
                     now = time.time()
+                    board, board_daily = _get_boards(now)
                 if not entry:
                     self.send_error(400, "invalid score")
                     return
-                self._write_json(200, {"ok": True, "board": board, "serverTime": now})
+                self._write_json(
+                    200,
+                    {
+                        "ok": True,
+                        "board": board,
+                        "boardDaily": board_daily,
+                        "serverTime": now,
+                    },
+                )
                 return
 
             if parsed.path == "/api/leave":
@@ -473,6 +619,7 @@ class Handler(SimpleHTTPRequestHandler):
             too_many = False
             peers = []
             board = []
+            board_daily = []
             with LOCK:
                 prev = PLAYERS.get(session_id, {})
                 session_is_new = session_id not in PLAYERS
@@ -504,19 +651,19 @@ class Handler(SimpleHTTPRequestHandler):
                                     continue
                             del PLAYERS[sid]
 
-                    incoming_score = max(_safe_float(data.get("score", 0), 0.0), 0.0)
-                    incoming_time = max(_safe_float(data.get("time", 0), 0.0), 0.0)
+                    incoming_score, incoming_time = _sanitize_score_time(
+                        data.get("score", 0), data.get("time", 0)
+                    )
 
                     # compat: si le client envoie best/bestTime on les prend en compte
-                    incoming_best = max(
-                        _safe_float(data.get("best", incoming_score), 0.0), 0.0
-                    )
-                    incoming_best_time = max(
-                        _safe_float(data.get("bestTime", incoming_time), 0.0), 0.0
+                    incoming_best, incoming_best_time = _sanitize_score_time(
+                        data.get("best", incoming_score),
+                        data.get("bestTime", incoming_time),
                     )
 
-                    prev_best = max(_safe_float(prev.get("best", 0), 0.0), 0.0)
-                    prev_best_time = max(_safe_float(prev.get("bestTime", 0), 0.0), 0.0)
+                    prev_best, prev_best_time = _sanitize_score_time(
+                        prev.get("best", 0), prev.get("bestTime", 0)
+                    )
 
                     incoming_pulse_seq = max(_safe_int(data.get("pulseSeq", 0), 0), 0)
                     prev_pulse_seq = max(_safe_int(prev.get("pulseSeq", 0), 0), 0)
@@ -574,17 +721,21 @@ class Handler(SimpleHTTPRequestHandler):
                     else:
                         peers = [v for k, v in PLAYERS.items() if k != session_id]
 
-                    _prune_leaderboard(now)
-                    board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[
-                        :MAX_BOARD
-                    ]
+                    board, board_daily = _get_boards(now)
 
             if too_many:
                 self.send_error(429, "too many sessions")
                 return
 
             self._write_json(
-                200, {"ok": True, "players": peers, "board": board, "serverTime": now}
+                200,
+                {
+                    "ok": True,
+                    "players": peers,
+                    "board": board,
+                    "boardDaily": board_daily,
+                    "serverTime": now,
+                },
             )
         finally:
             if self._last_status is not None:
@@ -613,9 +764,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             with LOCK:
                 now = time.time()
-                _prune_leaderboard(now)
-                board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[:MAX_BOARD]
-            self._write_json(200, {"ok": True, "board": board, "serverTime": now})
+                board, board_daily = _get_boards(now)
+            self._write_json(
+                200,
+                {"ok": True, "board": board, "boardDaily": board_daily, "serverTime": now},
+            )
         finally:
             if self._last_status is not None:
                 duration = (time.perf_counter() - start) * 1000
