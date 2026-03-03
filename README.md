@@ -1,92 +1,70 @@
-# Ether Relay
+# Aventurier des Ruines - Web Platformer 2D
 
-Ether Relay est un jeu d action spatial one‑page jouable dans le navigateur. Tu pilotes un drone de ravitaillement dans une tempete de debris pour recharger des relais, maintenir un flux d energie eleve et survivre aux fronts successifs. Le front est un unique `index.html` (HTML/CSS/JS), tandis que le backend Python (stdlib) fournit la presence live et le leaderboard.
+Jeu médiéval-fantasy **jouable dans le navigateur** (moteur SVG/DOM), sans assets externes.
 
-## Ce qui rend le jeu unique
-- **Boucle nerveuse** : collecte → livraison → surge, avec un multiplicateur de flux a proteger.
-- **Boost tactique** : un burst court qui permet d eviter un pic de danger ou de franchir la tempete.
-- **Anomalies de flux** : zones temporaires qui recompensent la prise de risque (points + recharge d onde).
-- **Fronts climatiques** : vagues distinctes qui modifient la vitesse, la taille et la densite des debris.
-- **HUD clair** : objectif contextuel, etats d onde/boost, integrite et relais cible.
-
-## Controles
-- Deplacement : ZQSD ou fleches.
-- Onde de choc : Espace.
-- Boost : Shift ou B.
-- Pause : P ou Entrer.
-- Briefing : T.
-- Mobile : pad directionnel + boutons Onde et Boost.
-
-## Gameplay rapide
-1. Ramasse des noyaux pour remplir le cargo.
-2. Livrer un cargo charge un relais et augmente le flux (multiplicateur).
-3. Un relais sature declenche un surge (nettoyage local + gros bonus).
-4. Utilise le boost quand la densite de debris devient critique.
-5. Reste dans une anomalie de flux pour engranger des points et recharger l onde.
-
-## Structure du depot
-- `index.html` : interface, rendu, moteur de jeu et logique gameplay.
-- `server.py` : serveur HTTP + API JSON (presence live + leaderboard).
-- `scripts/` : utilitaires de maintenance (ex: lint des scores).
-- `tests/` : tests unitaires backend.
-
-## Demarrage rapide
+## Lancer le jeu (web)
 ```bash
-cd /workspace/neon
+cd /opt/neon
 python3 server.py
-# http://localhost:8000
 ```
+Puis ouvre:
+- `http://127.0.0.1:8000`
 
-> Si le front est ouvert en `file://`, il utilise `http://localhost:8000` par defaut.
-
-## Variables d environnement
-- `PORT` (defaut `8000`)
-- `IDLE_TIMEOUT` (defaut `15`)
-- `ADMIN_TOKEN` : active `POST /api/reset` (alias `RESET_TOKEN` accepte)
-- `DRY_RUN` (`1`/`true`) : analyse sans ecriture disque
-- `TRUST_PROXY` (`1`/`true`) : utilise `X-Forwarded-For` / `X-Real-IP`
-- `MAX_SESSIONS_PER_IP` (defaut `6`)
-- `RATE_LIMIT_RPS` (defaut `20`)
-- `RATE_LIMIT_BURST` (defaut `40`, calcule si absent)
-- `CACHE_MAX_AGE` (defaut `300`)
-- `MAX_SCORE_PER_SECOND` (defaut `900`)
-- `SCORE_GRACE_POINTS` (defaut `1500`)
-- `MAX_SCORE_CAP` (defaut `5000000`)
-- `MAX_SCORE_TIME` (defaut `28800`, 8h)
-
-## API
-Base: `http://<host>:<port>/api`. Le client peut forcer l API via `?api=https://...`.
-Si le front est heberge sous `/ether-relay`, ce prefixe est ajoute automatiquement (compatibilite `/space-cleaner` conservee).
-
-- `POST /api/state`
-  - body: `sessionId` (obligatoire), `clientId`, `instanceId`, `x`, `y`, `color`, `name`, `score`, `time`, `best`, `bestTime`, `since`
-  - reply: `{ ok, players, board, boardDaily, serverTime }`
-- `POST /api/score`
-  - body: `name`, `score`, `time`, `color`, `clientId`, `sessionId` (optionnel)
-  - reply: `{ ok, board, boardDaily, serverTime }`
-- `POST /api/leave`
-  - body: `sessionId` ou `clientId` (+ `instanceId` optionnel)
-  - reply: `{ ok, removed, removedIds, serverTime }`
-- `POST /api/reset`
-  - body: `token` (ou header `X-Admin-Token`), requiert `ADMIN_TOKEN`
-  - reply: `{ ok, cleared, serverTime }`
-- `GET /api/state` ou `GET /api/board`
-  - reply: `{ ok, board, boardDaily, serverTime }`
-
-## Scores et retention
-- `scores.json` est cree et mis a jour par le serveur (non versionne).
-- Le leaderboard expose le top 10 (`MAX_BOARD`) et conserve jusqu a 100 scores (`MAX_STORE`).
-- Le serveur garde une seule meilleure entree par joueur (`clientId` prioritaire, sinon nom normalise).
-- Deux vues sont renvoyees: classement global (30 jours) et classement 24h.
-- Tri: `score` desc, puis `time` desc, puis `created`.
-- Purge automatique des scores vieux de 30 jours (`BOARD_TTL`).
-
-## Tests
+Si le port `8000` est déjà utilisé:
 ```bash
-python3 scripts/lint_scores_json.py
-python3 -m unittest tests/test_server.py
+PORT=8080 python3 server.py
+```
+Puis ouvre `http://127.0.0.1:8080`.
+
+## Contrôles
+- Déplacement: `A` / `D` ou flèches gauche/droite
+- Saut: `Espace`
+- Attaque mêlée: `J` ou clic gauche
+- Dash: `K` ou `Shift`
+- Interagir (checkpoint/porte): `E`
+- Pause: `P` ou `Échap`
+
+## Gameplay
+- Side-scrolling avec caméra dynamique
+- Collisions solides + plateformes one-way
+- Ennemis (gobelin, squelette, chauve-souris)
+- Dégâts, mort, respawn sur checkpoint activé
+- Collectibles, sortie de niveau, écran de victoire
+- HUD (PV, score, timer, cooldown dash)
+- Sauvegarde locale + leaderboard local (via `localStorage`)
+
+## Données de niveau
+Niveau principal: `game/assets/levels/level1.json`
+
+Champs:
+- `tile_size`
+- `grid`
+- `spawn_player`
+- `checkpoints`
+- `enemies`
+- `collectibles`
+- `exit`
+
+Le jeu web charge ce fichier JSON au démarrage.
+
+## Dépendances et outils
+Install (sans venv):
+```bash
+make deps
+# ou
+python3 -m pip install --user -r requirements.txt
 ```
 
-## Deploiement
-- Un reverse proxy (nginx/caddy) peut servir les assets statiques et proxyfier `/api`.
-- Propager `X-Forwarded-For` et activer `TRUST_PROXY=1` si besoin.
+Validation:
+```bash
+make test
+make lint
+make format
+```
+
+## Structure utile
+- `index.html`: jeu web complet (UI, boucle, gameplay, rendu)
+- `server.py`: serveur HTTP local pour lancer le jeu
+- `game/assets/levels/level1.json`: niveau
+- `tests/`: tests Python de logique existants
+- `Makefile`: commandes standard (`deps`, `run`, `test`, `lint`, `format`)

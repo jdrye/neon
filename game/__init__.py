@@ -1,0 +1,1 @@
+"""Medieval-fantasy platformer package."""
