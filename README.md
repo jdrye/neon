@@ -1,70 +1,52 @@
-# Aventurier des Ruines - Web Platformer 2D
+# Ruins Dash (Jeu Unique)
 
-Jeu médiéval-fantasy **jouable dans le navigateur** (moteur SVG/DOM), sans assets externes.
+Ce dépôt a été nettoyé pour ne conserver **qu'un seul jeu**: `Ruins Dash`.
 
-## Lancer le jeu (web)
+- Type: jeu web (canvas 2D)
+- Port: `8000`
+- Service: `systemd` (`neon-game.service`)
+
+## Structure
+
+- `server.py`: serveur HTTP simple et commenté
+- `web/index.html`: interface du jeu
+- `web/styles.css`: styles responsive
+- `web/game.js`: logique du jeu, commentée
+- `systemd/neon-game.service`: unité systemd
+- `scripts/install_systemd_service.sh`: script d'installation systemd
+
+## Lancer manuellement
+
 ```bash
 cd /opt/neon
 python3 server.py
 ```
-Puis ouvre:
+
+Puis ouvrir:
+
 - `http://127.0.0.1:8000`
 
-Si le port `8000` est déjà utilisé:
-```bash
-PORT=8080 python3 server.py
-```
-Puis ouvre `http://127.0.0.1:8080`.
+## Installer en service systemd
 
-## Contrôles
-- Déplacement: `A` / `D` ou flèches gauche/droite
-- Saut: `Espace`
-- Attaque mêlée: `J` ou clic gauche
-- Dash: `K` ou `Shift`
-- Interagir (checkpoint/porte): `E`
-- Pause: `P` ou `Échap`
+```bash
+cd /opt/neon
+./scripts/install_systemd_service.sh
+```
+
+Commandes utiles:
+
+```bash
+systemctl status neon-game.service
+journalctl -u neon-game.service -f
+curl http://127.0.0.1:8000/health
+```
 
 ## Gameplay
-- Side-scrolling avec caméra dynamique
-- Collisions solides + plateformes one-way
-- Ennemis (gobelin, squelette, chauve-souris)
-- Dégâts, mort, respawn sur checkpoint activé
-- Collectibles, sortie de niveau, écran de victoire
-- HUD (PV, score, timer, cooldown dash)
-- Sauvegarde locale + leaderboard local (via `localStorage`)
 
-## Données de niveau
-Niveau principal: `game/assets/levels/level1.json`
+- But: survivre `90s`
+- Déplacement: `WASD` ou flèches
+- Mobile: glisser dans la zone de jeu
+- `P`: pause/reprise
+- `R`: relancer
 
-Champs:
-- `tile_size`
-- `grid`
-- `spawn_player`
-- `checkpoints`
-- `enemies`
-- `collectibles`
-- `exit`
-
-Le jeu web charge ce fichier JSON au démarrage.
-
-## Dépendances et outils
-Install (sans venv):
-```bash
-make deps
-# ou
-python3 -m pip install --user -r requirements.txt
-```
-
-Validation:
-```bash
-make test
-make lint
-make format
-```
-
-## Structure utile
-- `index.html`: jeu web complet (UI, boucle, gameplay, rendu)
-- `server.py`: serveur HTTP local pour lancer le jeu
-- `game/assets/levels/level1.json`: niveau
-- `tests/`: tests Python de logique existants
-- `Makefile`: commandes standard (`deps`, `run`, `test`, `lint`, `format`)
+Le leaderboard est stocké en local (`localStorage`) dans le navigateur.

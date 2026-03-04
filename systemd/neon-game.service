@@ -1,0 +1,18 @@
+[Unit]
+Description=Neon Single Game Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/neon
+Environment=HOST=0.0.0.0
+Environment=PORT=8000
+ExecStart=/usr/bin/python3 /opt/neon/server.py
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

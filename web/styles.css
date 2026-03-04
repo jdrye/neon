@@ -1,0 +1,159 @@
+:root {
+  --bg-1: #09111f;
+  --bg-2: #13283f;
+  --panel: #16253ae6;
+  --panel-border: #5ea3dd66;
+  --text: #e7f5ff;
+  --muted: #a4c4de;
+  --accent: #65d9ff;
+  --danger: #ff7d7d;
+  --good: #8bf0a4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 20% 20%, #1a3552 0%, transparent 45%),
+    radial-gradient(circle at 80% 5%, #285f93 0%, transparent 35%),
+    linear-gradient(145deg, var(--bg-1), var(--bg-2));
+}
+
+.app {
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+}
+
+.stageCard,
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 35px #00000055;
+}
+
+.stageCard {
+  padding: 1rem;
+}
+
+.stageHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.stageHeader h1 {
+  margin: 0;
+  font-size: clamp(1.3rem, 1rem + 1.5vw, 2rem);
+}
+
+.stageHeader p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.btn {
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2d87db, #5ac9ff);
+  color: white;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:hover {
+  filter: brightness(1.05);
+}
+
+.canvasWrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #84d0ff4d;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #050d18;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 1rem;
+  background: #051428cc;
+  font-size: clamp(1rem, 0.9rem + 0.8vw, 1.5rem);
+  font-weight: 700;
+}
+
+.hidden {
+  display: none;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.card {
+  padding: 1rem;
+}
+
+.card h2 {
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+  color: var(--accent);
+  font-size: 1.05rem;
+}
+
+.card p {
+  margin: 0.3rem 0;
+}
+
+.card ul,
+.card ol {
+  margin: 0.4rem 0 0;
+  padding-left: 1rem;
+  color: var(--muted);
+}
+
+code {
+  background: #0c2238;
+  border: 1px solid #4f88b555;
+  border-radius: 6px;
+  padding: 0.1rem 0.3rem;
+  color: #c4ecff;
+}
+
+.bad {
+  color: var(--danger);
+}
+
+.good {
+  color: var(--good);
+}
+
+@media (max-width: 980px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+}

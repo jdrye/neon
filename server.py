@@ -1,807 +1,104 @@
 #!/usr/bin/env python3
+"""Serve the unique web game on port 8000.
+
+This server intentionally stays minimal:
+- static files are served from ./web
+- /health returns a small JSON payload
+- default bind is 0.0.0.0:8000 for systemd usage
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
 import os
-import socket
-import time
-import threading
-import functools
-import secrets
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse
+from datetime import datetime, timezone
+from http import HTTPStatus
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
-LOCK = threading.Lock()
-RATE_LOCK = threading.Lock()
-EXPIRATION = 300  # seconds, conserve les joueurs un moment (présence en ligne)
-PORT = int(os.environ.get("PORT", "8000"))
-try:
-    IDLE_TIMEOUT = float(os.environ.get("IDLE_TIMEOUT", "15"))
-except (TypeError, ValueError):
-    IDLE_TIMEOUT = 15.0
-if IDLE_TIMEOUT <= 0:
-    IDLE_TIMEOUT = 15.0
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(BASE_DIR, "scores.json")
-DRY_RUN = os.environ.get("DRY_RUN", "").strip().lower() in ("1", "true", "yes", "on")
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN") or os.environ.get("RESET_TOKEN") or ""
-TRUST_PROXY = os.environ.get("TRUST_PROXY", "").strip().lower() in ("1", "true", "yes", "on")
-try:
-    MAX_SESSIONS_PER_IP = int(os.environ.get("MAX_SESSIONS_PER_IP", "6"))
-except (TypeError, ValueError):
-    MAX_SESSIONS_PER_IP = 6
-try:
-    RATE_LIMIT_RPS = float(os.environ.get("RATE_LIMIT_RPS", "20"))
-except (TypeError, ValueError):
-    RATE_LIMIT_RPS = 20.0
-try:
-    default_burst = 0 if RATE_LIMIT_RPS <= 0 else max(int(RATE_LIMIT_RPS * 2), 1)
-    RATE_LIMIT_BURST = float(os.environ.get("RATE_LIMIT_BURST", str(default_burst)))
-except (TypeError, ValueError):
-    RATE_LIMIT_BURST = 0 if RATE_LIMIT_RPS <= 0 else max(int(RATE_LIMIT_RPS * 2), 1)
-try:
-    CACHE_MAX_AGE = int(os.environ.get("CACHE_MAX_AGE", "300"))
-except (TypeError, ValueError):
-    CACHE_MAX_AGE = 300
-try:
-    MAX_SCORE_PER_SECOND = float(os.environ.get("MAX_SCORE_PER_SECOND", "900"))
-except (TypeError, ValueError):
-    MAX_SCORE_PER_SECOND = 900.0
-try:
-    SCORE_GRACE_POINTS = float(os.environ.get("SCORE_GRACE_POINTS", "1500"))
-except (TypeError, ValueError):
-    SCORE_GRACE_POINTS = 1500.0
-try:
-    MAX_SCORE_CAP = float(os.environ.get("MAX_SCORE_CAP", "5000000"))
-except (TypeError, ValueError):
-    MAX_SCORE_CAP = 5000000.0
-try:
-    MAX_SCORE_TIME = float(os.environ.get("MAX_SCORE_TIME", "28800"))
-except (TypeError, ValueError):
-    MAX_SCORE_TIME = 28800.0
-
-PLAYERS = {}  # sessionId -> player state (éphémère)
-LEADERBOARD = []  # liste d'entrées de scores (persistée)
-IP_LIMITER = {}  # ip -> {tokens, last}
-
-BOARD_TTL = 30 * 24 * 3600  # seconds, conserve les scores un moment
-BOARD_DAILY_TTL = 24 * 3600
-MAX_BOARD = 10
-MAX_STORE = 100
-MAX_BODY_BYTES = 16 * 1024
-SAVE_INTERVAL = 2.0  # seconds
-LAST_SAVE = 0.0
+BASE_DIR = Path(__file__).resolve().parent
+WEB_DIR = BASE_DIR / "web"
 
 
-def _safe_float(value, default=0.0):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _safe_int(value, default=0):
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _normalize_name(name):
-    cleaned = " ".join(str(name or "").strip().split())
-    if not cleaned:
-        return "Pilote"
-    return cleaned[:18]
-
-
-def _normalize_color(color):
-    cleaned = str(color or "").strip()
-    if not cleaned:
-        return "#7af6ff"
-    return cleaned[:64]
-
-
-def _normalize_client_id(value):
-    cleaned = " ".join(str(value or "").strip().split())
-    if not cleaned:
-        return None
-    # limite defensive
-    return cleaned[:64]
-
-
-def _normalize_instance_id(value):
-    cleaned = " ".join(str(value or "").strip().split())
-    if not cleaned:
-        return None
-    return cleaned[:64]
-
-
-def _normalize_session_id(value):
-    cleaned = " ".join(str(value or "").strip().split())
-    if not cleaned:
-        return None
-    return cleaned[:64]
-
-
-def _normalize_player_key(value):
-    cleaned = " ".join(str(value or "").strip().split()).lower()
-    if not cleaned:
-        return None
-    return cleaned[:64]
-
-
-def _derive_player_key(name, client_id=None):
-    normalized_client = _normalize_player_key(client_id)
-    if normalized_client:
-        return f"client:{normalized_client}"
-    normalized_name = _normalize_player_key(_normalize_name(name))
-    return f"name:{normalized_name or 'pilote'}"
-
-
-def _coerce_player_key(raw_key, name, client_id=None):
-    cleaned = _normalize_player_key(raw_key)
-    if cleaned and (cleaned.startswith("client:") or cleaned.startswith("name:")):
-        return cleaned
-    return _derive_player_key(name=name, client_id=client_id or raw_key)
-
-
-def _get_client_ip(handler):
-    if TRUST_PROXY:
-        forwarded = handler.headers.get("X-Forwarded-For", "")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        real_ip = handler.headers.get("X-Real-IP", "").strip()
-        if real_ip:
-            return real_ip
-    if handler.client_address:
-        return handler.client_address[0]
-    return "unknown"
-
-
-def _consume_rate_limit(ip, now):
-    if RATE_LIMIT_RPS <= 0 or RATE_LIMIT_BURST <= 0:
-        return True
-    with RATE_LOCK:
-        state = IP_LIMITER.get(ip)
-        if not state:
-            IP_LIMITER[ip] = {"tokens": RATE_LIMIT_BURST - 1.0, "last": now}
-            return True
-        tokens = float(state.get("tokens", 0.0))
-        last = float(state.get("last", now))
-        tokens = min(RATE_LIMIT_BURST, tokens + max(0.0, now - last) * RATE_LIMIT_RPS)
-        if tokens < 1.0:
-            state["tokens"] = tokens
-            state["last"] = now
-            return False
-        state["tokens"] = tokens - 1.0
-        state["last"] = now
-    return True
-
-
-def _score_sort_key(entry):
-    return (
-        _safe_float(entry.get("score", 0)),
-        _safe_float(entry.get("time", 0)),
-        _safe_float(entry.get("created", 0)),
+def parse_args() -> argparse.Namespace:
+    """Parse runtime options (CLI > environment > defaults)."""
+    parser = argparse.ArgumentParser(description="Neon single-game web server")
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("HOST", "0.0.0.0"),
+        help="Host interface to bind (default: 0.0.0.0)",
     )
-
-
-def _is_new_score_better(candidate, existing):
-    return _score_sort_key(candidate) > _score_sort_key(existing)
-
-
-def _sanitize_score_time(score, t):
-    clean_score = max(_safe_float(score, 0.0), 0.0)
-    clean_time = max(_safe_float(t, 0.0), 0.0)
-    if MAX_SCORE_TIME > 0:
-        clean_time = min(clean_time, MAX_SCORE_TIME)
-    if MAX_SCORE_CAP > 0:
-        clean_score = min(clean_score, MAX_SCORE_CAP)
-    if clean_score <= 0:
-        return 0.0, clean_time
-    if clean_time <= 0:
-        return 0.0, 0.0
-    max_allowed = MAX_SCORE_PER_SECOND * clean_time + SCORE_GRACE_POINTS
-    if max_allowed > 0:
-        clean_score = min(clean_score, max_allowed)
-    return clean_score, clean_time
-
-
-def _is_score_plausible(score, t):
-    clean_score = max(_safe_float(score, 0.0), 0.0)
-    clean_time = max(_safe_float(t, 0.0), 0.0)
-    if clean_score <= 0:
-        return False
-    if clean_time <= 0:
-        return False
-    if MAX_SCORE_TIME > 0 and clean_time > MAX_SCORE_TIME:
-        return False
-    if MAX_SCORE_CAP > 0 and clean_score > MAX_SCORE_CAP:
-        return False
-    max_allowed = MAX_SCORE_PER_SECOND * clean_time + SCORE_GRACE_POINTS
-    return clean_score <= max_allowed
-
-
-def _prune_leaderboard(now):
-    if BOARD_TTL <= 0:
-        return
-    cutoff = now - BOARD_TTL
-    global LEADERBOARD
-    LEADERBOARD = [
-        e for e in LEADERBOARD if _safe_float(e.get("created", now), now) >= cutoff
-    ]
-
-
-def load_board():
-    """
-    Charge le leaderboard depuis `scores.json`.
-
-    Compatibilité:
-    - Ancien format (liste d'objets avec `best`/`bestTime`) -> converti en entrées `score`/`time`.
-    - Nouveau format (liste d'objets avec `score`/`time`).
-    """
-    global LEADERBOARD
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        return
-    except Exception:
-        return
-
-    if not isinstance(data, list):
-        return
-
-    loaded_by_key = {}
-    now = time.time()
-    for raw in data:
-        if not isinstance(raw, dict):
-            continue
-        score = raw.get("score", None)
-        if score is None:
-            score = raw.get("best", 0)
-        t = raw.get("time", None)
-        if t is None:
-            t = raw.get("bestTime", 0)
-        created = _safe_float(raw.get("created", raw.get("updated", now)), now)
-        entry_id = str(raw.get("id") or "").strip()
-        if not entry_id:
-            entry_id = f"s-{int(created * 1000)}-{secrets.token_urlsafe(6)}"
-        player_key = _coerce_player_key(
-            raw.get("playerKey"), raw.get("name"), raw.get("clientId")
-        )
-        clean_score, clean_time = _sanitize_score_time(score, t)
-        if clean_score <= 0:
-            continue
-        entry = {
-            "id": entry_id,
-            "playerKey": player_key,
-            "name": _normalize_name(raw.get("name")),
-            "color": _normalize_color(raw.get("color")),
-            "score": clean_score,
-            "time": clean_time,
-            "created": created,
-        }
-        existing = loaded_by_key.get(player_key)
-        if existing is None or _is_new_score_better(entry, existing):
-            loaded_by_key[player_key] = entry
-
-    loaded = list(loaded_by_key.values())
-    loaded.sort(key=_score_sort_key, reverse=True)
-    LEADERBOARD = loaded[:MAX_STORE]
-
-
-def save_board(force=False):
-    global LAST_SAVE
-    if DRY_RUN:
-        return
-    now = time.time()
-    if not force and now - LAST_SAVE < SAVE_INTERVAL:
-        return
-    LAST_SAVE = now
-    try:
-        tmp = SCORES_FILE + ".tmp"
-        board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)[:MAX_STORE]
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(board, f)
-        os.replace(tmp, SCORES_FILE)
-    except Exception:
-        return
-
-
-def _get_boards(now):
-    _prune_leaderboard(now)
-    board = sorted(LEADERBOARD, key=_score_sort_key, reverse=True)
-    top = board[:MAX_BOARD]
-    if BOARD_DAILY_TTL <= 0:
-        return top, top
-    cutoff = now - BOARD_DAILY_TTL
-    daily = [e for e in board if _safe_float(e.get("created", now), now) >= cutoff][
-        :MAX_BOARD
-    ]
-    return top, daily
-
-
-def _upsert_score_entry(name, score, t, color=None, client_id=None):
-    now = time.time()
-    clean_score, clean_time = _sanitize_score_time(score, t)
-    if clean_score <= 0 or not _is_score_plausible(clean_score, clean_time):
-        return None
-    player_key = _derive_player_key(name=name, client_id=client_id)
-    entry = {
-        "id": f"s-{int(now * 1000)}-{secrets.token_urlsafe(6)}",
-        "playerKey": player_key,
-        "name": _normalize_name(name),
-        "color": _normalize_color(color),
-        "score": clean_score,
-        "time": clean_time,
-        "created": now,
-    }
-
-    existing = None
-    existing_idx = -1
-    for idx, current in enumerate(LEADERBOARD):
-        if current.get("playerKey") == player_key:
-            existing = current
-            existing_idx = idx
-            break
-
-    final_entry = entry
-    if existing is not None:
-        if _is_new_score_better(entry, existing):
-            LEADERBOARD[existing_idx] = entry
-        else:
-            existing["name"] = _normalize_name(name)
-            existing["color"] = _normalize_color(color)
-            final_entry = existing
-    else:
-        LEADERBOARD.append(entry)
-
-    _prune_leaderboard(now)
-    LEADERBOARD.sort(key=_score_sort_key, reverse=True)
-    del LEADERBOARD[MAX_STORE:]
-    save_board(force=True)
-    return final_entry
-
-
-def _record_session_best(player):
-    if not isinstance(player, dict):
-        return None
-    if player.get("scoreRecorded"):
-        return None
-    best_score, best_time = _sanitize_score_time(
-        player.get("best", player.get("score", 0)),
-        player.get("bestTime", player.get("time", 0)),
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("PORT", "8000")),
+        help="TCP port to listen on (default: 8000)",
     )
-    player["scoreRecorded"] = True
-    if best_score <= 0:
-        return None
-    return _upsert_score_entry(
-        name=player.get("name"),
-        score=best_score,
-        t=best_time,
-        color=player.get("color"),
-        client_id=player.get("clientId"),
-    )
+    return parser.parse_args()
 
 
-class Handler(SimpleHTTPRequestHandler):
-    timeout = IDLE_TIMEOUT
+def validate_runtime_config(port: int) -> None:
+    """Fail fast on invalid configuration before binding the socket."""
+    if not WEB_DIR.exists() or not WEB_DIR.is_dir():
+        raise FileNotFoundError(f"Static directory not found: {WEB_DIR}")
+    if port < 1 or port > 65535:
+        raise ValueError(f"Invalid port: {port}")
 
-    def handle_one_request(self):
-        try:
-            return super().handle_one_request()
-        except (socket.timeout, ConnectionResetError, BrokenPipeError):
-            self.close_connection = True
+
+class GameRequestHandler(SimpleHTTPRequestHandler):
+    """HTTP handler dedicated to the single game web app."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, directory=str(WEB_DIR), **kwargs)
+
+    def do_GET(self) -> None:
+        """Expose a lightweight health endpoint for service supervision."""
+        if self.path.split("?", 1)[0] == "/health":
+            self._send_health()
             return
+        super().do_GET()
 
-    def _mark_response(self, status_code, resp_len=0):
-        self._last_status = status_code
-        self._last_response_len = resp_len
-
-    def _log_api(self, method, path, status, duration_ms, req_len, resp_len, ip):
-        print(
-            f"[api] {method} {path} {status} {duration_ms:.1f}ms "
-            f"in={req_len} out={resp_len} ip={ip}"
-        )
-
-    def _cache_control_for_path(self):
-        if CACHE_MAX_AGE <= 0:
-            return "no-store"
-        path = (self.path or "").split("?", 1)[0]
-        if path in ("", "/") or path.endswith(".html") or path.endswith(".json"):
-            return "no-cache"
-        return f"public, max-age={CACHE_MAX_AGE}"
-
-    def end_headers(self):
-        header_buf = getattr(self, "_headers_buffer", None) or []
-        if not any(b.lower().startswith(b"connection:") for b in header_buf):
-            self.send_header("Connection", "close")
-        if self.command in ("GET", "HEAD") and not self.path.startswith("/api"):
-            if not any(b.lower().startswith(b"cache-control:") for b in header_buf):
-                self.send_header("Cache-Control", self._cache_control_for_path())
+    def end_headers(self) -> None:
+        """Add simple cache policy: HTML should refresh, assets can be cached."""
+        request_path = self.path.split("?", 1)[0]
+        if request_path.endswith(".html") or request_path in {"/", ""}:
+            self.send_header("Cache-Control", "no-store")
+        else:
+            self.send_header("Cache-Control", "public, max-age=300")
         super().end_headers()
-        self.close_connection = True
 
-    def _set_cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token")
+    def log_message(self, fmt: str, *args) -> None:
+        """Emit compact UTC logs suitable for `journalctl`."""
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        client_ip = self.client_address[0] if self.client_address else "unknown"
+        message = fmt % args
+        print(f"[{stamp}] {client_ip} {self.command} {self.path} {message}")
 
-    def _write_json(self, status_code, payload):
-        resp = json.dumps(payload).encode()
-        self._mark_response(status_code, len(resp))
-        self.send_response(status_code)
-        self._set_cors()
+    def _send_health(self) -> None:
+        payload = json.dumps({"ok": True}).encode("utf-8")
+        self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(resp)))
+        self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
-        self.wfile.write(resp)
-
-    def send_error(self, code, message=None, explain=None):
-        self._mark_response(code, 0)
-        return super().send_error(code, message, explain)
-
-    def do_OPTIONS(self):
-        self.send_response(204)
-        self._set_cors()
-        self.end_headers()
-
-    def do_POST(self):
-        parsed = urlparse(self.path)
-        if parsed.path not in ("/api/state", "/api/score", "/api/leave", "/api/reset"):
-            return super().do_POST()
-        start = time.perf_counter()
-        ip = _get_client_ip(self)
-        req_len = 0
-        self._last_status = None
-        self._last_response_len = 0
-
-        try:
-            try:
-                length = int(self.headers.get("Content-Length", "0") or 0)
-            except ValueError:
-                self.send_error(400, "bad Content-Length")
-                return
-            req_len = length
-            if length < 0:
-                self.send_error(400, "bad Content-Length")
-                return
-            if length > MAX_BODY_BYTES:
-                if length:
-                    try:
-                        self.rfile.read(length)
-                    except Exception:
-                        pass
-                self.send_error(413, "payload too large")
-                return
-            if not _consume_rate_limit(ip, time.time()):
-                if length:
-                    try:
-                        self.rfile.read(length)
-                    except Exception:
-                        pass
-                self.send_error(429, "too many requests")
-                return
-            raw = self.rfile.read(length) if length else b""
-            try:
-                data = json.loads(raw or b"{}")
-            except Exception:
-                self.send_error(400, "bad json")
-                return
-
-            if parsed.path == "/api/reset":
-                token = (data.get("token") or data.get("adminToken") or "").strip()
-                header_token = (self.headers.get("X-Admin-Token") or "").strip()
-                if not ADMIN_TOKEN:
-                    self.send_error(403, "reset disabled")
-                    return
-                if not token:
-                    token = header_token
-                if token != ADMIN_TOKEN:
-                    self.send_error(403, "invalid token")
-                    return
-                with LOCK:
-                    LEADERBOARD.clear()
-                    PLAYERS.clear()
-                    save_board(force=True)
-                    now = time.time()
-                self._write_json(200, {"ok": True, "cleared": True, "serverTime": now})
-                return
-
-            if parsed.path == "/api/score":
-                name = _normalize_name(data.get("name"))
-                score = _safe_float(data.get("score", 0), 0.0)
-                t = _safe_float(data.get("time", 0), 0.0)
-                color = _normalize_color(data.get("color"))
-                client_id = _normalize_client_id(data.get("clientId"))
-                session_id = _normalize_session_id(
-                    data.get("sessionId") or data.get("sid") or data.get("id")
-                )
-                with LOCK:
-                    player = PLAYERS.get(session_id) if session_id else None
-                    if player:
-                        client_id = client_id or _normalize_client_id(
-                            player.get("clientId")
-                        )
-                        name = _normalize_name(player.get("name") or name)
-                        color = _normalize_color(player.get("color") or color)
-                        score, t = _sanitize_score_time(
-                            player.get("best", player.get("score", 0)),
-                            player.get("bestTime", player.get("time", 0)),
-                        )
-                    entry = _upsert_score_entry(
-                        name=name,
-                        score=score,
-                        t=t,
-                        color=color,
-                        client_id=client_id,
-                    )
-                    if player and entry:
-                        player["scoreRecorded"] = True
-                        prev_best, prev_time = _sanitize_score_time(
-                            player.get("best", 0), player.get("bestTime", 0)
-                        )
-                        if entry["score"] > prev_best or (
-                            entry["score"] == prev_best and entry["time"] > prev_time
-                        ):
-                            player["best"] = entry["score"]
-                            player["bestTime"] = entry["time"]
-                            player["score"] = entry["score"]
-                            player["time"] = entry["time"]
-                    now = time.time()
-                    board, board_daily = _get_boards(now)
-                if not entry:
-                    self.send_error(400, "invalid score")
-                    return
-                self._write_json(
-                    200,
-                    {
-                        "ok": True,
-                        "board": board,
-                        "boardDaily": board_daily,
-                        "serverTime": now,
-                    },
-                )
-                return
-
-            if parsed.path == "/api/leave":
-                session_id = _normalize_session_id(
-                    data.get("sessionId") or data.get("sid") or data.get("id")
-                )
-                client_id = _normalize_client_id(data.get("clientId"))
-                instance_id = _normalize_instance_id(data.get("instanceId"))
-                if not session_id and not client_id:
-                    self.send_error(400, "missing sessionId/clientId")
-                    return
-
-                with LOCK:
-                    removed_ids = []
-                    if client_id:
-                        for sid, player in list(PLAYERS.items()):
-                            if _normalize_client_id(player.get("clientId")) != client_id:
-                                continue
-                            player_instance = _normalize_instance_id(player.get("instanceId"))
-                            if instance_id:
-                                if player_instance != instance_id:
-                                    continue
-                            else:
-                                if player_instance:
-                                    continue
-                            _record_session_best(player)
-                            removed_ids.append(sid)
-                            del PLAYERS[sid]
-                    if session_id and session_id in PLAYERS:
-                        _record_session_best(PLAYERS[session_id])
-                        removed_ids.append(session_id)
-                        del PLAYERS[session_id]
-                    now = time.time()
-
-                self._write_json(
-                    200,
-                    {
-                        "ok": True,
-                        "removed": bool(removed_ids),
-                        "removedIds": removed_ids,
-                        "serverTime": now,
-                    },
-                )
-                return
-
-            session_id = _normalize_session_id(
-                data.get("sessionId") or data.get("sid") or data.get("id")
-            )
-            if not session_id:
-                self.send_error(400, "missing sessionId")
-                return
-
-            now = time.time()
-            since = _safe_float(data.get("since", 0), 0.0)
-            too_many = False
-            peers = []
-            board = []
-            board_daily = []
-            with LOCK:
-                prev = PLAYERS.get(session_id, {})
-                session_is_new = session_id not in PLAYERS
-                if MAX_SESSIONS_PER_IP > 0 and session_is_new:
-                    current = sum(1 for p in PLAYERS.values() if p.get("ip") == ip)
-                    if current >= MAX_SESSIONS_PER_IP:
-                        too_many = True
-                if not too_many:
-                    client_id = _normalize_client_id(
-                        data.get("clientId") or prev.get("clientId")
-                    )
-                    instance_id = _normalize_instance_id(
-                        data.get("instanceId") or prev.get("instanceId")
-                    )
-
-                    # anti-dup: si un même clientId revient avec une autre session (reload/onglet), on nettoie ses anciennes sessions
-                    if client_id:
-                        for sid, player in list(PLAYERS.items()):
-                            if sid == session_id:
-                                continue
-                            if _normalize_client_id(player.get("clientId")) != client_id:
-                                continue
-                            player_instance = _normalize_instance_id(player.get("instanceId"))
-                            if instance_id:
-                                if player_instance != instance_id:
-                                    continue
-                            else:
-                                if player_instance:
-                                    continue
-                            del PLAYERS[sid]
-
-                    incoming_score, incoming_time = _sanitize_score_time(
-                        data.get("score", 0), data.get("time", 0)
-                    )
-
-                    # compat: si le client envoie best/bestTime on les prend en compte
-                    incoming_best, incoming_best_time = _sanitize_score_time(
-                        data.get("best", incoming_score),
-                        data.get("bestTime", incoming_time),
-                    )
-
-                    prev_best, prev_best_time = _sanitize_score_time(
-                        prev.get("best", 0), prev.get("bestTime", 0)
-                    )
-
-                    incoming_pulse_seq = max(_safe_int(data.get("pulseSeq", 0), 0), 0)
-                    prev_pulse_seq = max(_safe_int(prev.get("pulseSeq", 0), 0), 0)
-                    pulse_seq = max(incoming_pulse_seq, prev_pulse_seq)
-                    pulse_at = _safe_float(prev.get("pulseAt", 0), 0.0)
-                    if incoming_pulse_seq > prev_pulse_seq:
-                        pulse_at = now
-
-                    # meilleur (score, puis time en tie-break)
-                    best_score = prev_best
-                    best_time = prev_best_time
-                    if (incoming_best > best_score) or (
-                        incoming_best == best_score and incoming_best_time > best_time
-                    ):
-                        best_score, best_time = incoming_best, incoming_best_time
-                    if (incoming_score > best_score) or (
-                        incoming_score == best_score and incoming_time > best_time
-                    ):
-                        best_score, best_time = incoming_score, incoming_time
-
-                    PLAYERS[session_id] = {
-                        "id": session_id,
-                        "clientId": client_id,
-                        "instanceId": instance_id,
-                        "x": _safe_float(data.get("x", 0), 0.0),
-                        "y": _safe_float(data.get("y", 0), 0.0),
-                        "color": _normalize_color(data.get("color", prev.get("color"))),
-                        "name": _normalize_name(data.get("name", prev.get("name"))),
-                        # "score/time" = meilleur de la session (ce que tu veux afficher dans le classement)
-                        "score": best_score,
-                        "time": best_time,
-                        "best": best_score,
-                        "bestTime": best_time,
-                        # champs additionnels non cassants (utile si tu veux afficher du "live" côté client plus tard)
-                        "currentScore": incoming_score,
-                        "currentTime": incoming_time,
-                        "pulseSeq": pulse_seq,
-                        "pulseAt": pulse_at,
-                        "ts": now,
-                        "ip": ip,
-                        "scoreRecorded": bool(prev.get("scoreRecorded", False)),
-                    }
-                    # prune stale players
-                    for key in list(PLAYERS.keys()):
-                        if now - PLAYERS[key]["ts"] > EXPIRATION:
-                            _record_session_best(PLAYERS[key])
-                            del PLAYERS[key]
-
-                    if since > 0:
-                        peers = [
-                            v
-                            for k, v in PLAYERS.items()
-                            if k != session_id and v.get("ts", 0) > since
-                        ]
-                    else:
-                        peers = [v for k, v in PLAYERS.items() if k != session_id]
-
-                    board, board_daily = _get_boards(now)
-
-            if too_many:
-                self.send_error(429, "too many sessions")
-                return
-
-            self._write_json(
-                200,
-                {
-                    "ok": True,
-                    "players": peers,
-                    "board": board,
-                    "boardDaily": board_daily,
-                    "serverTime": now,
-                },
-            )
-        finally:
-            if self._last_status is not None:
-                duration = (time.perf_counter() - start) * 1000
-                self._log_api(
-                    "POST",
-                    parsed.path,
-                    self._last_status,
-                    duration,
-                    req_len,
-                    self._last_response_len,
-                    ip,
-                )
-
-    def do_GET(self):
-        parsed = urlparse(self.path)
-        if parsed.path not in ("/api/state", "/api/board"):
-            return super().do_GET()
-        start = time.perf_counter()
-        ip = _get_client_ip(self)
-        self._last_status = None
-        self._last_response_len = 0
-        try:
-            if not _consume_rate_limit(ip, time.time()):
-                self.send_error(429, "too many requests")
-                return
-            with LOCK:
-                now = time.time()
-                board, board_daily = _get_boards(now)
-            self._write_json(
-                200,
-                {"ok": True, "board": board, "boardDaily": board_daily, "serverTime": now},
-            )
-        finally:
-            if self._last_status is not None:
-                duration = (time.perf_counter() - start) * 1000
-                self._log_api(
-                    "GET",
-                    parsed.path,
-                    self._last_status,
-                    duration,
-                    0,
-                    self._last_response_len,
-                    ip,
-                )
-
-    def log_message(self, format, *args):
-        return
+        self.wfile.write(payload)
 
 
-class Server(ThreadingHTTPServer):
-    block_on_close = False
+class GameServer(ThreadingHTTPServer):
+    """Threaded HTTP server with safe socket reuse."""
+
     allow_reuse_address = True
+    daemon_threads = True
 
 
-def main():
-    load_board()
-    handler = functools.partial(Handler, directory=BASE_DIR)
-    srv = Server(("0.0.0.0", PORT), handler)
-    print(f"Space Cleaner server listening on http://0.0.0.0:{PORT}")
-    try:
-        srv.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        srv.server_close()
+def main() -> None:
+    args = parse_args()
+    validate_runtime_config(args.port)
+
+    bind_addr = (args.host, args.port)
+    with GameServer(bind_addr, GameRequestHandler) as server:
+        print(f"Game server listening on http://{args.host}:{args.port}")
+        server.serve_forever()
 
 
 if __name__ == "__main__":
