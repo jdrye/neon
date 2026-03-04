@@ -1,0 +1,13 @@
+{
+  "name": "neon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ruins Dash - single web game with local Playwright e2e tests.",
+  "scripts": {
+    "test:e2e": "playwright test tests/e2e/space-no-restart.spec.js",
+    "bot:play": "node scripts/bot_play.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

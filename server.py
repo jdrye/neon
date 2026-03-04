@@ -60,9 +60,9 @@ class GameRequestHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def end_headers(self) -> None:
-        """Add simple cache policy: HTML should refresh, assets can be cached."""
+        """Use no-store for app files and short cache for other static paths."""
         request_path = self.path.split("?", 1)[0]
-        if request_path.endswith(".html") or request_path in {"/", ""}:
+        if request_path.endswith((".html", ".css", ".js")) or request_path in {"/", ""}:
             self.send_header("Cache-Control", "no-store")
         else:
             self.send_header("Cache-Control", "public, max-age=300")
