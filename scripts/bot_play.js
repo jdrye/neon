@@ -84,6 +84,17 @@ function computeControls(snapshot) {
     const bossRepel = bossDist < 150 ? 860 : bossDist < 240 ? 520 : 220;
     vx += (dx / bossDist) * bossRepel;
     vy += (dy / bossDist) * bossRepel;
+
+    if (miniBoss.phase >= 3 && miniBoss.shockwaveCooldown < 1.05) {
+      vx += (dx / bossDist) * 1250;
+      vy += (dy / bossDist) * 1250;
+    }
+
+    if (miniBoss.volleyRecoverLeft > 0 && player.dashCooldownLeft < 0.2) {
+      const seek = bossDist > 150 ? 540 : bossDist > 116 ? 240 : -180;
+      vx += (-dx / bossDist) * seek;
+      vy += (-dy / bossDist) * seek;
+    }
   }
 
   for (const shot of bossProjectiles) {
@@ -126,7 +137,10 @@ function computeControls(snapshot) {
   const dash =
     player.dashCooldownLeft <= 0.02 &&
     player.dashTimeLeft <= 0.02 &&
-    ((nearestDist < 96 && enemies.length >= 2) || bossDist < 128 || bossProjectiles.length >= 2);
+    ((nearestDist < 96 && enemies.length >= 2) ||
+      (miniBoss && miniBoss.volleyRecoverLeft > 0 && bossDist < 168) ||
+      bossDist < 128 ||
+      bossProjectiles.length >= 2);
 
   return {
     left: vx < -38,

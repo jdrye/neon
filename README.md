@@ -69,7 +69,8 @@ Boucle de jeu:
 - Toutes les `15s`, un checkpoint declenche une onde de securite et regenere 1 PV
 - Nouveau pattern ennemi `lancer` (windup + charge, ajusté pour etre lisible)
 - Mini-boss a `30s`, en 3 phases (phase 3: onde de choc)
-- Patterns de projectiles boss telegraphies (fenetre d'esquive lisible)
+- Patterns de projectiles boss telegraphies et alternes (eventail / balayage)
+- Fenetre `BOSS-OPEN` apres salve pour contre-attaque au dash
 - Feedback de degats renforce (hit-stop court + vignette d'alerte)
 - Mouvements joueur lisses mais reactifs (inertie controlee)
 - Dash sur le boss pour casser son armure et gagner des bonus

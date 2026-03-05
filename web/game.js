@@ -64,6 +64,10 @@
     bossProjectileSpeed: 238,
     bossProjectileRadius: 7,
     bossProjectileLife: 2.2,
+    bossVolleyRecover: 1,
+    bossAttackLock: 0.24,
+    bossMinVolleyDistance: 120,
+    bossSweepStepDelay: 0.09,
     bossHitScore: 140,
     bossDefeatScore: 900,
 
@@ -144,6 +148,9 @@
     miniBoss: null,
     bossSpawned: false,
     bossIntroTimer: 0,
+    bossCalloutTimer: 0,
+    bossCalloutText: "",
+    bossCalloutTone: "normal",
     bossTelegraphs: [],
     bossProjectiles: [],
 
@@ -211,6 +218,9 @@
     state.miniBoss = null;
     state.bossSpawned = false;
     state.bossIntroTimer = 0;
+    state.bossCalloutTimer = 0;
+    state.bossCalloutText = "";
+    state.bossCalloutTone = "normal";
     state.bossTelegraphs = [];
     state.bossProjectiles = [];
 
@@ -275,6 +285,7 @@
     state.score += dt * CONFIG.scorePerSecond;
     state.flashTimer = Math.max(0, state.flashTimer - dt);
     state.bossIntroTimer = Math.max(0, state.bossIntroTimer - dt);
+    state.bossCalloutTimer = Math.max(0, state.bossCalloutTimer - dt);
     state.chromaPulse = Math.max(0, state.chromaPulse - dt * 2.2);
 
     state.shakeTime = Math.max(0, state.shakeTime - dt);
@@ -332,6 +343,7 @@
     addImpactRing(state.miniBoss.x, state.miniBoss.y, [230, 170, 255], 260, 0.54, 3.4);
     state.chromaPulse = Math.max(state.chromaPulse, 0.26);
     state.flashTimer = 0.34;
+    showBossCallout("Mini-boss detecte", 1.9, "warn");
     playSfx("bossSpawn");
   }
 
@@ -367,6 +379,10 @@
         spawnMinionTimer: CONFIG.bossSpawnMinionEvery,
         shockwaveCooldown: 9,
         projectileCooldown: rand(CONFIG.bossProjectileCooldownMin, CONFIG.bossProjectileCooldownMax),
+        shockwaveWarned: false,
+        attackLockLeft: 0,
+        volleyRecoverLeft: 0,
+        volleyPattern: 0,
       };
     }
 
@@ -387,6 +403,10 @@
       spawnMinionTimer: CONFIG.bossSpawnMinionEvery,
       shockwaveCooldown: 9,
       projectileCooldown: rand(CONFIG.bossProjectileCooldownMin, CONFIG.bossProjectileCooldownMax),
+      shockwaveWarned: false,
+      attackLockLeft: 0,
+      volleyRecoverLeft: 0,
+      volleyPattern: 0,
     };
   }
 
@@ -454,10 +474,13 @@
         0.42,
         3
       );
+      showBossCallout(boss.phase === 2 ? "Phase II" : "Phase III", 1.25, "warn");
       playSfx("bossPhase");
     }
 
     boss.stunLeft = Math.max(0, boss.stunLeft - dt);
+    boss.attackLockLeft = Math.max(0, (boss.attackLockLeft || 0) - dt);
+    boss.volleyRecoverLeft = Math.max(0, (boss.volleyRecoverLeft || 0) - dt);
     boss.chargeCooldown = Math.max(0, boss.chargeCooldown - dt);
     boss.spawnMinionTimer = Math.max(0, boss.spawnMinionTimer - dt);
     boss.shockwaveCooldown = Math.max(0, (boss.shockwaveCooldown || 0) - dt);
@@ -469,7 +492,7 @@
     const nx = toPlayerX / distToPlayer;
     const ny = toPlayerY / distToPlayer;
 
-    if (boss.stunLeft <= 0) {
+    if (boss.stunLeft <= 0 && boss.attackLockLeft <= 0) {
       if (boss.windupLeft > 0) {
         boss.windupLeft -= dt;
         if (boss.windupLeft <= 0) {
@@ -506,25 +529,48 @@
       }
     }
 
-    if (boss.phase >= 3 && boss.shockwaveCooldown <= 0) {
-      boss.shockwaveCooldown = rand(6.2, 8.8);
-      unleashBossShockwave(boss, player);
+    if (boss.phase >= 3) {
+      if (!boss.shockwaveWarned && boss.shockwaveCooldown <= 1.1) {
+        boss.shockwaveWarned = true;
+        showBossCallout("Onde de choc imminente", 0.9, "bad");
+        playSfx("bossWarn");
+      }
+      if (boss.shockwaveCooldown <= 0) {
+        boss.shockwaveCooldown = rand(6.2, 8.8);
+        boss.shockwaveWarned = false;
+        unleashBossShockwave(boss, player);
+      }
     }
 
     if (
       boss.phase >= 2 &&
       boss.projectileCooldown <= 0 &&
       boss.windupLeft <= 0 &&
-      boss.chargeTimeLeft <= 0
+      boss.chargeTimeLeft <= 0 &&
+      boss.attackLockLeft <= 0
     ) {
-      queueBossVolley(boss, player, boss.phase);
-      boss.projectileCooldown =
-        boss.phase === 2
-          ? rand(CONFIG.bossProjectileCooldownMin, CONFIG.bossProjectileCooldownMax)
-          : rand(CONFIG.bossProjectileCooldownMin * 0.78, CONFIG.bossProjectileCooldownMax * 0.8);
+      if (distToPlayer > CONFIG.bossMinVolleyDistance) {
+        queueBossVolley(boss, player, boss.phase);
+        boss.attackLockLeft = Math.max(
+          boss.attackLockLeft,
+          CONFIG.bossAttackLock + CONFIG.bossProjectileTelegraph * 0.35
+        );
+        boss.chargeCooldown = Math.max(boss.chargeCooldown, 1.35);
+        boss.projectileCooldown =
+          boss.phase === 2
+            ? rand(CONFIG.bossProjectileCooldownMin, CONFIG.bossProjectileCooldownMax)
+            : rand(CONFIG.bossProjectileCooldownMin * 0.82, CONFIG.bossProjectileCooldownMax * 0.84);
+      } else {
+        boss.projectileCooldown = 0.55;
+      }
     }
 
-    if (boss.spawnMinionTimer <= 0 && state.enemies.length < CONFIG.enemyMax + 1) {
+    if (
+      boss.spawnMinionTimer <= 0 &&
+      state.enemies.length < CONFIG.enemyMax &&
+      state.bossTelegraphs.length < 9 &&
+      state.bossProjectiles.length < 12
+    ) {
       const spawned = spawnBossMinion(boss, player);
       if (spawned) {
         state.enemies.push(spawned);
@@ -562,31 +608,62 @@
     const nx = dx / dist;
     const ny = dy / dist;
     const baseAngle = Math.atan2(ny, nx);
+    const pattern = boss.volleyPattern % 2 === 0 ? "fan" : "sweep";
+    boss.volleyPattern = (boss.volleyPattern + 1) % 2;
+    const speed = CONFIG.bossProjectileSpeed * (phase === 2 ? 1 : 1.08);
 
-    const lines = phase === 2 ? 3 : 5;
-    const spread = phase === 2 ? 0.46 : 0.82;
-    const speed = CONFIG.bossProjectileSpeed * (phase === 2 ? 1 : 1.15);
-
-    for (let i = 0; i < lines; i += 1) {
-      const t = lines === 1 ? 0 : i / (lines - 1);
-      const offset = -spread * 0.5 + spread * t;
-      const a = baseAngle + offset;
-      queueBossTelegraph(boss, a, speed);
+    if (pattern === "fan") {
+      const lines = phase === 2 ? 3 : 4;
+      const spread = phase === 2 ? 0.52 : 0.72;
+      for (let i = 0; i < lines; i += 1) {
+        const t = lines === 1 ? 0.5 : i / (lines - 1);
+        const offset = -spread * 0.5 + spread * t;
+        const a = baseAngle + offset;
+        queueBossTelegraph(boss, a, speed, {
+          kind: "fan",
+          opensRecover: i === lines - 1,
+          recoverDuration: CONFIG.bossVolleyRecover,
+        });
+      }
+      showBossCallout("Salve eventail", 0.82, "warn");
+    } else {
+      const lines = phase === 2 ? 4 : 6;
+      const spread = phase === 2 ? 1.05 : 1.28;
+      for (let i = 0; i < lines; i += 1) {
+        const t = lines === 1 ? 0.5 : i / (lines - 1);
+        const offset = -spread * 0.5 + spread * t;
+        const wave = phase === 3 ? Math.sin(i * 0.7) * 0.08 : 0;
+        const a = baseAngle + offset + wave;
+        queueBossTelegraph(boss, a, speed * (phase === 2 ? 1 : 1.03), {
+          kind: "sweep",
+          delay: i * CONFIG.bossSweepStepDelay,
+          opensRecover: i === lines - 1,
+          recoverDuration: CONFIG.bossVolleyRecover * 0.95,
+        });
+      }
+      showBossCallout("Salve balayage", 0.92, "warn");
     }
 
     addImpactRing(boss.x, boss.y, [244, 210, 255], 150, 0.3, 2.2);
     playSfx("bossAim");
   }
 
-  function queueBossTelegraph(boss, angle, speed) {
+  function queueBossTelegraph(boss, angle, speed, options = null) {
+    const opt = options || {};
+    const delay = Math.max(0, Number(opt.delay) || 0);
     state.bossTelegraphs.push({
       x: boss.x,
       y: boss.y,
       angle,
       speed,
+      kind: opt.kind || "fan",
+      delay,
+      maxDelay: delay,
       life: CONFIG.bossProjectileTelegraph,
       maxLife: CONFIG.bossProjectileTelegraph,
       radius: CONFIG.bossProjectileRadius,
+      opensRecover: !!opt.opensRecover,
+      recoverDuration: Math.max(0.2, Number(opt.recoverDuration) || CONFIG.bossVolleyRecover),
     });
     if (state.bossTelegraphs.length > 28) {
       state.bossTelegraphs.splice(0, state.bossTelegraphs.length - 28);
@@ -596,6 +673,11 @@
   function updateBossTelegraphs(dt) {
     for (let i = state.bossTelegraphs.length - 1; i >= 0; i -= 1) {
       const telegraph = state.bossTelegraphs[i];
+      if (telegraph.delay > 0) {
+        telegraph.delay = Math.max(0, telegraph.delay - dt);
+        continue;
+      }
+
       telegraph.life -= dt;
       if (telegraph.life > 0) {
         continue;
@@ -608,12 +690,32 @@
         y: telegraph.y,
         vx,
         vy,
+        kind: telegraph.kind || "fan",
         r: telegraph.radius,
         life: CONFIG.bossProjectileLife,
       });
       state.bossTelegraphs.splice(i, 1);
       playSfx("bossShot");
-      addImpactRing(telegraph.x, telegraph.y, [247, 208, 255], 110, 0.24, 2);
+      addImpactRing(
+        telegraph.x,
+        telegraph.y,
+        telegraph.kind === "sweep" ? [255, 204, 176] : [247, 208, 255],
+        110,
+        0.24,
+        2
+      );
+
+      if (telegraph.opensRecover && state.miniBoss) {
+        state.miniBoss.volleyRecoverLeft = Math.max(
+          state.miniBoss.volleyRecoverLeft || 0,
+          telegraph.recoverDuration
+        );
+        state.miniBoss.stunLeft = Math.max(state.miniBoss.stunLeft || 0, 0.24);
+        state.miniBoss.attackLockLeft = Math.max(state.miniBoss.attackLockLeft || 0, 0.16);
+        addImpactRing(state.miniBoss.x, state.miniBoss.y, [155, 248, 210], 180, 0.32, 2.6);
+        showBossCallout("Fenetre dash", 0.75, "good");
+        playSfx("bossOpen");
+      }
     }
   }
 
@@ -1011,21 +1113,35 @@
       const dy = boss.y - player.y;
       const dist = Math.hypot(dx, dy);
       if (dist > 0 && dist <= CONFIG.dashShockRadius + 24) {
+        const bonusWindow = (boss.volleyRecoverLeft || 0) > 0;
+        const hitDamage = bonusWindow ? 2 : 1;
         const push = (CONFIG.dashShockRadius + 24 - dist) * 0.95 + 12;
         boss.x += (dx / dist) * push;
         boss.y += (dy / dist) * push;
         boss.stunLeft = Math.max(boss.stunLeft, 0.5);
-        boss.health -= 1;
-        state.score += CONFIG.bossHitScore;
+        boss.health -= hitDamage;
+        state.score += CONFIG.bossHitScore * hitDamage;
+        if (bonusWindow) {
+          boss.volleyRecoverLeft = 0;
+        }
 
         clampToBounds(boss);
         resolveObstacleOverlap(boss);
         emitParticles(boss.x, boss.y, [232, 175, 255], 16, 180, 0.58, 3);
         addImpactRing(boss.x, boss.y, [236, 179, 255], 175, 0.34, 3);
-        triggerShake(0.18, 2.4);
-        triggerHitStop(0.025);
+        if (bonusWindow) {
+          emitParticles(boss.x, boss.y, [180, 255, 220], 18, 220, 0.46, 2.8);
+          addImpactRing(boss.x, boss.y, [170, 255, 220], 210, 0.36, 3);
+          triggerShake(0.22, 2.8);
+          triggerHitStop(0.04);
+          showBossCallout("Armure brisee", 0.7, "good");
+          playSfx("bossBreak");
+        } else {
+          triggerShake(0.18, 2.4);
+          triggerHitStop(0.025);
+          playSfx("bossHit");
+        }
         state.chromaPulse = Math.max(state.chromaPulse, 0.22);
-        playSfx("bossHit");
 
         if (boss.health <= 0) {
           defeatMiniBoss(player);
@@ -1047,6 +1163,7 @@
     triggerShake(0.45, 5.2);
     triggerHitStop(0.06);
     state.chromaPulse = Math.max(state.chromaPulse, 0.42);
+    showBossCallout("Boss neutralise", 1.2, "good");
     playSfx("bossDefeat");
 
     // Reward: small arena reset when boss falls.
@@ -1367,6 +1484,12 @@
     state.hitStopLeft = Math.max(state.hitStopLeft, duration);
   }
 
+  function showBossCallout(text, duration = 0.9, tone = "warn") {
+    state.bossCalloutText = text;
+    state.bossCalloutTone = tone;
+    state.bossCalloutTimer = Math.max(state.bossCalloutTimer, duration);
+  }
+
   function render() {
     const player = state.player;
 
@@ -1625,6 +1748,16 @@
     ctx.arc(boss.x + 4, boss.y - 4, 6, 0, Math.PI * 2);
     ctx.fill();
 
+    if ((boss.volleyRecoverLeft || 0) > 0) {
+      const open = clamp((boss.volleyRecoverLeft || 0) / CONFIG.bossVolleyRecover, 0, 1);
+      const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 16);
+      ctx.strokeStyle = `rgba(166, 255, 220, ${0.3 + open * 0.45 + pulse * 0.12})`;
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.arc(boss.x, boss.y, boss.r + 11 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     if (phase >= 2 && (boss.projectileCooldown || 0) < 1.1) {
       const alertPulse = 0.5 + 0.5 * Math.sin(state.elapsed * 18);
       ctx.strokeStyle = `rgba(255, 206, 242, ${0.28 + alertPulse * 0.46})`;
@@ -1660,22 +1793,28 @@
   function drawBossTelegraphs() {
     ctx.save();
     for (const telegraph of state.bossTelegraphs) {
+      const warm = telegraph.kind === "sweep";
+      const warmup =
+        telegraph.maxDelay > 0 ? clamp(1 - (telegraph.delay || 0) / telegraph.maxDelay, 0, 1) : 1;
       const alpha = clamp(telegraph.life / telegraph.maxLife, 0, 1);
-      const arming = 1 - alpha;
-      const len = 280;
+      const arming = (telegraph.delay || 0) > 0 ? warmup * 0.55 : 1 - alpha;
+      const len = warm ? 300 : 280;
       const ex = telegraph.x + Math.cos(telegraph.angle) * len;
       const ey = telegraph.y + Math.sin(telegraph.angle) * len;
+      const core = warm ? "255, 176, 129" : "255, 121, 195";
+      const edge = warm ? "255, 238, 210" : "255, 235, 245";
+      const tip = warm ? "255, 227, 198" : "255, 214, 239";
 
-      ctx.strokeStyle = `rgba(255, 121, 195, ${0.08 + arming * 0.26})`;
+      ctx.strokeStyle = `rgba(${core}, ${0.08 + arming * 0.26})`;
       ctx.lineWidth = 8 + arming * 4;
       ctx.beginPath();
       ctx.moveTo(telegraph.x, telegraph.y);
       ctx.lineTo(ex, ey);
       ctx.stroke();
 
-      ctx.setLineDash([12, 8]);
-      ctx.lineDashOffset = -state.elapsed * 180;
-      ctx.strokeStyle = `rgba(255, 235, 245, ${0.36 + arming * 0.58})`;
+      ctx.setLineDash(warm ? [8, 10] : [12, 8]);
+      ctx.lineDashOffset = -state.elapsed * (warm ? 220 : 180);
+      ctx.strokeStyle = `rgba(${edge}, ${0.34 + arming * 0.58})`;
       ctx.lineWidth = 2.2 + arming * 1.6;
       ctx.beginPath();
       ctx.moveTo(telegraph.x, telegraph.y);
@@ -1683,7 +1822,7 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = `rgba(255, 214, 239, ${0.35 + arming * 0.48})`;
+      ctx.fillStyle = `rgba(${tip}, ${0.35 + arming * 0.48})`;
       ctx.beginPath();
       ctx.arc(ex, ey, 4 + arming * 3.2, 0, Math.PI * 2);
       ctx.fill();
@@ -1693,29 +1832,38 @@
 
   function drawBossProjectiles() {
     for (const projectile of state.bossProjectiles) {
+      const warm = projectile.kind === "sweep";
       const alpha = clamp(projectile.life / CONFIG.bossProjectileLife, 0, 1);
       const speed = Math.max(1, Math.hypot(projectile.vx, projectile.vy));
       const tailX = projectile.x - (projectile.vx / speed) * (16 + (1 - alpha) * 16);
       const tailY = projectile.y - (projectile.vy / speed) * (16 + (1 - alpha) * 16);
 
-      ctx.strokeStyle = `rgba(255, 162, 226, ${0.26 + alpha * 0.3})`;
+      ctx.strokeStyle = warm
+        ? `rgba(255, 177, 132, ${0.26 + alpha * 0.3})`
+        : `rgba(255, 162, 226, ${0.26 + alpha * 0.3})`;
       ctx.lineWidth = 3 + alpha * 2;
       ctx.beginPath();
       ctx.moveTo(tailX, tailY);
       ctx.lineTo(projectile.x, projectile.y);
       ctx.stroke();
 
-      ctx.fillStyle = `rgba(255, 188, 238, ${0.18 + alpha * 0.2})`;
+      ctx.fillStyle = warm
+        ? `rgba(255, 214, 181, ${0.18 + alpha * 0.2})`
+        : `rgba(255, 188, 238, ${0.18 + alpha * 0.2})`;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.r + 7.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = `rgba(255, 162, 226, ${0.8 + alpha * 0.18})`;
+      ctx.fillStyle = warm
+        ? `rgba(255, 170, 115, ${0.8 + alpha * 0.18})`
+        : `rgba(255, 162, 226, ${0.8 + alpha * 0.18})`;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.r, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = `rgba(255, 242, 252, ${0.55 + alpha * 0.35})`;
+      ctx.fillStyle = warm
+        ? `rgba(255, 247, 233, ${0.55 + alpha * 0.35})`
+        : `rgba(255, 242, 252, ${0.55 + alpha * 0.35})`;
       ctx.beginPath();
       ctx.arc(projectile.x - 1, projectile.y - 1, Math.max(1.7, projectile.r * 0.38), 0, Math.PI * 2);
       ctx.fill();
@@ -1910,15 +2058,45 @@
   }
 
   function drawBossBanner() {
-    if (state.bossIntroTimer <= 0) {
+    let text = "";
+    let tone = "warn";
+    let alpha = 0;
+
+    if (state.bossCalloutTimer > 0 && state.bossCalloutText) {
+      text = state.bossCalloutText;
+      tone = state.bossCalloutTone || "warn";
+      alpha = clamp(Math.min(1, state.bossCalloutTimer / 0.35), 0, 1);
+    } else if (state.bossIntroTimer > 0) {
+      text = "Mini-boss detecte";
+      tone = "warn";
+      alpha = clamp(state.bossIntroTimer / 2.4, 0, 1);
+    }
+
+    if (!text) {
       return;
     }
 
-    const alpha = clamp(state.bossIntroTimer / 2.4, 0, 1);
-    ctx.fillStyle = `rgba(245, 196, 255, ${0.9 * alpha})`;
-    ctx.font = "700 24px 'Trebuchet MS', sans-serif";
+    const palette =
+      tone === "good"
+        ? { bg: "75, 200, 145", fg: "226, 255, 240" }
+        : tone === "bad"
+          ? { bg: "220, 92, 125", fg: "255, 232, 239" }
+          : { bg: "230, 150, 255", fg: "250, 228, 255" };
+
+    ctx.font = "700 23px 'Trebuchet MS', sans-serif";
+    const width = Math.min(420, ctx.measureText(text).width + 34);
+    const x = CONFIG.width * 0.5 - width * 0.5;
+    const y = 28;
+    const h = 34;
+    ctx.fillStyle = `rgba(${palette.bg}, ${0.18 + alpha * 0.26})`;
+    ctx.fillRect(x, y, width, h);
+    ctx.strokeStyle = `rgba(${palette.fg}, ${0.4 + alpha * 0.4})`;
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(x + 0.5, y + 0.5, width - 1, h - 1);
+
+    ctx.fillStyle = `rgba(${palette.fg}, ${0.9 * alpha})`;
     ctx.textAlign = "center";
-    ctx.fillText("Mini-boss detecte", CONFIG.width * 0.5, 54);
+    ctx.fillText(text, CONFIG.width * 0.5, y + 24);
   }
 
   function loop(ts) {
@@ -2096,7 +2274,11 @@
     if (dom.dangerVal) {
       if (state.miniBoss) {
         const phase = state.miniBoss.phase || 1;
-        dom.dangerVal.textContent = phase === 1 ? "BOSS-I" : phase === 2 ? "BOSS-II" : "BOSS-III";
+        if ((state.miniBoss.volleyRecoverLeft || 0) > 0) {
+          dom.dangerVal.textContent = "BOSS-OPEN";
+        } else {
+          dom.dangerVal.textContent = phase === 1 ? "BOSS-I" : phase === 2 ? "BOSS-II" : "BOSS-III";
+        }
       } else if (state.difficulty < 1.06) {
         dom.dangerVal.textContent = "I";
       } else if (state.difficulty < 1.34) {
@@ -2235,6 +2417,11 @@
       playTone(280, 210, 0.14, "triangle", 0.04);
       return;
     }
+    if (name === "bossWarn") {
+      playTone(320, 260, 0.1, "square", 0.048);
+      playTone(260, 220, 0.08, "square", 0.036);
+      return;
+    }
     if (name === "bossAim") {
       playTone(360, 470, 0.12, "triangle", 0.045);
       return;
@@ -2249,6 +2436,15 @@
     }
     if (name === "bossHit") {
       playTone(300, 180, 0.1, "square", 0.05);
+      return;
+    }
+    if (name === "bossOpen") {
+      playTone(330, 460, 0.08, "triangle", 0.04);
+      return;
+    }
+    if (name === "bossBreak") {
+      playTone(620, 260, 0.14, "sawtooth", 0.055);
+      playTone(440, 220, 0.12, "triangle", 0.04);
       return;
     }
     if (name === "bossDefeat") {
@@ -2405,6 +2601,9 @@
                 windupLeft: boss.windupLeft,
                 chargeTimeLeft: boss.chargeTimeLeft,
                 shockwaveCooldown: boss.shockwaveCooldown || 0,
+                projectileCooldown: boss.projectileCooldown || 0,
+                attackLockLeft: boss.attackLockLeft || 0,
+                volleyRecoverLeft: boss.volleyRecoverLeft || 0,
               }
             : null,
           enemies: state.enemies.map((enemy) => ({
@@ -2485,7 +2684,9 @@
     setupStars();
     renderLeaderboard();
     updateActionButton();
-    showOverlay("Survis 60s. Boss a 30s (3 phases + tirs telegraphies). Espace = rush. M = audio.");
+    showOverlay(
+      "Survis 60s. Boss a 30s (3 phases + patterns alternes). Dash en fenetre BOSS-OPEN. Espace = rush. M = audio."
+    );
     syncHud();
     requestAnimationFrame(loop);
   }
