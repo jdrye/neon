@@ -70,6 +70,8 @@ Boucle de jeu:
 - Nouveau pattern ennemi `lancer` (windup + charge, ajusté pour etre lisible)
 - Mini-boss a `30s`, en 3 phases (phase 3: onde de choc)
 - Patterns de projectiles boss telegraphies (fenetre d'esquive lisible)
+- Feedback de degats renforce (hit-stop court + vignette d'alerte)
+- Mouvements joueur lisses mais reactifs (inertie controlee)
 - Dash sur le boss pour casser son armure et gagner des bonus
 - Effets sonores reactifs (`M` pour mute/unmute)
 - Defaite si PV a zero, victoire si `60s` atteintes

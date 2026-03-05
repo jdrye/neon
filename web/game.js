@@ -15,9 +15,12 @@
     objectiveSeconds: 60,
 
     playerRadius: 16,
-    playerSpeed: 320,
+    playerSpeed: 340,
+    playerInputResponse: 18,
+    playerReleaseResponse: 12,
     playerMaxLives: 6,
     hitInvulnerability: 1.45,
+    hurtOverlayDecay: 1.85,
 
     dashBoost: 3.1,
     dashDuration: 0.26,
@@ -25,8 +28,8 @@
     dashInvuln: 0.42,
     dashShockRadius: 88,
 
-    enemySpawnBaseInterval: 8.2,
-    enemySpawnMinInterval: 5.2,
+    enemySpawnBaseInterval: 8.4,
+    enemySpawnMinInterval: 5.4,
     enemyMax: 5,
     enemyGraceSeconds: 3.8,
     enemySafeSpawnFromPlayer: 250,
@@ -58,7 +61,7 @@
     bossProjectileCooldownMin: 4.6,
     bossProjectileCooldownMax: 6.8,
     bossProjectileTelegraph: 0.54,
-    bossProjectileSpeed: 250,
+    bossProjectileSpeed: 238,
     bossProjectileRadius: 7,
     bossProjectileLife: 2.2,
     bossHitScore: 140,
@@ -127,6 +130,8 @@
     shakeTime: 0,
     shakePower: 0,
     chromaPulse: 0,
+    hurtOverlay: 0,
+    hitStopLeft: 0,
 
     difficulty: 1,
     nextCheckpointAt: CONFIG.checkpointEverySeconds,
@@ -168,6 +173,8 @@
       invuln: 0,
       dashCooldownLeft: 0,
       dashTimeLeft: 0,
+      moveX: 0,
+      moveY: 0,
       lastMoveX: 1,
       lastMoveY: 0,
     };
@@ -190,6 +197,8 @@
     state.shakeTime = 0;
     state.shakePower = 0;
     state.chromaPulse = 0;
+    state.hurtOverlay = 0;
+    state.hitStopLeft = 0;
 
     state.difficulty = 1;
     state.nextCheckpointAt = CONFIG.checkpointEverySeconds;
@@ -247,6 +256,18 @@
 
   function update(dt) {
     if (!state.running || state.paused || !state.player) {
+      return;
+    }
+
+    state.hurtOverlay = Math.max(0, state.hurtOverlay - dt * CONFIG.hurtOverlayDecay);
+
+    if (state.hitStopLeft > 0) {
+      state.hitStopLeft = Math.max(0, state.hitStopLeft - dt);
+      state.flashTimer = Math.max(0, state.flashTimer - dt * 1.4);
+      state.chromaPulse = Math.max(0, state.chromaPulse - dt * 2);
+      updateParticles(dt * 0.25);
+      updateImpactRings(dt * 0.3);
+      syncHud();
       return;
     }
 
@@ -622,12 +643,14 @@
 
       if (state.player && player.invuln <= 0 && circlesOverlap(projectile, player)) {
         player.lives -= 1;
-        player.invuln = Math.max(player.invuln, 1.05);
+        player.invuln = Math.max(player.invuln, 1.2);
         state.flashTimer = Math.max(state.flashTimer, 0.3);
         state.chromaPulse = Math.max(state.chromaPulse, 0.22);
+        state.hurtOverlay = Math.max(state.hurtOverlay, 0.56);
         addImpactRing(player.x, player.y, [255, 166, 220], 170, 0.32, 2.5);
         emitParticles(player.x, player.y, [255, 165, 220], 18, 200, 0.42, 2.3);
         triggerShake(0.2, 2.8);
+        triggerHitStop(0.045);
         playSfx("bossShotHit");
         state.bossProjectiles.splice(i, 1);
       }
@@ -700,17 +723,35 @@
 
   function updatePlayer(dt, player) {
     const movement = getMovementVector();
+    const rawMag = Math.hypot(movement.dx, movement.dy);
+    const hasInput = rawMag > 0.001;
+    const desiredX = hasInput ? movement.dx / rawMag : 0;
+    const desiredY = hasInput ? movement.dy / rawMag : 0;
 
-    if (movement.dx !== 0 || movement.dy !== 0) {
-      const mag = Math.hypot(movement.dx, movement.dy) || 1;
-      const nx = movement.dx / mag;
-      const ny = movement.dy / mag;
-      player.lastMoveX = nx;
-      player.lastMoveY = ny;
+    const response = hasInput ? CONFIG.playerInputResponse : CONFIG.playerReleaseResponse;
+    const blend = clamp(response * dt, 0, 1);
+    player.moveX += (desiredX - player.moveX) * blend;
+    player.moveY += (desiredY - player.moveY) * blend;
 
-      const speed = CONFIG.playerSpeed * (player.dashTimeLeft > 0 ? CONFIG.dashBoost : 1);
-      moveCircleWithCollisions(player, nx * speed * dt, ny * speed * dt);
+    const moveMag = Math.hypot(player.moveX, player.moveY);
+    if (moveMag > 1) {
+      player.moveX /= moveMag;
+      player.moveY /= moveMag;
     }
+
+    if (hasInput && moveMag > 0.06) {
+      player.lastMoveX = player.moveX / moveMag;
+      player.lastMoveY = player.moveY / moveMag;
+    }
+
+    const speed = CONFIG.playerSpeed * (player.dashTimeLeft > 0 ? CONFIG.dashBoost : 1);
+    let moveX = player.moveX;
+    let moveY = player.moveY;
+    if (!hasInput && player.dashTimeLeft > 0) {
+      moveX = player.lastMoveX;
+      moveY = player.lastMoveY;
+    }
+    moveCircleWithCollisions(player, moveX * speed * dt, moveY * speed * dt);
 
     if (player.dashTimeLeft > 0) {
       applyDashPulse(player);
@@ -760,10 +801,12 @@
 
         if (enemy.lanceWindup > 0) {
           speedMultiplier = 0.28;
+          enemy.lanceAimX = dx / dist;
+          enemy.lanceAimY = dy / dist;
           if (enemy.lanceWindup <= 0.02) {
             enemy.lanceTime = 0.28;
-            enemy.lanceDirX = dx / dist;
-            enemy.lanceDirY = dy / dist;
+            enemy.lanceDirX = enemy.lanceAimX || dx / dist;
+            enemy.lanceDirY = enemy.lanceAimY || dy / dist;
           }
         } else if (enemy.lanceTime > 0) {
           dirX = enemy.lanceDirX || dirX;
@@ -771,7 +814,11 @@
           speedMultiplier = 2.42;
         } else {
           if (enemy.lanceCooldown <= 0 && dist > 120 && dist < 340) {
-            enemy.lanceWindup = rand(0.3, 0.48);
+            const windup = rand(0.34, 0.52);
+            enemy.lanceWindup = windup;
+            enemy.lanceWindupMax = windup;
+            enemy.lanceAimX = dx / dist;
+            enemy.lanceAimY = dy / dist;
             enemy.lanceCooldown = rand(4.4, 6.8);
           }
 
@@ -864,7 +911,9 @@
       emitParticles(player.x, player.y, [255, 138, 138], 20, 220, 0.55, 3);
       addImpactRing(player.x, player.y, [255, 140, 140], 160, 0.32, 2.8);
       triggerShake(0.26, 3.8);
+      triggerHitStop(0.04);
       state.chromaPulse = Math.max(state.chromaPulse, 0.2);
+      state.hurtOverlay = Math.max(state.hurtOverlay, 0.5);
       hit = true;
       break;
     }
@@ -887,7 +936,9 @@
       emitParticles(player.x, player.y, [255, 138, 138], 26, 240, 0.58, 3);
       addImpactRing(player.x, player.y, [255, 125, 165], 190, 0.35, 3);
       triggerShake(0.3, 4.4);
+      triggerHitStop(0.055);
       state.chromaPulse = Math.max(state.chromaPulse, 0.28);
+      state.hurtOverlay = Math.max(state.hurtOverlay, 0.6);
       hit = true;
     }
 
@@ -972,6 +1023,7 @@
         emitParticles(boss.x, boss.y, [232, 175, 255], 16, 180, 0.58, 3);
         addImpactRing(boss.x, boss.y, [236, 179, 255], 175, 0.34, 3);
         triggerShake(0.18, 2.4);
+        triggerHitStop(0.025);
         state.chromaPulse = Math.max(state.chromaPulse, 0.22);
         playSfx("bossHit");
 
@@ -993,6 +1045,7 @@
     emitParticles(boss.x, boss.y, [245, 187, 255], 64, 340, 1, 4.2);
     addImpactRing(boss.x, boss.y, [245, 187, 255], 320, 0.68, 4.2);
     triggerShake(0.45, 5.2);
+    triggerHitStop(0.06);
     state.chromaPulse = Math.max(state.chromaPulse, 0.42);
     playSfx("bossDefeat");
 
@@ -1048,6 +1101,7 @@
   function buildEnemy(x, y, forcedType = null) {
     let type = forcedType;
     if (!type) {
+      const lancerCount = state.enemies.reduce((count, enemy) => count + (enemy.type === "lancer" ? 1 : 0), 0);
       const lancerChance = clamp(
         (state.difficulty - 0.95) * 0.18 + state.elapsed * 0.0014,
         0.03,
@@ -1055,7 +1109,7 @@
       );
       const drifterChance = clamp((state.difficulty - 0.95) * 0.26, 0.05, 0.3);
       const roll = Math.random();
-      if (roll < lancerChance) {
+      if (roll < lancerChance && lancerCount < 2) {
         type = "lancer";
       } else if (roll < lancerChance + drifterChance) {
         type = "drifter";
@@ -1072,7 +1126,7 @@
       r: style.radius,
       baseSpeed:
         type === "lancer"
-          ? rand(54, 74)
+          ? rand(54, 72)
           : type === "drifter"
             ? rand(66, 90)
             : rand(60, 96),
@@ -1080,9 +1134,12 @@
       stunLeft: 0,
       lanceCooldown: rand(2.8, 4.2),
       lanceWindup: 0,
+      lanceWindupMax: 0,
       lanceTime: 0,
       lanceDirX: 0,
       lanceDirY: 0,
+      lanceAimX: 1,
+      lanceAimY: 0,
     };
   }
 
@@ -1268,10 +1325,12 @@
     if (dist < 210) {
       const push = (210 - dist) * 0.7;
       moveCircleWithCollisions(player, (dx / dist) * push, (dy / dist) * push);
-      if (dist < 90 && player.invuln <= 0) {
+      if (dist < 82 && player.invuln <= 0) {
         player.lives -= 1;
         player.invuln = Math.max(player.invuln, 0.9);
         state.flashTimer = Math.max(state.flashTimer, 0.28);
+        state.hurtOverlay = Math.max(state.hurtOverlay, 0.46);
+        triggerHitStop(0.035);
       }
     }
 
@@ -1302,6 +1361,10 @@
   function triggerShake(duration, power) {
     state.shakeTime = Math.max(state.shakeTime, duration);
     state.shakePower = Math.max(state.shakePower, power);
+  }
+
+  function triggerHitStop(duration) {
+    state.hitStopLeft = Math.max(state.hitStopLeft, duration);
   }
 
   function render() {
@@ -1341,6 +1404,8 @@
       ctx.fillRect(2, 0, CONFIG.width, CONFIG.height);
     }
 
+    drawDamageVignette();
+
     if (state.paused) {
       ctx.fillStyle = "#00000080";
       ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
@@ -1351,6 +1416,23 @@
     }
 
     ctx.restore();
+  }
+
+  function drawDamageVignette() {
+    if (state.hurtOverlay <= 0) {
+      return;
+    }
+
+    const p = clamp(state.hurtOverlay, 0, 1);
+    const centerX = CONFIG.width * 0.5;
+    const centerY = CONFIG.height * 0.5;
+    const inner = Math.min(CONFIG.width, CONFIG.height) * (0.18 + p * 0.05);
+    const outer = Math.max(CONFIG.width, CONFIG.height) * 0.7;
+    const vignette = ctx.createRadialGradient(centerX, centerY, inner, centerX, centerY, outer);
+    vignette.addColorStop(0, `rgba(255, 100, 150, ${0.02 + p * 0.03})`);
+    vignette.addColorStop(1, `rgba(255, 60, 120, ${0.17 + p * 0.16})`);
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
   }
 
   function drawBackground() {
@@ -1543,6 +1625,15 @@
     ctx.arc(boss.x + 4, boss.y - 4, 6, 0, Math.PI * 2);
     ctx.fill();
 
+    if (phase >= 2 && (boss.projectileCooldown || 0) < 1.1) {
+      const alertPulse = 0.5 + 0.5 * Math.sin(state.elapsed * 18);
+      ctx.strokeStyle = `rgba(255, 206, 242, ${0.28 + alertPulse * 0.46})`;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(boss.x, boss.y, boss.r + 13 + alertPulse * 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     const bw = 86;
     const bh = 8;
     const bx = boss.x - bw * 0.5;
@@ -1567,33 +1658,66 @@
   }
 
   function drawBossTelegraphs() {
+    ctx.save();
     for (const telegraph of state.bossTelegraphs) {
       const alpha = clamp(telegraph.life / telegraph.maxLife, 0, 1);
-      const len = 240;
+      const arming = 1 - alpha;
+      const len = 280;
       const ex = telegraph.x + Math.cos(telegraph.angle) * len;
       const ey = telegraph.y + Math.sin(telegraph.angle) * len;
 
-      ctx.strokeStyle = `rgba(255, 204, 247, ${0.22 + (1 - alpha) * 0.48})`;
-      ctx.lineWidth = 2 + (1 - alpha) * 1.2;
+      ctx.strokeStyle = `rgba(255, 121, 195, ${0.08 + arming * 0.26})`;
+      ctx.lineWidth = 8 + arming * 4;
       ctx.beginPath();
       ctx.moveTo(telegraph.x, telegraph.y);
       ctx.lineTo(ex, ey);
       ctx.stroke();
+
+      ctx.setLineDash([12, 8]);
+      ctx.lineDashOffset = -state.elapsed * 180;
+      ctx.strokeStyle = `rgba(255, 235, 245, ${0.36 + arming * 0.58})`;
+      ctx.lineWidth = 2.2 + arming * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(telegraph.x, telegraph.y);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = `rgba(255, 214, 239, ${0.35 + arming * 0.48})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 4 + arming * 3.2, 0, Math.PI * 2);
+      ctx.fill();
     }
+    ctx.restore();
   }
 
   function drawBossProjectiles() {
     for (const projectile of state.bossProjectiles) {
       const alpha = clamp(projectile.life / CONFIG.bossProjectileLife, 0, 1);
+      const speed = Math.max(1, Math.hypot(projectile.vx, projectile.vy));
+      const tailX = projectile.x - (projectile.vx / speed) * (16 + (1 - alpha) * 16);
+      const tailY = projectile.y - (projectile.vy / speed) * (16 + (1 - alpha) * 16);
+
+      ctx.strokeStyle = `rgba(255, 162, 226, ${0.26 + alpha * 0.3})`;
+      ctx.lineWidth = 3 + alpha * 2;
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.lineTo(projectile.x, projectile.y);
+      ctx.stroke();
 
       ctx.fillStyle = `rgba(255, 188, 238, ${0.18 + alpha * 0.2})`;
       ctx.beginPath();
-      ctx.arc(projectile.x, projectile.y, projectile.r + 6, 0, Math.PI * 2);
+      ctx.arc(projectile.x, projectile.y, projectile.r + 7.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = `rgba(255, 162, 226, ${0.75 + alpha * 0.2})`;
+      ctx.fillStyle = `rgba(255, 162, 226, ${0.8 + alpha * 0.18})`;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = `rgba(255, 242, 252, ${0.55 + alpha * 0.35})`;
+      ctx.beginPath();
+      ctx.arc(projectile.x - 1, projectile.y - 1, Math.max(1.7, projectile.r * 0.38), 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -1641,10 +1765,23 @@
       ctx.fill();
 
       if (enemy.type === "lancer" && enemy.lanceWindup > 0) {
+        const total = Math.max(0.001, enemy.lanceWindupMax || enemy.lanceWindup);
+        const windupProgress = clamp(1 - enemy.lanceWindup / total, 0, 1);
+        const aimX = enemy.lanceAimX || 1;
+        const aimY = enemy.lanceAimY || 0;
+        const lineLen = 72 + windupProgress * 86;
+
         ctx.strokeStyle = "rgba(248, 222, 255, 0.55)";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(enemy.x, enemy.y, enemy.r + 6 + enemy.lanceWindup * 10, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(255, 224, 248, ${0.34 + windupProgress * 0.42})`;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(enemy.x, enemy.y);
+        ctx.lineTo(enemy.x + aimX * lineLen, enemy.y + aimY * lineLen);
         ctx.stroke();
       }
     }
