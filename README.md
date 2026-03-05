@@ -42,31 +42,43 @@ journalctl -u neon-game.service -f
 curl http://127.0.0.1:8000/health
 ```
 
-## Test E2E (Playwright)
+## Tests automatiques
 
-Test de non-regression: la touche `Espace` ne doit pas relancer une partie en cours.
+Le projet utilise un bot Playwright pour rejouer des parties et suivre l'equilibrage.
 
 ```bash
 cd /opt/neon
 npm ci
 npx playwright install chromium
-npx playwright test tests/e2e/space-no-restart.spec.js
+RUNS=8 npm run bot:play
 ```
 
 ## Gameplay
 
-- But: survivre `90s`
-- Déplacement: `WASD` ou flèches
-- `Espace`: dash défensif (cooldown)
+- But: survivre `60s` dans l'arene
+- Déplacement: `WASD` ou fleches
+- `Espace`: rush defensif (invulnerabilite courte + onde de repoussement)
+- `M`: activer / couper les effets sonores
 - Mobile: glisser dans la zone de jeu
 - `P`: pause/reprise
 - `R`: relancer
 
+Boucle de jeu:
+- Ramasser les reliques augmente fortement le score
+- Un orbe de soin apparait regulierement
+- Toutes les `15s`, un checkpoint declenche une onde de securite et regenere 1 PV
+- Nouveau pattern ennemi `lancer` (windup + charge, ajusté pour etre lisible)
+- Mini-boss a `30s`, en 3 phases (phase 3: onde de choc)
+- Patterns de projectiles boss telegraphies (fenetre d'esquive lisible)
+- Dash sur le boss pour casser son armure et gagner des bonus
+- Effets sonores reactifs (`M` pour mute/unmute)
+- Defaite si PV a zero, victoire si `60s` atteintes
+
 Le leaderboard est stocké en local (`localStorage`) dans le navigateur.
 
-## Jouer en bot (benchmark)
+## Bot (benchmark)
 
 ```bash
 cd /opt/neon
-RUNS=8 node scripts/bot_play.js
+RUNS=8 npm run bot:play
 ```
