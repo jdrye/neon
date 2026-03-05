@@ -107,6 +107,17 @@ body {
     0 0 30px #57bfff22;
 }
 
+.canvasWrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, #ffffff00 55%, #56beff22 100%),
+    radial-gradient(circle at 16% 10%, #7ad4ff22 0%, #ffffff00 44%);
+  mix-blend-mode: screen;
+}
+
 .canvasWrap::after {
   content: "";
   position: absolute;
@@ -186,6 +197,20 @@ canvas {
   font-weight: 700;
 }
 
+#comboVal {
+  color: #b9f3ff;
+  font-weight: 700;
+  text-shadow: 0 0 12px #89dcff66;
+  animation: combo-glow 1.8s ease-in-out infinite;
+}
+
+#shieldVal {
+  color: #a8f3ff;
+  font-weight: 700;
+  text-shadow: 0 0 10px #9cecff66;
+  animation: shield-glow 2.2s ease-in-out infinite;
+}
+
 #dangerVal {
   color: #ffdba3;
   font-weight: 700;
@@ -213,6 +238,28 @@ code {
   }
   to {
     transform: translateY(14px);
+  }
+}
+
+@keyframes combo-glow {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: translateZ(0);
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shield-glow {
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.08);
   }
 }
 

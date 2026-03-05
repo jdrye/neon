@@ -34,6 +34,13 @@
     enemyGraceSeconds: 3.8,
     enemySafeSpawnFromPlayer: 250,
     enemySafeSpawnFromRelic: 170,
+    wispMinSpawnTime: 24,
+    wispMaxActive: 1,
+    wispBurstCooldownMin: 4.6,
+    wispBurstCooldownMax: 6.8,
+    wispBurstWindupMin: 0.26,
+    wispBurstWindupMax: 0.4,
+    wispBurstSpeedMul: 2.45,
 
     relicRadius: 12,
     relicCatchBonus: 22,
@@ -74,14 +81,25 @@
     scorePerSecond: 14,
     scorePerRelic: 240,
     scorePerHeal: 90,
+    comboWindow: 3.4,
+    comboMaxMultiplier: 2.4,
+    comboStepMultiplier: 0.16,
+    nearMissBonus: 65,
+    nearMissRadius: 34,
+
+    aegisRadius: 11,
+    aegisEveryRelics: 5,
+    shieldMaxHits: 2,
 
     touchDeadZone: 10,
     starsCount: 90,
     impactRingMax: 240,
     impactRingLife: 0.36,
+    floatingTextLife: 0.72,
 
     leaderboardSize: 5,
     leaderboardKey: "ruins_dash_scores_v4",
+    reducedFxKey: "ruins_dash_reduced_fx_v1",
   };
 
   const OBSTACLES = [
@@ -95,6 +113,7 @@
     stalker: { color: "#ff8b8b", outline: "#ffe3e3", radius: 13 },
     drifter: { color: "#ffb26f", outline: "#ffe2c4", radius: 11 },
     lancer: { color: "#d08fff", outline: "#f3dfff", radius: 12 },
+    wisp: { color: "#87d9ff", outline: "#d9f3ff", radius: 10 },
   };
 
   const dom = {
@@ -106,6 +125,8 @@
     goalVal: document.getElementById("goalVal"),
     scoreVal: document.getElementById("scoreVal"),
     relicVal: document.getElementById("relicVal"),
+    comboVal: document.getElementById("comboVal"),
+    shieldVal: document.getElementById("shieldVal"),
     enemyVal: document.getElementById("enemyVal"),
     dashVal: document.getElementById("dashVal"),
     dangerVal: document.getElementById("dangerVal"),
@@ -126,6 +147,9 @@
     elapsed: 0,
     score: 0,
     relics: 0,
+    comboCount: 0,
+    comboTimer: 0,
+    comboMultiplier: 1,
 
     enemySpawnTimer: 0,
     enemyGraceLeft: CONFIG.enemyGraceSeconds,
@@ -144,6 +168,7 @@
     enemies: [],
     relic: null,
     healOrb: null,
+    aegisOrb: null,
 
     miniBoss: null,
     bossSpawned: false,
@@ -157,6 +182,7 @@
     particles: [],
     impactRings: [],
     trails: [],
+    floatingTexts: [],
     stars: [],
 
     keys: new Set(),
@@ -169,6 +195,8 @@
       ctx: null,
       master: null,
     },
+
+    reducedFx: false,
   };
 
   function createPlayer() {
@@ -177,6 +205,7 @@
       y: CONFIG.height - 62,
       r: CONFIG.playerRadius,
       lives: CONFIG.playerMaxLives,
+      shieldHits: 0,
       invuln: 0,
       dashCooldownLeft: 0,
       dashTimeLeft: 0,
@@ -196,6 +225,9 @@
     state.elapsed = 0;
     state.score = 0;
     state.relics = 0;
+    state.comboCount = 0;
+    state.comboTimer = 0;
+    state.comboMultiplier = 1;
 
     state.enemySpawnTimer = 0;
     state.enemyGraceLeft = CONFIG.enemyGraceSeconds;
@@ -214,6 +246,7 @@
     state.enemies = [];
     state.relic = spawnRelic(state.player);
     state.healOrb = null;
+    state.aegisOrb = null;
 
     state.miniBoss = null;
     state.bossSpawned = false;
@@ -227,6 +260,7 @@
     state.particles = [];
     state.impactRings = [];
     state.trails = [];
+    state.floatingTexts = [];
     state.botInput = null;
 
     updateActionButton();
@@ -270,6 +304,10 @@
     }
 
     state.hurtOverlay = Math.max(0, state.hurtOverlay - dt * CONFIG.hurtOverlayDecay);
+    state.comboTimer = Math.max(0, state.comboTimer - dt);
+    if (state.comboTimer <= 0 && state.comboCount > 0) {
+      breakCombo();
+    }
 
     if (state.hitStopLeft > 0) {
       state.hitStopLeft = Math.max(0, state.hitStopLeft - dt);
@@ -277,6 +315,7 @@
       state.chromaPulse = Math.max(0, state.chromaPulse - dt * 2);
       updateParticles(dt * 0.25);
       updateImpactRings(dt * 0.3);
+      updateFloatingTexts(dt * 0.35);
       syncHud();
       return;
     }
@@ -309,12 +348,14 @@
 
     maybeCollectRelic(player);
     maybeCollectHeal(player);
+    maybeCollectAegis(player);
     maybeTakeDamage(player);
     maybeTriggerCheckpoint(player);
 
     updateParticles(dt);
     updateImpactRings(dt);
     updateTrails(dt, player);
+    updateFloatingTexts(dt);
 
     if (player.lives <= 0) {
       endGame(false, "Les ombres ont pris le dessus.");
@@ -693,6 +734,7 @@
         kind: telegraph.kind || "fan",
         r: telegraph.radius,
         life: CONFIG.bossProjectileLife,
+        nearMissed: false,
       });
       state.bossTelegraphs.splice(i, 1);
       playSfx("bossShot");
@@ -743,7 +785,14 @@
         continue;
       }
 
+      maybeAwardNearMiss(player, projectile);
+
       if (state.player && player.invuln <= 0 && circlesOverlap(projectile, player)) {
+        if (absorbShieldHit(player, projectile.x, projectile.y)) {
+          state.bossProjectiles.splice(i, 1);
+          continue;
+        }
+
         player.lives -= 1;
         player.invuln = Math.max(player.invuln, 1.2);
         state.flashTimer = Math.max(state.flashTimer, 0.3);
@@ -753,6 +802,7 @@
         emitParticles(player.x, player.y, [255, 165, 220], 18, 200, 0.42, 2.3);
         triggerShake(0.2, 2.8);
         triggerHitStop(0.045);
+        breakCombo();
         playSfx("bossShotHit");
         state.bossProjectiles.splice(i, 1);
       }
@@ -815,6 +865,14 @@
         clampToBounds(boss);
         resolveObstacleOverlap(boss);
       }
+    }
+
+    if (
+      !state.aegisOrb &&
+      player.shieldHits < CONFIG.shieldMaxHits &&
+      state.elapsed >= CONFIG.bossSpawnAt - 2
+    ) {
+      state.aegisOrb = spawnAegisOrb(player);
     }
 
     emitParticles(player.x, player.y, [162, 239, 255], 34, 260, 0.78, 3.4);
@@ -937,11 +995,87 @@
         }
       }
 
+      if (enemy.type === "wisp") {
+        enemy.wispBurstCooldown = Math.max(0, (enemy.wispBurstCooldown || 0) - dt);
+        enemy.wispBurstWindup = Math.max(0, (enemy.wispBurstWindup || 0) - dt);
+        enemy.wispBurstTime = Math.max(0, (enemy.wispBurstTime || 0) - dt);
+
+        if (enemy.wispBurstWindup > 0) {
+          speedMultiplier = 0.14;
+          enemy.wispDirX = dx / dist;
+          enemy.wispDirY = dy / dist;
+          if (enemy.wispBurstWindup <= 0.02) {
+            enemy.wispBurstTime = 0.2;
+            enemy.wispDirX = dx / dist;
+            enemy.wispDirY = dy / dist;
+            addImpactRing(enemy.x, enemy.y, [166, 232, 255], 90, 0.2, 1.7);
+          }
+        } else if (enemy.wispBurstTime > 0) {
+          dirX = enemy.wispDirX || dirX;
+          dirY = enemy.wispDirY || dirY;
+          speedMultiplier = CONFIG.wispBurstSpeedMul;
+        } else {
+          if (enemy.wispBurstCooldown <= 0 && dist > 140 && dist < 430) {
+            const windup = rand(CONFIG.wispBurstWindupMin, CONFIG.wispBurstWindupMax);
+            enemy.wispBurstWindup = windup;
+            enemy.wispBurstWindupMax = windup;
+            enemy.wispBurstCooldown = rand(CONFIG.wispBurstCooldownMin, CONFIG.wispBurstCooldownMax);
+            enemy.wispDirX = dx / dist;
+            enemy.wispDirY = dy / dist;
+          }
+
+          const desiredDist = 242;
+          const pull = (dist - desiredDist) * 0.007;
+          const perpX = -dirY;
+          const perpY = dirX;
+          const wobble = Math.sin(state.elapsed * 3.6 + enemy.phase * 1.8) * 0.5;
+          dirX = dirX * pull + perpX * (1.02 + wobble * 0.35);
+          dirY = dirY * pull + perpY * (1.02 + wobble * 0.35);
+          const n = Math.hypot(dirX, dirY) || 1;
+          dirX /= n;
+          dirY /= n;
+          speedMultiplier = 0.94;
+        }
+      }
+
       const baseSpeed = enemy.baseSpeed * state.difficulty * earlyEase;
       const speed = enemy.stunLeft > 0 ? baseSpeed * 0.2 : baseSpeed * speedMultiplier;
 
       moveCircleWithCollisions(enemy, dirX * speed * dt, dirY * speed * dt);
     }
+  }
+
+  function refreshComboMultiplier() {
+    state.comboMultiplier = clamp(
+      1 + Math.max(0, state.comboCount - 1) * CONFIG.comboStepMultiplier,
+      1,
+      CONFIG.comboMaxMultiplier
+    );
+  }
+
+  function pushCombo(amount = 1) {
+    state.comboCount = Math.max(1, state.comboCount + amount);
+    state.comboTimer = Math.max(state.comboTimer, CONFIG.comboWindow);
+    refreshComboMultiplier();
+  }
+
+  function breakCombo() {
+    state.comboCount = 0;
+    state.comboTimer = 0;
+    state.comboMultiplier = 1;
+  }
+
+  function softenComboOnShield() {
+    if (state.comboCount <= 0) {
+      return;
+    }
+    state.comboCount = Math.max(0, state.comboCount - 1);
+    state.comboTimer = Math.max(0, state.comboTimer - 0.8);
+    if (state.comboCount <= 0 || state.comboTimer <= 0) {
+      breakCombo();
+      return;
+    }
+    refreshComboMultiplier();
   }
 
   function maybeCollectRelic(player) {
@@ -955,11 +1089,24 @@
     }
 
     state.relics += 1;
-    state.score += CONFIG.scorePerRelic;
+    pushCombo(1);
+    const relicScore = Math.floor(CONFIG.scorePerRelic * state.comboMultiplier);
+    state.score += relicScore;
     state.flashTimer = 0.22;
 
     emitParticles(state.relic.x, state.relic.y, [145, 245, 187], 18, 170, 0.6, 3);
     triggerShake(0.18, 1.7);
+    addFloatingText(state.relic.x, state.relic.y - 10, `+${relicScore}`, [167, 255, 200], 0.88, 17);
+    if (state.comboCount >= 2) {
+      addFloatingText(
+        player.x,
+        player.y - 28,
+        `x${state.comboMultiplier.toFixed(2)}`,
+        [194, 241, 255],
+        0.56,
+        14
+      );
+    }
     playSfx("relic");
 
     state.relic = spawnRelic(player);
@@ -970,6 +1117,14 @@
       !state.healOrb
     ) {
       state.healOrb = spawnHealOrb(player);
+    }
+
+    if (
+      state.relics % CONFIG.aegisEveryRelics === 0 &&
+      player.shieldHits < CONFIG.shieldMaxHits &&
+      !state.aegisOrb
+    ) {
+      state.aegisOrb = spawnAegisOrb(player);
     }
   }
 
@@ -985,8 +1140,75 @@
     player.lives = Math.min(CONFIG.playerMaxLives, player.lives + 1);
     state.score += CONFIG.scorePerHeal;
     emitParticles(state.healOrb.x, state.healOrb.y, [152, 255, 168], 24, 210, 0.65, 3);
+    addFloatingText(state.healOrb.x, state.healOrb.y - 8, "SOIN", [178, 255, 188], 0.72, 14);
     state.healOrb = null;
     playSfx("heal");
+  }
+
+  function maybeCollectAegis(player) {
+    if (!state.aegisOrb) {
+      return;
+    }
+
+    if (!circlesOverlapRadius(player, state.aegisOrb, player.r + state.aegisOrb.r + 8)) {
+      return;
+    }
+
+    player.shieldHits = Math.min(CONFIG.shieldMaxHits, (player.shieldHits || 0) + 1);
+    state.score += 70;
+    emitParticles(state.aegisOrb.x, state.aegisOrb.y, [173, 246, 255], 22, 220, 0.64, 2.9);
+    addImpactRing(state.aegisOrb.x, state.aegisOrb.y, [162, 240, 255], 170, 0.36, 2.4);
+    addFloatingText(state.aegisOrb.x, state.aegisOrb.y - 10, "AEGIS", [184, 247, 255], 0.78, 14);
+    state.aegisOrb = null;
+    playSfx("shieldGain");
+  }
+
+  function absorbShieldHit(player, sourceX, sourceY) {
+    if ((player.shieldHits || 0) <= 0) {
+      return false;
+    }
+
+    player.shieldHits -= 1;
+    player.invuln = Math.max(player.invuln, 0.62);
+    state.flashTimer = Math.max(state.flashTimer, 0.18);
+    state.chromaPulse = Math.max(state.chromaPulse, 0.18);
+    softenComboOnShield();
+    emitParticles(player.x, player.y, [176, 246, 255], 24, 250, 0.5, 2.8);
+    addImpactRing(player.x, player.y, [171, 244, 255], 190, 0.32, 2.7);
+    addFloatingText(player.x, player.y - 8, "BLOC", [184, 250, 255], 0.6, 14);
+    triggerShake(0.12, 1.8);
+    playSfx("shieldBreak");
+
+    if (Number.isFinite(sourceX) && Number.isFinite(sourceY)) {
+      const dx = sourceX - player.x;
+      const dy = sourceY - player.y;
+      const dist = Math.max(0.1, Math.hypot(dx, dy));
+      moveCircleWithCollisions(player, -(dx / dist) * 20, -(dy / dist) * 20);
+    }
+    return true;
+  }
+
+  function maybeAwardNearMiss(player, projectile) {
+    if (!player || player.invuln > 0 || projectile.nearMissed) {
+      return;
+    }
+
+    const dx = player.x - projectile.x;
+    const dy = player.y - projectile.y;
+    const dist = Math.hypot(dx, dy);
+    const safe = player.r + projectile.r + 2;
+    const near = player.r + projectile.r + CONFIG.nearMissRadius;
+    if (dist <= safe || dist > near) {
+      return;
+    }
+
+    projectile.nearMissed = true;
+    pushCombo(0.45);
+    const bonus = Math.floor(CONFIG.nearMissBonus * state.comboMultiplier);
+    state.score += bonus;
+    addImpactRing(player.x, player.y, [188, 225, 255], 120, 0.24, 1.8);
+    addFloatingText(player.x, player.y - 18, `NEAR +${bonus}`, [184, 232, 255], 0.5, 12);
+    playSfx("nearMiss");
   }
 
   function maybeTakeDamage(player) {
@@ -994,6 +1216,18 @@
 
     for (const enemy of state.enemies) {
       if (!circlesOverlap(player, enemy) || player.invuln > 0) {
+        continue;
+      }
+
+      if (absorbShieldHit(player, enemy.x, enemy.y)) {
+        const bdx = enemy.x - player.x;
+        const bdy = enemy.y - player.y;
+        const bdist = Math.max(0.1, Math.hypot(bdx, bdy));
+        enemy.x += (bdx / bdist) * 56;
+        enemy.y += (bdy / bdist) * 56;
+        enemy.stunLeft = Math.max(enemy.stunLeft, 0.46);
+        clampToBounds(enemy);
+        resolveObstacleOverlap(enemy);
         continue;
       }
 
@@ -1016,12 +1250,23 @@
       triggerHitStop(0.04);
       state.chromaPulse = Math.max(state.chromaPulse, 0.2);
       state.hurtOverlay = Math.max(state.hurtOverlay, 0.5);
+      breakCombo();
       hit = true;
       break;
     }
 
     const boss = state.miniBoss;
     if (boss && !hit && player.invuln <= 0 && circlesOverlap(player, boss)) {
+      if (absorbShieldHit(player, boss.x, boss.y)) {
+        const bdx = boss.x - player.x;
+        const bdy = boss.y - player.y;
+        const bdist = Math.max(0.1, Math.hypot(bdx, bdy));
+        boss.x += (bdx / bdist) * 54;
+        boss.y += (bdy / bdist) * 54;
+        boss.stunLeft = Math.max(boss.stunLeft, 0.34);
+        clampToBounds(boss);
+        resolveObstacleOverlap(boss);
+      } else {
       player.lives -= 1;
       player.invuln = CONFIG.hitInvulnerability;
       state.flashTimer = 0.35;
@@ -1041,7 +1286,9 @@
       triggerHitStop(0.055);
       state.chromaPulse = Math.max(state.chromaPulse, 0.28);
       state.hurtOverlay = Math.max(state.hurtOverlay, 0.6);
+      breakCombo();
       hit = true;
+      }
     }
 
     if (hit) {
@@ -1124,6 +1371,7 @@
         if (bonusWindow) {
           boss.volleyRecoverLeft = 0;
         }
+        pushCombo(bonusWindow ? 1.8 : 0.8);
 
         clampToBounds(boss);
         resolveObstacleOverlap(boss);
@@ -1179,6 +1427,11 @@
       player.lives += 1;
     }
 
+    if (player.shieldHits < CONFIG.shieldMaxHits) {
+      player.shieldHits += 1;
+      addFloatingText(player.x, player.y - 22, "AEGIS +1", [182, 247, 255], 0.9, 15);
+    }
+
     if (!state.healOrb) {
       state.healOrb = spawnHealOrb(player);
     }
@@ -1219,16 +1472,24 @@
     let type = forcedType;
     if (!type) {
       const lancerCount = state.enemies.reduce((count, enemy) => count + (enemy.type === "lancer" ? 1 : 0), 0);
+      const wispCount = state.enemies.reduce((count, enemy) => count + (enemy.type === "wisp" ? 1 : 0), 0);
       const lancerChance = clamp(
         (state.difficulty - 0.95) * 0.18 + state.elapsed * 0.0014,
         0.03,
         0.2
       );
+      const wispChance = clamp(
+        (state.elapsed - CONFIG.wispMinSpawnTime) * 0.006 + (state.difficulty - 1) * 0.18,
+        0,
+        0.1
+      );
       const drifterChance = clamp((state.difficulty - 0.95) * 0.26, 0.05, 0.3);
       const roll = Math.random();
-      if (roll < lancerChance && lancerCount < 2) {
+      if (roll < wispChance && wispCount < CONFIG.wispMaxActive) {
+        type = "wisp";
+      } else if (roll < wispChance + lancerChance && lancerCount < 2) {
         type = "lancer";
-      } else if (roll < lancerChance + drifterChance) {
+      } else if (roll < wispChance + lancerChance + drifterChance) {
         type = "drifter";
       } else {
         type = "stalker";
@@ -1242,7 +1503,9 @@
       y,
       r: style.radius,
       baseSpeed:
-        type === "lancer"
+        type === "wisp"
+          ? rand(56, 78)
+          : type === "lancer"
           ? rand(54, 72)
           : type === "drifter"
             ? rand(66, 90)
@@ -1257,6 +1520,12 @@
       lanceDirY: 0,
       lanceAimX: 1,
       lanceAimY: 0,
+      wispBurstCooldown: rand(CONFIG.wispBurstCooldownMin, CONFIG.wispBurstCooldownMax),
+      wispBurstWindup: 0,
+      wispBurstWindupMax: 0,
+      wispBurstTime: 0,
+      wispDirX: 0,
+      wispDirY: 0,
     };
   }
 
@@ -1331,6 +1600,36 @@
     return { x: CONFIG.width * 0.5, y: CONFIG.height * 0.5, r: CONFIG.healRadius };
   }
 
+  function spawnAegisOrb(player) {
+    for (let i = 0; i < 220; i += 1) {
+      const candidate = {
+        x: rand(42, CONFIG.width - 42),
+        y: rand(42, CONFIG.height - 42),
+        r: CONFIG.aegisRadius,
+      };
+
+      if (circleHitsAnyObstacle(candidate.x, candidate.y, candidate.r)) {
+        continue;
+      }
+
+      if (Math.hypot(candidate.x - player.x, candidate.y - player.y) < 130) {
+        continue;
+      }
+
+      if (state.relic && Math.hypot(candidate.x - state.relic.x, candidate.y - state.relic.y) < 74) {
+        continue;
+      }
+
+      if (state.healOrb && Math.hypot(candidate.x - state.healOrb.x, candidate.y - state.healOrb.y) < 74) {
+        continue;
+      }
+
+      return candidate;
+    }
+
+    return { x: CONFIG.width * 0.5, y: CONFIG.height * 0.5, r: CONFIG.aegisRadius };
+  }
+
   function computeDifficulty() {
     const timeRamp = clamp(state.elapsed / CONFIG.objectiveSeconds, 0, 1);
     const relicRamp = clamp(state.relics / 14, 0, 1);
@@ -1361,8 +1660,37 @@
     }
   }
 
+  function addFloatingText(x, y, text, rgb = [230, 245, 255], life = CONFIG.floatingTextLife, size = 13) {
+    state.floatingTexts.push({
+      x,
+      y,
+      text,
+      life,
+      maxLife: life,
+      size,
+      rgb,
+      vy: -26,
+    });
+    if (state.floatingTexts.length > 60) {
+      state.floatingTexts.splice(0, state.floatingTexts.length - 60);
+    }
+  }
+
+  function updateFloatingTexts(dt) {
+    for (let i = state.floatingTexts.length - 1; i >= 0; i -= 1) {
+      const item = state.floatingTexts[i];
+      item.life -= dt;
+      if (item.life <= 0) {
+        state.floatingTexts.splice(i, 1);
+        continue;
+      }
+      item.y += item.vy * dt;
+      item.vy *= 0.96;
+    }
+  }
+
   function updateTrails(dt, player) {
-    if (player) {
+    if (player && !state.reducedFx) {
       state.trails.push({
         x: player.x,
         y: player.y,
@@ -1378,15 +1706,17 @@
       }
     }
 
-    if (state.trails.length > 120) {
-      state.trails.splice(0, state.trails.length - 120);
+    const maxTrails = state.reducedFx ? 0 : 120;
+    if (state.trails.length > maxTrails) {
+      state.trails.splice(0, state.trails.length - maxTrails);
     }
   }
 
   function emitParticles(x, y, rgb, count, speed, life, size) {
-    for (let i = 0; i < count; i += 1) {
+    const spawnCount = state.reducedFx ? Math.max(1, Math.floor(count * 0.45)) : count;
+    for (let i = 0; i < spawnCount; i += 1) {
       const a = Math.random() * Math.PI * 2;
-      const s = speed * (0.35 + Math.random() * 0.9);
+      const s = speed * (state.reducedFx ? 0.78 : 1) * (0.35 + Math.random() * 0.9);
       state.particles.push({
         x,
         y,
@@ -1443,11 +1773,14 @@
       const push = (210 - dist) * 0.7;
       moveCircleWithCollisions(player, (dx / dist) * push, (dy / dist) * push);
       if (dist < 82 && player.invuln <= 0) {
-        player.lives -= 1;
-        player.invuln = Math.max(player.invuln, 0.9);
-        state.flashTimer = Math.max(state.flashTimer, 0.28);
-        state.hurtOverlay = Math.max(state.hurtOverlay, 0.46);
-        triggerHitStop(0.035);
+        if (!absorbShieldHit(player, boss.x, boss.y)) {
+          player.lives -= 1;
+          player.invuln = Math.max(player.invuln, 0.9);
+          state.flashTimer = Math.max(state.flashTimer, 0.28);
+          state.hurtOverlay = Math.max(state.hurtOverlay, 0.46);
+          triggerHitStop(0.035);
+          breakCombo();
+        }
       }
     }
 
@@ -1503,14 +1836,18 @@
     drawObstacles();
     drawRelic();
     drawHealOrb();
+    drawAegisOrb();
     drawMiniBoss();
     drawBossTelegraphs();
-    drawTrails();
+    if (!state.reducedFx) {
+      drawTrails();
+    }
     drawEnemies();
     drawBossProjectiles();
     drawPlayer(player);
     drawImpactRings();
     drawParticles();
+    drawFloatingTexts();
     drawWorldTimer();
     drawBossBanner();
 
@@ -1519,7 +1856,7 @@
       ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
     }
 
-    if (state.chromaPulse > 0) {
+    if (state.chromaPulse > 0 && !state.reducedFx) {
       const p = clamp(state.chromaPulse, 0, 1);
       ctx.fillStyle = `rgba(120, 180, 255, ${0.07 * p})`;
       ctx.fillRect(-2, 0, CONFIG.width, CONFIG.height);
@@ -1580,6 +1917,30 @@
     ctx.beginPath();
     ctx.ellipse(760, 456, 332, 104, 0.08, 0, Math.PI * 2);
     ctx.fill();
+
+    if (!state.reducedFx) {
+      // Atmospheric lanes to break the flat grid and improve movement readability.
+      const laneShift = state.elapsed * 46;
+      for (let i = 0; i < 3; i += 1) {
+        const y = 86 + i * 160 + Math.sin(state.elapsed * (1.4 + i * 0.3)) * 8;
+        const lane = ctx.createLinearGradient(0, y - 22, CONFIG.width, y + 22);
+        lane.addColorStop(0, "rgba(104, 175, 232, 0)");
+        lane.addColorStop(0.25, "rgba(104, 175, 232, 0.08)");
+        lane.addColorStop(0.75, "rgba(101, 199, 226, 0.09)");
+        lane.addColorStop(1, "rgba(104, 175, 232, 0)");
+        ctx.fillStyle = lane;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x <= CONFIG.width; x += 32) {
+          const wave = Math.sin((x + laneShift * (0.4 + i * 0.2)) * 0.01 + i * 1.2) * 10;
+          ctx.lineTo(x, y + wave);
+        }
+        ctx.lineTo(CONFIG.width, y + 42);
+        ctx.lineTo(0, y + 42);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
 
     ctx.strokeStyle = "rgba(123, 190, 238, 0.06)";
     ctx.lineWidth = 1;
@@ -1694,6 +2055,46 @@
     ctx.moveTo(orb.x, orb.y - 5);
     ctx.lineTo(orb.x, orb.y + 5);
     ctx.stroke();
+  }
+
+  function drawAegisOrb() {
+    if (!state.aegisOrb) {
+      return;
+    }
+
+    const orb = state.aegisOrb;
+    const pulse = 0.68 + 0.32 * Math.sin(state.elapsed * 5.6);
+    const spin = state.elapsed * 1.5;
+
+    ctx.fillStyle = `rgba(166, 243, 255, ${0.2 + pulse * 0.2})`;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r + 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(183, 249, 255, 0.78)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r + 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(orb.x, orb.y);
+    ctx.rotate(spin);
+    ctx.strokeStyle = "#dffbff";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(0, -orb.r - 1);
+    ctx.lineTo(orb.r + 1, 0);
+    ctx.lineTo(0, orb.r + 1);
+    ctx.lineTo(-orb.r - 1, 0);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = "#b7f8ff";
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r * 0.65, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawMiniBoss() {
@@ -1912,6 +2313,40 @@
       );
       ctx.fill();
 
+      if (enemy.type === "wisp") {
+        const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 9 + enemy.phase);
+        ctx.strokeStyle = `rgba(181, 237, 255, ${0.32 + pulse * 0.26})`;
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.r + 5 + pulse * 2.4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (enemy.wispBurstWindup > 0) {
+          const total = Math.max(0.001, enemy.wispBurstWindupMax || enemy.wispBurstWindup);
+          const p = clamp(1 - enemy.wispBurstWindup / total, 0, 1);
+          const ax = enemy.wispDirX || 1;
+          const ay = enemy.wispDirY || 0;
+          const len = 54 + p * 70;
+          ctx.strokeStyle = `rgba(188, 243, 255, ${0.28 + p * 0.46})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(enemy.x, enemy.y);
+          ctx.lineTo(enemy.x + ax * len, enemy.y + ay * len);
+          ctx.stroke();
+        }
+
+        if (enemy.wispBurstTime > 0) {
+          const bx = enemy.wispDirX || 0;
+          const by = enemy.wispDirY || 0;
+          ctx.strokeStyle = "rgba(174, 235, 255, 0.45)";
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(enemy.x - bx * 3, enemy.y - by * 3);
+          ctx.lineTo(enemy.x - bx * 20, enemy.y - by * 20);
+          ctx.stroke();
+        }
+      }
+
       if (enemy.type === "lancer" && enemy.lanceWindup > 0) {
         const total = Math.max(0.001, enemy.lanceWindupMax || enemy.lanceWindup);
         const windupProgress = clamp(1 - enemy.lanceWindup / total, 0, 1);
@@ -1950,6 +2385,19 @@
       ctx.beginPath();
       ctx.arc(player.x, player.y, player.r + 14, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    if ((player.shieldHits || 0) > 0) {
+      const layers = Math.min(CONFIG.shieldMaxHits, player.shieldHits);
+      for (let i = 0; i < layers; i += 1) {
+        const t = i / Math.max(1, layers);
+        const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * (8 + i * 2) + i);
+        ctx.strokeStyle = `rgba(177, 246, 255, ${0.36 - t * 0.12 + pulse * 0.1})`;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.r + 8 + i * 4 + pulse * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     const dirMag = Math.max(0.1, Math.hypot(player.lastMoveX, player.lastMoveY));
@@ -2010,6 +2458,17 @@
     }
   }
 
+  function drawFloatingTexts() {
+    ctx.textAlign = "center";
+    for (const item of state.floatingTexts) {
+      const a = clamp(item.life / item.maxLife, 0, 1);
+      const [r, g, b] = item.rgb;
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.2 + a * 0.75})`;
+      ctx.font = `700 ${item.size}px 'Trebuchet MS', sans-serif`;
+      ctx.fillText(item.text, item.x, item.y);
+    }
+  }
+
   function drawWorldTimer() {
     const x = 18;
     const y = 18;
@@ -2054,6 +2513,31 @@
       `${Math.max(0, CONFIG.objectiveSeconds - state.elapsed).toFixed(1)}s`,
       x + w + 8,
       y + 13
+    );
+
+    const comboW = 130;
+    const comboH = 10;
+    const comboX = CONFIG.width - comboW - 18;
+    const comboY = 18;
+    const comboRatio = clamp(state.comboTimer / CONFIG.comboWindow, 0, 1);
+    ctx.fillStyle = "rgba(12, 24, 39, 0.78)";
+    ctx.fillRect(comboX, comboY, comboW, comboH);
+    ctx.strokeStyle = "rgba(168, 219, 255, 0.45)";
+    ctx.strokeRect(comboX + 0.5, comboY + 0.5, comboW - 1, comboH - 1);
+    if (comboRatio > 0 && state.comboCount > 0) {
+      const cg = ctx.createLinearGradient(comboX, comboY, comboX + comboW, comboY);
+      cg.addColorStop(0, "#8be8ff");
+      cg.addColorStop(1, "#78ffc7");
+      ctx.fillStyle = cg;
+      ctx.fillRect(comboX + 1.5, comboY + 1.5, (comboW - 3) * comboRatio, comboH - 3);
+    }
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "rgba(225, 245, 255, 0.92)";
+    ctx.fillText(
+      state.comboCount > 1 ? `COMBO x${state.comboMultiplier.toFixed(2)}` : "COMBO",
+      comboX + comboW,
+      comboY + 24
     );
   }
 
@@ -2261,6 +2745,13 @@
     }
     dom.scoreVal.textContent = String(Math.floor(state.score));
     dom.relicVal.textContent = String(state.relics);
+    if (dom.comboVal) {
+      dom.comboVal.textContent =
+        state.comboCount > 1 ? `x${state.comboMultiplier.toFixed(2)} (${state.comboTimer.toFixed(1)}s)` : "x1.00";
+    }
+    if (dom.shieldVal) {
+      dom.shieldVal.textContent = String(player ? player.shieldHits || 0 : 0);
+    }
     dom.enemyVal.textContent = String(state.enemies.length + (state.miniBoss ? 1 : 0));
 
     if (dom.dashVal) {
@@ -2345,6 +2836,15 @@
     }
   }
 
+  function setReducedFx(enabled) {
+    state.reducedFx = !!enabled;
+    try {
+      localStorage.setItem(CONFIG.reducedFxKey, state.reducedFx ? "1" : "0");
+    } catch {
+      // Ignore storage errors; gameplay still works with default visuals.
+    }
+  }
+
   function playTone(startFreq, endFreq, duration, type = "sine", volume = 0.06) {
     const audioCtx = ensureAudioReady();
     if (!audioCtx || !state.audio.master) {
@@ -2389,6 +2889,18 @@
     }
     if (name === "heal") {
       playTone(420, 660, 0.14, "sine", 0.05);
+      return;
+    }
+    if (name === "shieldGain") {
+      playTone(500, 760, 0.13, "triangle", 0.05);
+      return;
+    }
+    if (name === "shieldBreak") {
+      playTone(260, 150, 0.12, "sawtooth", 0.052);
+      return;
+    }
+    if (name === "nearMiss") {
+      playTone(640, 820, 0.06, "triangle", 0.035);
       return;
     }
     if (name === "hit") {
@@ -2496,6 +3008,13 @@
       return;
     }
 
+    if (event.key === "v" || event.key === "V") {
+      setReducedFx(!state.reducedFx);
+      showBossCallout(state.reducedFx ? "FX reduits" : "FX complets", 0.9, "warn");
+      playSfx("toggle");
+      return;
+    }
+
     if (
       event.key.startsWith("Arrow") ||
       event.key === "w" ||
@@ -2568,16 +3087,21 @@
           elapsed: state.elapsed,
           score: state.score,
           relics: state.relics,
+          comboCount: state.comboCount,
+          comboTimer: state.comboTimer,
+          comboMultiplier: state.comboMultiplier,
           difficulty: state.difficulty,
           objectiveSeconds: CONFIG.objectiveSeconds,
           nextCheckpointAt: state.nextCheckpointAt,
           audioEnabled: state.audio.enabled,
+          reducedFx: state.reducedFx,
           player: player
             ? {
                 x: player.x,
                 y: player.y,
                 r: player.r,
                 lives: player.lives,
+                shieldHits: player.shieldHits || 0,
                 invuln: player.invuln,
                 dashCooldownLeft: player.dashCooldownLeft,
                 dashTimeLeft: player.dashTimeLeft,
@@ -2588,6 +3112,9 @@
             : null,
           healOrb: state.healOrb
             ? { x: state.healOrb.x, y: state.healOrb.y, r: state.healOrb.r }
+            : null,
+          aegisOrb: state.aegisOrb
+            ? { x: state.aegisOrb.x, y: state.aegisOrb.y, r: state.aegisOrb.r }
             : null,
           miniBoss: boss
             ? {
@@ -2662,6 +3189,9 @@
       setAudioEnabled(enabled) {
         setAudioEnabled(!!enabled);
       },
+      setReducedFx(enabled) {
+        setReducedFx(!!enabled);
+      },
     };
   }
 
@@ -2679,13 +3209,20 @@
   }
 
   function init() {
+    try {
+      const raw = localStorage.getItem(CONFIG.reducedFxKey);
+      state.reducedFx = raw === "1";
+    } catch {
+      state.reducedFx = false;
+    }
+
     bindEvents();
     setupDebugApi();
     setupStars();
     renderLeaderboard();
     updateActionButton();
     showOverlay(
-      "Survis 60s. Boss a 30s (3 phases + patterns alternes). Dash en fenetre BOSS-OPEN. Espace = rush. M = audio."
+      "Survis 60s. Boss a 30s (3 phases + patterns alternes). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis a collecter. Espace = rush. M = audio. V = FX."
     );
     syncHud();
     requestAnimationFrame(loop);

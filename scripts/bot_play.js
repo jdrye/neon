@@ -46,6 +46,7 @@ function computeControls(snapshot) {
   const enemies = snapshot.enemies || [];
   const relic = snapshot.relic;
   const healOrb = snapshot.healOrb;
+  const aegisOrb = snapshot.aegisOrb;
   const miniBoss = snapshot.miniBoss;
   const bossProjectiles = snapshot.bossProjectiles || [];
   const bossTelegraphs = snapshot.bossTelegraphs || [];
@@ -53,6 +54,13 @@ function computeControls(snapshot) {
   let target = relic;
   if (healOrb && player.lives <= 2) {
     target = healOrb;
+  }
+  if (
+    aegisOrb &&
+    (player.shieldHits || 0) < 1 &&
+    (miniBoss || bossProjectiles.length >= 1 || player.lives <= 4)
+  ) {
+    target = aegisOrb;
   }
 
   let vx = 0;
@@ -200,6 +208,7 @@ async function playOne(page, runIndex) {
     time: Number((snapshot?.elapsed || 0).toFixed(1)),
     score: Math.floor(snapshot?.score || 0),
     lives: snapshot?.player?.lives ?? 0,
+    shields: snapshot?.player?.shieldHits ?? 0,
     relics: snapshot?.relics ?? 0,
     bossAliveEnd: !!snapshot?.miniBoss,
     difficulty: Number((snapshot?.difficulty || 0).toFixed(2)),
@@ -231,6 +240,7 @@ async function main() {
     avgScore: Number(average(rows, "score").toFixed(2)),
     avgRelics: Number(average(rows, "relics").toFixed(2)),
     avgLivesEnd: Number(average(rows, "lives").toFixed(2)),
+    avgShieldsEnd: Number(average(rows, "shields").toFixed(2)),
     completionRate: Number(
       ((rows.filter((row) => row.ended).length / rows.length) * 100).toFixed(1)
     ),

@@ -12,7 +12,7 @@
         <header class="stageHeader">
           <div>
             <h1>Ruins Dash</h1>
-            <p>Action arcade: patterns lisibles, impacts renforces, mini-boss evolutif.</p>
+            <p>Action arcade: boss lisible, combo dynamique, bouclier Aegis et impacts renforces.</p>
           </div>
           <button id="actionBtn" class="btn" type="button">Demarrer</button>
         </header>
@@ -27,9 +27,11 @@
         <div class="card">
           <h2>Etat</h2>
           <p><strong>PV:</strong> <span id="livesVal">3</span></p>
+          <p><strong>Bouclier:</strong> <span id="shieldVal">0</span></p>
           <p><strong>Temps:</strong> <span id="timeVal">0.0s</span> / <span id="goalVal">60s</span></p>
           <p><strong>Score:</strong> <span id="scoreVal">0</span></p>
           <p><strong>Reliques:</strong> <span id="relicVal">0</span></p>
+          <p><strong>Combo:</strong> <span id="comboVal">x1.00</span></p>
           <p><strong>Ennemis:</strong> <span id="enemyVal">0</span></p>
           <p><strong>Rush:</strong> <span id="dashVal">Pret</span></p>
           <p><strong>Intensite:</strong> <span id="dangerVal">I</span></p>
@@ -46,7 +48,11 @@
             <li>Projectiles telegraphies en patterns alternes</li>
             <li>Apres une salve: courte fenetre BOSS-OPEN pour dash</li>
             <li>Lancer: trajectoire de charge annoncee visuellement</li>
+            <li>Wisp: orbite puis burst telegraphie</li>
+            <li>Reliques enchainees: bonus combo progressif</li>
+            <li>Orbe Aegis: absorbe des impacts mortels</li>
             <li><code>M</code>: activer / couper le son</li>
+            <li><code>V</code>: reduire / restaurer les effets visuels</li>
             <li>Mobile: glisser dans la zone de jeu</li>
             <li><code>P</code>: pause/reprise</li>
             <li><code>R</code>: relancer</li>
