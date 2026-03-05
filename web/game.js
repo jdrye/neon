@@ -27,6 +27,7 @@
     dashCooldown: 1.2,
     dashInvuln: 0.42,
     dashShockRadius: 88,
+    dashBuffer: 0.18,
 
     enemySpawnBaseInterval: 8.4,
     enemySpawnMinInterval: 5.4,
@@ -160,6 +161,7 @@
     chromaPulse: 0,
     hurtOverlay: 0,
     hitStopLeft: 0,
+    pendingDashLeft: 0,
 
     difficulty: 1,
     nextCheckpointAt: CONFIG.checkpointEverySeconds,
@@ -238,6 +240,7 @@
     state.chromaPulse = 0;
     state.hurtOverlay = 0;
     state.hitStopLeft = 0;
+    state.pendingDashLeft = 0;
 
     state.difficulty = 1;
     state.nextCheckpointAt = CONFIG.checkpointEverySeconds;
@@ -338,6 +341,15 @@
     player.invuln = Math.max(0, player.invuln - dt);
     player.dashCooldownLeft = Math.max(0, player.dashCooldownLeft - dt);
     player.dashTimeLeft = Math.max(0, player.dashTimeLeft - dt);
+    state.pendingDashLeft = Math.max(0, state.pendingDashLeft - dt);
+
+    if (
+      state.pendingDashLeft > 0 &&
+      player.dashCooldownLeft <= 0 &&
+      player.dashTimeLeft <= 0
+    ) {
+      tryDash();
+    }
 
     updatePlayer(dt, player);
     updateEnemies(dt, player);
@@ -1296,6 +1308,14 @@
     }
   }
 
+  function queueDashRequest() {
+    if (!state.running || !state.player || state.finished || state.paused) {
+      return false;
+    }
+    state.pendingDashLeft = Math.max(state.pendingDashLeft, CONFIG.dashBuffer);
+    return true;
+  }
+
   function tryDash() {
     if (!state.running || !state.player || state.finished || state.paused) {
       return false;
@@ -1320,6 +1340,7 @@
     addImpactRing(player.x, player.y, [131, 226, 255], 150, 0.28, 2.4);
     triggerShake(0.16, 1.6);
     playSfx("dash");
+    state.pendingDashLeft = 0;
     return true;
   }
 
@@ -2989,6 +3010,7 @@
     if (event.code === "Space") {
       event.preventDefault();
       if (!event.repeat) {
+        queueDashRequest();
         tryDash();
       }
       return;
@@ -3096,6 +3118,7 @@
           comboCount: state.comboCount,
           comboTimer: state.comboTimer,
           comboMultiplier: state.comboMultiplier,
+          pendingDashLeft: state.pendingDashLeft,
           difficulty: state.difficulty,
           objectiveSeconds: CONFIG.objectiveSeconds,
           nextCheckpointAt: state.nextCheckpointAt,
