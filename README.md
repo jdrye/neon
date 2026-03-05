@@ -78,6 +78,7 @@ Boucle de jeu:
 - Combo dynamique: enchainer les reliques augmente le multiplicateur de score
 - Near-miss reward: frôler les projectiles sans se faire toucher rapporte des points bonus
 - Orbes Aegis: bouclier temporaire qui absorbe les impacts critiques
+- Difficulté adaptative légère (respiration quand PV bas)
 - Dash sur le boss pour casser son armure et gagner des bonus
 - Effets sonores reactifs (`M` pour mute/unmute)
 - Defaite si PV a zero, victoire si `60s` atteintes

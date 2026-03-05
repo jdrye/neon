@@ -1634,13 +1634,19 @@
     const timeRamp = clamp(state.elapsed / CONFIG.objectiveSeconds, 0, 1);
     const relicRamp = clamp(state.relics / 14, 0, 1);
     const bossRamp = state.miniBoss ? 0.12 : 0;
-    const d = 0.8 + timeRamp * 0.44 + relicRamp * 0.18 + bossRamp;
+    const player = state.player;
+    const livesRatio = player ? clamp(player.lives / CONFIG.playerMaxLives, 0, 1) : 1;
+    const shieldBoost = player ? (player.shieldHits || 0) * 0.02 : 0;
+    const mercy = clamp((0.42 - livesRatio) * 0.28, 0, 0.18);
+    const d = 0.8 + timeRamp * 0.44 + relicRamp * 0.18 + bossRamp + shieldBoost - mercy;
     return clamp(d, 0.78, 1.62);
   }
 
   function currentSpawnInterval() {
-    const interval =
-      CONFIG.enemySpawnBaseInterval - state.elapsed * 0.022 - state.relics * 0.07;
+    const player = state.player;
+    const pressureEase =
+      player && player.lives <= 1 ? 1.4 : player && player.lives <= 2 ? 0.8 : 0;
+    const interval = CONFIG.enemySpawnBaseInterval - state.elapsed * 0.022 - state.relics * 0.07 + pressureEase;
     return Math.max(CONFIG.enemySpawnMinInterval, interval);
   }
 
