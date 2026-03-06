@@ -65,6 +65,10 @@
     chronoEveryRelics: 4,
     chronoDuration: 4.2,
     chronoSlowFactor: 0.66,
+    surgeRadius: 11,
+    surgeLife: 6.2,
+    surgeComboThreshold: 3,
+    surgeScore: 180,
     checkpointEverySeconds: 15,
     checkpointScoreBonus: 160,
     checkpointPulseRadius: 168,
@@ -196,6 +200,7 @@
     healOrb: null,
     aegisOrb: null,
     chronoOrb: null,
+    surgeOrb: null,
 
     miniBoss: null,
     bossSpawned: false,
@@ -279,6 +284,7 @@
     state.healOrb = null;
     state.aegisOrb = null;
     state.chronoOrb = null;
+    state.surgeOrb = null;
 
     state.miniBoss = null;
     state.bossSpawned = false;
@@ -343,6 +349,12 @@
     state.timeSlowLeft = Math.max(0, state.timeSlowLeft - dt);
     state.spawnRecoveryLeft = Math.max(0, state.spawnRecoveryLeft - dt);
     state.comboTimer = Math.max(0, state.comboTimer - dt);
+    if (state.surgeOrb) {
+      state.surgeOrb.life -= dt;
+      if (state.surgeOrb.life <= 0) {
+        state.surgeOrb = null;
+      }
+    }
     if (state.comboTimer <= 0 && state.comboCount > 0) {
       breakCombo();
     }
@@ -397,6 +409,7 @@
     maybeCollectHeal(player);
     maybeCollectAegis(player);
     maybeCollectChrono(player);
+    maybeCollectSurge(player);
     maybeTakeDamage(player);
     maybeTriggerCheckpoint(player);
 
@@ -1351,6 +1364,14 @@
     ) {
       state.chronoOrb = spawnChronoOrb(player);
     }
+
+    if (
+      state.comboCount >= CONFIG.surgeComboThreshold &&
+      !state.surgeOrb &&
+      player.dashCooldownLeft > 0.15
+    ) {
+      state.surgeOrb = spawnSurgeOrb(player);
+    }
   }
 
   function maybeCollectHeal(player) {
@@ -1405,6 +1426,28 @@
     state.chronoOrb = null;
     showBossCallout("Ralentissement", 0.85, "good");
     playSfx("chrono");
+  }
+
+  function maybeCollectSurge(player) {
+    if (!state.surgeOrb) {
+      return;
+    }
+
+    if (!circlesOverlapRadius(player, state.surgeOrb, player.r + state.surgeOrb.r + 8)) {
+      return;
+    }
+
+    const surgeScore = Math.floor(CONFIG.surgeScore * state.comboMultiplier);
+    state.score += surgeScore;
+    player.dashCooldownLeft = 0;
+    player.invuln = Math.max(player.invuln, 0.2);
+    state.timeSlowLeft = Math.max(state.timeSlowLeft, 1.25);
+    emitParticles(state.surgeOrb.x, state.surgeOrb.y, [187, 243, 255], 28, 250, 0.66, 3);
+    addImpactRing(state.surgeOrb.x, state.surgeOrb.y, [191, 247, 255], 200, 0.42, 2.9);
+    addFloatingText(state.surgeOrb.x, state.surgeOrb.y - 12, `SURGE +${surgeScore}`, [198, 248, 255], 0.9, 14);
+    state.surgeOrb = null;
+    showBossCallout("Rush recharge", 0.9, "good");
+    playSfx("surge");
   }
 
   function maybeSpawnEmergencyHeal(player) {
@@ -1957,6 +2000,52 @@
     return { x: CONFIG.width * 0.5, y: CONFIG.height * 0.5, r: CONFIG.chronoRadius };
   }
 
+  function spawnSurgeOrb(player) {
+    for (let i = 0; i < 220; i += 1) {
+      const candidate = {
+        x: rand(42, CONFIG.width - 42),
+        y: rand(42, CONFIG.height - 42),
+        r: CONFIG.surgeRadius,
+        life: CONFIG.surgeLife,
+        maxLife: CONFIG.surgeLife,
+      };
+
+      if (circleHitsAnyObstacle(candidate.x, candidate.y, candidate.r)) {
+        continue;
+      }
+
+      if (Math.hypot(candidate.x - player.x, candidate.y - player.y) < 120) {
+        continue;
+      }
+
+      if (state.relic && Math.hypot(candidate.x - state.relic.x, candidate.y - state.relic.y) < 74) {
+        continue;
+      }
+
+      if (state.healOrb && Math.hypot(candidate.x - state.healOrb.x, candidate.y - state.healOrb.y) < 74) {
+        continue;
+      }
+
+      if (state.aegisOrb && Math.hypot(candidate.x - state.aegisOrb.x, candidate.y - state.aegisOrb.y) < 74) {
+        continue;
+      }
+
+      if (state.chronoOrb && Math.hypot(candidate.x - state.chronoOrb.x, candidate.y - state.chronoOrb.y) < 74) {
+        continue;
+      }
+
+      return candidate;
+    }
+
+    return {
+      x: CONFIG.width * 0.5,
+      y: CONFIG.height * 0.5,
+      r: CONFIG.surgeRadius,
+      life: CONFIG.surgeLife,
+      maxLife: CONFIG.surgeLife,
+    };
+  }
+
   function computeDifficulty() {
     const timeRamp = clamp(state.elapsed / CONFIG.objectiveSeconds, 0, 1);
     const relicRamp = clamp(state.relics / 14, 0, 1);
@@ -2182,6 +2271,7 @@
     drawHealOrb();
     drawAegisOrb();
     drawChronoOrb();
+    drawSurgeOrb();
     drawMiniBoss();
     drawBossTelegraphs();
     if (!state.reducedFx) {
@@ -2489,6 +2579,53 @@
     ctx.fillStyle = "rgba(208, 244, 255, 0.95)";
     ctx.beginPath();
     ctx.arc(orb.x, orb.y, orb.r * 0.58, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawSurgeOrb() {
+    if (!state.surgeOrb) {
+      return;
+    }
+
+    const orb = state.surgeOrb;
+    const lifeRatio = clamp((orb.life || 0) / (orb.maxLife || CONFIG.surgeLife), 0, 1);
+    const pulse = 0.58 + 0.42 * Math.sin(state.elapsed * 9.2 + orb.x * 0.02);
+    const spin = state.elapsed * 3.2;
+
+    ctx.fillStyle = `rgba(177, 244, 255, ${0.18 + pulse * 0.2 * lifeRatio})`;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r + 13 + (1 - lifeRatio) * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(204, 248, 255, ${0.48 + lifeRatio * 0.34})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r + 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(orb.x, orb.y);
+    ctx.rotate(spin);
+    ctx.strokeStyle = "rgba(234, 252, 255, 0.9)";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-orb.r, 0);
+    ctx.lineTo(orb.r, 0);
+    ctx.moveTo(0, -orb.r);
+    ctx.lineTo(0, orb.r);
+    ctx.stroke();
+    ctx.rotate(Math.PI * 0.25);
+    ctx.beginPath();
+    ctx.moveTo(-orb.r * 0.7, 0);
+    ctx.lineTo(orb.r * 0.7, 0);
+    ctx.moveTo(0, -orb.r * 0.7);
+    ctx.lineTo(0, orb.r * 0.7);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = `rgba(224, 252, 255, ${0.78 + lifeRatio * 0.2})`;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r * 0.55, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -3007,6 +3144,23 @@
       ctx.textAlign = "center";
       ctx.fillText(`CHRONO ${state.timeSlowLeft.toFixed(1)}s`, sx + sw * 0.5, sy + 24);
     }
+
+    if (state.surgeOrb) {
+      const sw = 130;
+      const sh = 10;
+      const sx = CONFIG.width * 0.5 - sw * 0.5;
+      const sy = state.timeSlowLeft > 0 ? 46 : 18;
+      const sr = clamp((state.surgeOrb.life || 0) / (state.surgeOrb.maxLife || CONFIG.surgeLife), 0, 1);
+      ctx.fillStyle = "rgba(16, 32, 44, 0.8)";
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.strokeStyle = "rgba(188, 241, 255, 0.58)";
+      ctx.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 1);
+      ctx.fillStyle = "rgba(184, 241, 255, 0.88)";
+      ctx.fillRect(sx + 1.5, sy + 1.5, (sw - 3) * sr, sh - 3);
+      ctx.fillStyle = "rgba(226, 250, 255, 0.92)";
+      ctx.textAlign = "center";
+      ctx.fillText(`SURGE ${state.surgeOrb.life.toFixed(1)}s`, sx + sw * 0.5, sy + 24);
+    }
   }
 
   function drawBossBanner() {
@@ -3381,6 +3535,11 @@
       playTone(620, 440, 0.12, "sine", 0.038);
       return;
     }
+    if (name === "surge") {
+      playTone(520, 760, 0.11, "triangle", 0.047);
+      playTone(760, 520, 0.09, "sine", 0.034);
+      return;
+    }
     if (name === "hit") {
       playTone(180, 70, 0.16, "square", 0.055);
       return;
@@ -3642,6 +3801,9 @@
           chronoOrb: state.chronoOrb
             ? { x: state.chronoOrb.x, y: state.chronoOrb.y, r: state.chronoOrb.r }
             : null,
+          surgeOrb: state.surgeOrb
+            ? { x: state.surgeOrb.x, y: state.surgeOrb.y, r: state.surgeOrb.r, life: state.surgeOrb.life }
+            : null,
           miniBoss: boss
             ? {
                 x: boss.x,
@@ -3785,6 +3947,13 @@
         state.chronoOrb = spawnChronoOrb(state.player);
         return state.chronoOrb ? { ...state.chronoOrb } : null;
       },
+      spawnSurgeOrb() {
+        if (!state.player) {
+          return null;
+        }
+        state.surgeOrb = spawnSurgeOrb(state.player);
+        return state.surgeOrb ? { ...state.surgeOrb } : null;
+      },
     };
   }
 
@@ -3819,7 +3988,7 @@
     renderLeaderboard();
     updateActionButton();
     showOverlay(
-      "Survis 60s. Boss a 30s (3 phases + salves Nova). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto."
+      "Survis 60s. Boss a 30s (3 phases + salves Nova). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono/SURGE a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto."
     );
     syncHud();
     requestAnimationFrame(loop);

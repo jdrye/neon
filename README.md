@@ -87,6 +87,7 @@ Boucle de jeu:
 - Near-miss reward: frôler les projectiles sans se faire toucher rapporte des points bonus
 - Orbes Aegis: bouclier temporaire qui absorbe les impacts critiques
 - Orbe Chrono: ralentit temporairement ennemis, boss et projectiles
+- Orbe SURGE: recharge instantanement le dash et ouvre une fenetre offensive
 - Difficulté adaptative légère (respiration quand PV bas)
 - Dash sur le boss pour casser son armure et gagner des bonus
 - Effets sonores reactifs (`M` pour mute/unmute), preference audio persistante

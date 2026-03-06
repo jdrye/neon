@@ -129,6 +129,47 @@ test("la collecte de Chrono active bien le ralentissement", async ({ page }) => 
   expect(info.chronoConsumed).toBeTruthy();
 });
 
+test("la collecte de SURGE recharge le rush", async ({ page }) => {
+  await page.goto("/");
+
+  const info = await page.evaluate(() => {
+    const api = window.__RUINS_DASH_DEBUG__;
+    api.setAudioEnabled(false);
+    api.startGame();
+    api.step(0.016, {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      dash: true,
+    });
+    const before = api.getState();
+    const orb = api.spawnSurgeOrb();
+    api.setPlayerPosition(orb.x, orb.y);
+    const after = api.step(0.016, {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      dash: false,
+    });
+
+    return {
+      hadCooldown: before.player.dashCooldownLeft > 0.5,
+      orbSpawned: !!orb,
+      cooldownAfter: after.player.dashCooldownLeft,
+      surgeConsumed: !after.surgeOrb,
+      scoreDelta: after.score - before.score,
+    };
+  });
+
+  expect(info.hadCooldown).toBeTruthy();
+  expect(info.orbSpawned).toBeTruthy();
+  expect(info.cooldownAfter).toBeLessThan(0.1);
+  expect(info.surgeConsumed).toBeTruthy();
+  expect(info.scoreDelta).toBeGreaterThan(120);
+});
+
 test("le mute audio persiste apres rechargement", async ({ page }) => {
   await page.goto("/");
 
