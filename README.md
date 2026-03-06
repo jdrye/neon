@@ -54,6 +54,7 @@ npm ci
 npx playwright install chromium
 npm run test:e2e
 RUNS=8 npm run bot:play
+npm run test:all
 ```
 
 ## Gameplay

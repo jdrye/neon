@@ -5,7 +5,8 @@
   "description": "Ruins Dash - single web game with local Playwright e2e tests.",
   "scripts": {
     "test:e2e": "playwright test",
-    "bot:play": "node scripts/bot_play.js"
+    "bot:play": "node scripts/bot_play.js",
+    "test:all": "npm run test:e2e && RUNS=4 STEP_DT=0.05 MAX_STEPS=2800 npm run bot:play"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2"
