@@ -89,6 +89,17 @@ test("dash active le cooldown sans redemarrer la partie", async ({ page }) => {
   expect(info.relicsAfter).toBeGreaterThanOrEqual(0);
 });
 
+test("le bouton RUSH mobile declenche bien un dash", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Demarrer" }).click();
+  await page.locator("#dashBtn").click();
+
+  const snapshot = await page.evaluate(() => window.__RUINS_DASH_DEBUG__.getState());
+  expect(snapshot.running).toBeTruthy();
+  expect(snapshot.player.dashCooldownLeft).toBeGreaterThan(0.5);
+});
+
 test("le bot de base collecte au moins une relique et active le combo", async ({ page }) => {
   await page.goto("/");
 
