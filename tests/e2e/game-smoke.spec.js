@@ -215,11 +215,13 @@ test("a 1 PV, un orbe de secours apparait apres un impact", async ({ page }) => 
     return {
       lives: snapshot.player.lives,
       hasHealOrb: !!snapshot.healOrb,
+      spawnRecoveryLeft: snapshot.spawnRecoveryLeft,
     };
   });
 
   expect(info.lives).toBe(1);
   expect(info.hasHealOrb).toBeTruthy();
+  expect(info.spawnRecoveryLeft).toBeGreaterThan(1.5);
 });
 
 test("le bot de base collecte au moins une relique et active le combo", async ({ page }) => {

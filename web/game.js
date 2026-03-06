@@ -31,6 +31,8 @@
 
     enemySpawnBaseInterval: 8.4,
     enemySpawnMinInterval: 5.4,
+    hitRecoverySpawnEaseDuration: 2.4,
+    hitRecoverySpawnEaseAmount: 1.05,
     enemyMax: 5,
     enemyGraceSeconds: 3.8,
     enemySafeSpawnFromPlayer: 250,
@@ -183,6 +185,7 @@
     hitStopLeft: 0,
     pendingDashLeft: 0,
     timeSlowLeft: 0,
+    spawnRecoveryLeft: 0,
 
     difficulty: 1,
     nextCheckpointAt: CONFIG.checkpointEverySeconds,
@@ -265,6 +268,7 @@
     state.hitStopLeft = 0;
     state.pendingDashLeft = 0;
     state.timeSlowLeft = 0;
+    state.spawnRecoveryLeft = 0;
 
     state.difficulty = 1;
     state.nextCheckpointAt = CONFIG.checkpointEverySeconds;
@@ -337,6 +341,7 @@
 
     state.hurtOverlay = Math.max(0, state.hurtOverlay - dt * CONFIG.hurtOverlayDecay);
     state.timeSlowLeft = Math.max(0, state.timeSlowLeft - dt);
+    state.spawnRecoveryLeft = Math.max(0, state.spawnRecoveryLeft - dt);
     state.comboTimer = Math.max(0, state.comboTimer - dt);
     if (state.comboTimer <= 0 && state.comboCount > 0) {
       breakCombo();
@@ -895,6 +900,10 @@
 
         player.lives -= 1;
         maybeSpawnEmergencyHeal(player);
+        state.spawnRecoveryLeft = Math.max(
+          state.spawnRecoveryLeft,
+          CONFIG.hitRecoverySpawnEaseDuration
+        );
         player.invuln = Math.max(player.invuln, 1.2);
         state.flashTimer = Math.max(state.flashTimer, 0.3);
         state.chromaPulse = Math.max(state.chromaPulse, 0.22);
@@ -1478,6 +1487,10 @@
 
       player.lives -= 1;
       maybeSpawnEmergencyHeal(player);
+      state.spawnRecoveryLeft = Math.max(
+        state.spawnRecoveryLeft,
+        CONFIG.hitRecoverySpawnEaseDuration
+      );
       player.invuln = CONFIG.hitInvulnerability;
       state.flashTimer = 0.35;
 
@@ -1515,6 +1528,10 @@
       } else {
         player.lives -= 1;
         maybeSpawnEmergencyHeal(player);
+        state.spawnRecoveryLeft = Math.max(
+          state.spawnRecoveryLeft,
+          CONFIG.hitRecoverySpawnEaseDuration
+        );
         player.invuln = CONFIG.hitInvulnerability;
         state.flashTimer = 0.35;
 
@@ -1956,7 +1973,13 @@
     const player = state.player;
     const pressureEase =
       player && player.lives <= 1 ? 1.4 : player && player.lives <= 2 ? 0.8 : 0;
-    const interval = CONFIG.enemySpawnBaseInterval - state.elapsed * 0.022 - state.relics * 0.07 + pressureEase;
+    const postHitEase =
+      state.spawnRecoveryLeft > 0
+        ? CONFIG.hitRecoverySpawnEaseAmount *
+          clamp(state.spawnRecoveryLeft / CONFIG.hitRecoverySpawnEaseDuration, 0.25, 1)
+        : 0;
+    const interval =
+      CONFIG.enemySpawnBaseInterval - state.elapsed * 0.022 - state.relics * 0.07 + pressureEase + postHitEase;
     return Math.max(CONFIG.enemySpawnMinInterval, interval);
   }
 
@@ -2092,6 +2115,10 @@
         if (!absorbShieldHit(player, boss.x, boss.y)) {
           player.lives -= 1;
           maybeSpawnEmergencyHeal(player);
+          state.spawnRecoveryLeft = Math.max(
+            state.spawnRecoveryLeft,
+            CONFIG.hitRecoverySpawnEaseDuration
+          );
           player.invuln = Math.max(player.invuln, 0.9);
           state.flashTimer = Math.max(state.flashTimer, 0.28);
           state.hurtOverlay = Math.max(state.hurtOverlay, 0.46);
@@ -3585,6 +3612,7 @@
           comboMultiplier: state.comboMultiplier,
           pendingDashLeft: state.pendingDashLeft,
           timeSlowLeft: state.timeSlowLeft,
+          spawnRecoveryLeft: state.spawnRecoveryLeft,
           difficulty: state.difficulty,
           objectiveSeconds: CONFIG.objectiveSeconds,
           nextCheckpointAt: state.nextCheckpointAt,

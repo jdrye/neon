@@ -73,6 +73,7 @@ Boucle de jeu:
 - Ramasser les reliques augmente fortement le score
 - Un orbe de soin apparait regulierement
 - Quand les PV tombent a `1`, un orbe de secours apparait automatiquement
+- Apres un impact, un court ralentissement de spawn laisse un temps de reprise
 - Toutes les `15s`, un checkpoint declenche une onde de securite et regenere 1 PV
 - Nouveau pattern ennemi `lancer` (windup + charge, ajusté pour etre lisible)
 - Nouveau pattern ennemi `wisp` (orbite + burst telegraphie)
