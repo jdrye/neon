@@ -13,6 +13,12 @@ module.exports = defineConfig({
     headless: true,
     trace: "on-first-retry",
   },
+  webServer: {
+    command: "python3 server.py",
+    url: "http://127.0.0.1:8000/health",
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
   projects: [
     {
       name: "chromium",

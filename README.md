@@ -44,12 +44,15 @@ curl http://127.0.0.1:8000/health
 
 ## Tests automatiques
 
-Le projet utilise un bot Playwright pour rejouer des parties et suivre l'equilibrage.
+Le projet utilise:
+- des tests e2e Playwright (smoke + debug API)
+- un bot Playwright pour rejouer des parties et suivre l'equilibrage
 
 ```bash
 cd /opt/neon
 npm ci
 npx playwright install chromium
+npm run test:e2e
 RUNS=8 npm run bot:play
 ```
 

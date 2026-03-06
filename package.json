@@ -4,7 +4,7 @@
   "private": true,
   "description": "Ruins Dash - single web game with local Playwright e2e tests.",
   "scripts": {
-    "test:e2e": "echo \"No active e2e tests\"",
+    "test:e2e": "playwright test",
     "bot:play": "node scripts/bot_play.js"
   },
   "devDependencies": {
