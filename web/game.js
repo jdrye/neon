@@ -120,6 +120,7 @@
   const dom = {
     canvas: document.getElementById("game"),
     actionBtn: document.getElementById("actionBtn"),
+    dashBtn: document.getElementById("dashBtn"),
     overlay: document.getElementById("overlay"),
     livesVal: document.getElementById("livesVal"),
     timeVal: document.getElementById("timeVal"),
@@ -3094,6 +3095,19 @@
       }
       startGame();
     });
+
+    if (dom.dashBtn) {
+      dom.dashBtn.addEventListener(
+        "pointerdown",
+        (event) => {
+          ensureAudioReady();
+          event.preventDefault();
+          queueDashRequest();
+          tryDash();
+        },
+        { passive: false }
+      );
+    }
 
     window.addEventListener("pointerdown", ensureAudioReady, { passive: true });
     window.addEventListener("keydown", handleKeyDown);

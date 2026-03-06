@@ -63,7 +63,7 @@ RUNS=8 npm run bot:play
 - `Espace`: rush defensif (invulnerabilite courte + onde de repoussement)
 - `M`: activer / couper les effets sonores
 - `V`: basculer en mode effets visuels reduits
-- Mobile: glisser dans la zone de jeu
+- Mobile: glisser dans la zone de jeu + bouton `RUSH`
 - `P`: pause/reprise
 - `R`: relancer
 
