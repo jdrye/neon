@@ -100,6 +100,35 @@ test("le bouton RUSH mobile declenche bien un dash", async ({ page }) => {
   expect(snapshot.player.dashCooldownLeft).toBeGreaterThan(0.5);
 });
 
+test("la collecte de Chrono active bien le ralentissement", async ({ page }) => {
+  await page.goto("/");
+
+  const info = await page.evaluate(() => {
+    const api = window.__RUINS_DASH_DEBUG__;
+    api.setAudioEnabled(false);
+    api.startGame();
+    const orb = api.spawnChronoOrb();
+    api.setPlayerPosition(orb.x, orb.y);
+    const snapshot = api.step(0.016, {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      dash: false,
+    });
+
+    return {
+      hasChrono: !!orb,
+      timeSlowLeft: snapshot.timeSlowLeft,
+      chronoConsumed: !snapshot.chronoOrb,
+    };
+  });
+
+  expect(info.hasChrono).toBeTruthy();
+  expect(info.timeSlowLeft).toBeGreaterThan(3);
+  expect(info.chronoConsumed).toBeTruthy();
+});
+
 test("le bot de base collecte au moins une relique et active le combo", async ({ page }) => {
   await page.goto("/");
 

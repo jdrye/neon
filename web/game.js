@@ -35,6 +35,7 @@
     enemyGraceSeconds: 3.8,
     enemySafeSpawnFromPlayer: 250,
     enemySafeSpawnFromRelic: 170,
+    enemySeparationStrength: 0.52,
     wispMinSpawnTime: 24,
     wispMaxActive: 1,
     wispBurstCooldownMin: 4.6,
@@ -50,6 +51,10 @@
 
     healRadius: 11,
     healEveryRelics: 3,
+    chronoRadius: 10,
+    chronoEveryRelics: 4,
+    chronoDuration: 4.2,
+    chronoSlowFactor: 0.66,
     checkpointEverySeconds: 15,
     checkpointScoreBonus: 160,
     checkpointPulseRadius: 168,
@@ -163,6 +168,7 @@
     hurtOverlay: 0,
     hitStopLeft: 0,
     pendingDashLeft: 0,
+    timeSlowLeft: 0,
 
     difficulty: 1,
     nextCheckpointAt: CONFIG.checkpointEverySeconds,
@@ -172,6 +178,7 @@
     relic: null,
     healOrb: null,
     aegisOrb: null,
+    chronoOrb: null,
 
     miniBoss: null,
     bossSpawned: false,
@@ -242,6 +249,7 @@
     state.hurtOverlay = 0;
     state.hitStopLeft = 0;
     state.pendingDashLeft = 0;
+    state.timeSlowLeft = 0;
 
     state.difficulty = 1;
     state.nextCheckpointAt = CONFIG.checkpointEverySeconds;
@@ -251,6 +259,7 @@
     state.relic = spawnRelic(state.player);
     state.healOrb = null;
     state.aegisOrb = null;
+    state.chronoOrb = null;
 
     state.miniBoss = null;
     state.bossSpawned = false;
@@ -308,6 +317,7 @@
     }
 
     state.hurtOverlay = Math.max(0, state.hurtOverlay - dt * CONFIG.hurtOverlayDecay);
+    state.timeSlowLeft = Math.max(0, state.timeSlowLeft - dt);
     state.comboTimer = Math.max(0, state.comboTimer - dt);
     if (state.comboTimer <= 0 && state.comboCount > 0) {
       breakCombo();
@@ -362,6 +372,7 @@
     maybeCollectRelic(player);
     maybeCollectHeal(player);
     maybeCollectAegis(player);
+    maybeCollectChrono(player);
     maybeTakeDamage(player);
     maybeTriggerCheckpoint(player);
 
@@ -514,6 +525,7 @@
     if (!boss) {
       return;
     }
+    const simDt = dt * currentEnemyTimeScale();
 
     const prevPhase = boss.phase;
     boss.phase = getBossPhase(boss);
@@ -532,13 +544,13 @@
       playSfx("bossPhase");
     }
 
-    boss.stunLeft = Math.max(0, boss.stunLeft - dt);
-    boss.attackLockLeft = Math.max(0, (boss.attackLockLeft || 0) - dt);
-    boss.volleyRecoverLeft = Math.max(0, (boss.volleyRecoverLeft || 0) - dt);
-    boss.chargeCooldown = Math.max(0, boss.chargeCooldown - dt);
-    boss.spawnMinionTimer = Math.max(0, boss.spawnMinionTimer - dt);
-    boss.shockwaveCooldown = Math.max(0, (boss.shockwaveCooldown || 0) - dt);
-    boss.projectileCooldown = Math.max(0, (boss.projectileCooldown || 0) - dt);
+    boss.stunLeft = Math.max(0, boss.stunLeft - simDt);
+    boss.attackLockLeft = Math.max(0, (boss.attackLockLeft || 0) - simDt);
+    boss.volleyRecoverLeft = Math.max(0, (boss.volleyRecoverLeft || 0) - simDt);
+    boss.chargeCooldown = Math.max(0, boss.chargeCooldown - simDt);
+    boss.spawnMinionTimer = Math.max(0, boss.spawnMinionTimer - simDt);
+    boss.shockwaveCooldown = Math.max(0, (boss.shockwaveCooldown || 0) - simDt);
+    boss.projectileCooldown = Math.max(0, (boss.projectileCooldown || 0) - simDt);
 
     const toPlayerX = player.x - boss.x;
     const toPlayerY = player.y - boss.y;
@@ -548,7 +560,7 @@
 
     if (boss.stunLeft <= 0 && boss.attackLockLeft <= 0) {
       if (boss.windupLeft > 0) {
-        boss.windupLeft -= dt;
+        boss.windupLeft -= simDt;
         if (boss.windupLeft <= 0) {
           boss.chargeTimeLeft = CONFIG.bossChargeDuration * phaseCfg.chargeDurationMul;
           boss.chargeDirX = nx;
@@ -557,11 +569,11 @@
           addImpactRing(boss.x, boss.y, [244, 216, 255], 120, 0.24, 2);
         }
       } else if (boss.chargeTimeLeft > 0) {
-        boss.chargeTimeLeft -= dt;
+        boss.chargeTimeLeft -= simDt;
         moveCircleWithCollisions(
           boss,
-          boss.chargeDirX * CONFIG.bossChargeSpeed * phaseCfg.chargeSpeedMul * dt,
-          boss.chargeDirY * CONFIG.bossChargeSpeed * phaseCfg.chargeSpeedMul * dt
+          boss.chargeDirX * CONFIG.bossChargeSpeed * phaseCfg.chargeSpeedMul * simDt,
+          boss.chargeDirY * CONFIG.bossChargeSpeed * phaseCfg.chargeSpeedMul * simDt
         );
       } else {
         const sway = Math.sin(state.elapsed * 2.2) * 0.42;
@@ -572,8 +584,8 @@
         const n = Math.hypot(followX, followY) || 1;
         moveCircleWithCollisions(
           boss,
-          (followX / n) * boss.baseSpeed * phaseCfg.moveSpeedMul * dt,
-          (followY / n) * boss.baseSpeed * phaseCfg.moveSpeedMul * dt
+          (followX / n) * boss.baseSpeed * phaseCfg.moveSpeedMul * simDt,
+          (followY / n) * boss.baseSpeed * phaseCfg.moveSpeedMul * simDt
         );
 
         if (boss.chargeCooldown <= 0 && distToPlayer > 120) {
@@ -725,14 +737,15 @@
   }
 
   function updateBossTelegraphs(dt) {
+    const simDt = dt * currentEnemyTimeScale();
     for (let i = state.bossTelegraphs.length - 1; i >= 0; i -= 1) {
       const telegraph = state.bossTelegraphs[i];
       if (telegraph.delay > 0) {
-        telegraph.delay = Math.max(0, telegraph.delay - dt);
+        telegraph.delay = Math.max(0, telegraph.delay - simDt);
         continue;
       }
 
-      telegraph.life -= dt;
+      telegraph.life -= simDt;
       if (telegraph.life > 0) {
         continue;
       }
@@ -775,16 +788,17 @@
   }
 
   function updateBossProjectiles(dt, player) {
+    const simDt = dt * currentEnemyTimeScale();
     for (let i = state.bossProjectiles.length - 1; i >= 0; i -= 1) {
       const projectile = state.bossProjectiles[i];
-      projectile.life -= dt;
+      projectile.life -= simDt;
       if (projectile.life <= 0) {
         state.bossProjectiles.splice(i, 1);
         continue;
       }
 
-      projectile.x += projectile.vx * dt;
-      projectile.y += projectile.vy * dt;
+      projectile.x += projectile.vx * simDt;
+      projectile.y += projectile.vy * simDt;
 
       emitParticles(projectile.x, projectile.y, [255, 210, 250], 1, 20, 0.14, 1.3);
 
@@ -931,12 +945,17 @@
     }
   }
 
+  function currentEnemyTimeScale() {
+    return state.timeSlowLeft > 0 ? CONFIG.chronoSlowFactor : 1;
+  }
+
   function updateEnemies(dt, player) {
-    state.enemyGraceLeft = Math.max(0, state.enemyGraceLeft - dt);
+    const simDt = dt * currentEnemyTimeScale();
+    state.enemyGraceLeft = Math.max(0, state.enemyGraceLeft - simDt);
 
     const spawnInterval = currentSpawnInterval();
     if (state.enemyGraceLeft <= 0 && state.enemies.length < CONFIG.enemyMax) {
-      state.enemySpawnTimer += dt;
+      state.enemySpawnTimer += simDt;
       if (state.enemySpawnTimer >= spawnInterval) {
         state.enemySpawnTimer = 0;
         state.enemies.push(spawnEnemy(player, state.relic));
@@ -946,7 +965,7 @@
     const earlyEase = 0.62 + Math.min(state.elapsed / 36, 1) * 0.38;
 
     for (const enemy of state.enemies) {
-      enemy.stunLeft = Math.max(0, enemy.stunLeft - dt);
+      enemy.stunLeft = Math.max(0, enemy.stunLeft - simDt);
 
       const dx = player.x - enemy.x;
       const dy = player.y - enemy.y;
@@ -968,9 +987,9 @@
       }
 
       if (enemy.type === "lancer") {
-        enemy.lanceCooldown = Math.max(0, (enemy.lanceCooldown || 0) - dt);
-        enemy.lanceWindup = Math.max(0, (enemy.lanceWindup || 0) - dt);
-        enemy.lanceTime = Math.max(0, (enemy.lanceTime || 0) - dt);
+        enemy.lanceCooldown = Math.max(0, (enemy.lanceCooldown || 0) - simDt);
+        enemy.lanceWindup = Math.max(0, (enemy.lanceWindup || 0) - simDt);
+        enemy.lanceTime = Math.max(0, (enemy.lanceTime || 0) - simDt);
 
         if (enemy.lanceWindup > 0) {
           speedMultiplier = 0.28;
@@ -1009,9 +1028,9 @@
       }
 
       if (enemy.type === "wisp") {
-        enemy.wispBurstCooldown = Math.max(0, (enemy.wispBurstCooldown || 0) - dt);
-        enemy.wispBurstWindup = Math.max(0, (enemy.wispBurstWindup || 0) - dt);
-        enemy.wispBurstTime = Math.max(0, (enemy.wispBurstTime || 0) - dt);
+        enemy.wispBurstCooldown = Math.max(0, (enemy.wispBurstCooldown || 0) - simDt);
+        enemy.wispBurstWindup = Math.max(0, (enemy.wispBurstWindup || 0) - simDt);
+        enemy.wispBurstTime = Math.max(0, (enemy.wispBurstTime || 0) - simDt);
 
         if (enemy.wispBurstWindup > 0) {
           speedMultiplier = 0.14;
@@ -1054,7 +1073,59 @@
       const baseSpeed = enemy.baseSpeed * state.difficulty * earlyEase;
       const speed = enemy.stunLeft > 0 ? baseSpeed * 0.2 : baseSpeed * speedMultiplier;
 
-      moveCircleWithCollisions(enemy, dirX * speed * dt, dirY * speed * dt);
+      moveCircleWithCollisions(enemy, dirX * speed * simDt, dirY * speed * simDt);
+    }
+
+    resolveEnemyCrowding();
+  }
+
+  function resolveEnemyCrowding() {
+    const pad = 4;
+    for (let i = 0; i < state.enemies.length; i += 1) {
+      const a = state.enemies[i];
+      for (let j = i + 1; j < state.enemies.length; j += 1) {
+        const b = state.enemies[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.0001;
+        const minDist = a.r + b.r + pad;
+        if (dist >= minDist) {
+          continue;
+        }
+
+        const overlap = (minDist - dist) * 0.5 * CONFIG.enemySeparationStrength;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        a.x -= nx * overlap;
+        a.y -= ny * overlap;
+        b.x += nx * overlap;
+        b.y += ny * overlap;
+        clampToBounds(a);
+        clampToBounds(b);
+        resolveObstacleOverlap(a);
+        resolveObstacleOverlap(b);
+      }
+    }
+
+    const boss = state.miniBoss;
+    if (!boss) {
+      return;
+    }
+    for (const enemy of state.enemies) {
+      const dx = enemy.x - boss.x;
+      const dy = enemy.y - boss.y;
+      const dist = Math.hypot(dx, dy) || 0.0001;
+      const minDist = enemy.r + boss.r + 8;
+      if (dist >= minDist) {
+        continue;
+      }
+      const overlap = (minDist - dist) * 0.6 * CONFIG.enemySeparationStrength;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      enemy.x += nx * overlap;
+      enemy.y += ny * overlap;
+      clampToBounds(enemy);
+      resolveObstacleOverlap(enemy);
     }
   }
 
@@ -1139,6 +1210,14 @@
     ) {
       state.aegisOrb = spawnAegisOrb(player);
     }
+
+    if (
+      state.relics % CONFIG.chronoEveryRelics === 0 &&
+      state.timeSlowLeft <= 0.4 &&
+      !state.chronoOrb
+    ) {
+      state.chronoOrb = spawnChronoOrb(player);
+    }
   }
 
   function maybeCollectHeal(player) {
@@ -1174,6 +1253,25 @@
     addFloatingText(state.aegisOrb.x, state.aegisOrb.y - 10, "AEGIS", [184, 247, 255], 0.78, 14);
     state.aegisOrb = null;
     playSfx("shieldGain");
+  }
+
+  function maybeCollectChrono(player) {
+    if (!state.chronoOrb) {
+      return;
+    }
+
+    if (!circlesOverlapRadius(player, state.chronoOrb, player.r + state.chronoOrb.r + 8)) {
+      return;
+    }
+
+    state.timeSlowLeft = Math.max(state.timeSlowLeft, CONFIG.chronoDuration);
+    state.score += 120;
+    emitParticles(state.chronoOrb.x, state.chronoOrb.y, [162, 222, 255], 28, 240, 0.72, 2.9);
+    addImpactRing(state.chronoOrb.x, state.chronoOrb.y, [146, 214, 255], 210, 0.44, 3);
+    addFloatingText(state.chronoOrb.x, state.chronoOrb.y - 12, "CHRONO", [186, 232, 255], 0.9, 15);
+    state.chronoOrb = null;
+    showBossCallout("Ralentissement", 0.85, "good");
+    playSfx("chrono");
   }
 
   function absorbShieldHit(player, sourceX, sourceY) {
@@ -1652,6 +1750,40 @@
     return { x: CONFIG.width * 0.5, y: CONFIG.height * 0.5, r: CONFIG.aegisRadius };
   }
 
+  function spawnChronoOrb(player) {
+    for (let i = 0; i < 220; i += 1) {
+      const candidate = {
+        x: rand(42, CONFIG.width - 42),
+        y: rand(42, CONFIG.height - 42),
+        r: CONFIG.chronoRadius,
+      };
+
+      if (circleHitsAnyObstacle(candidate.x, candidate.y, candidate.r)) {
+        continue;
+      }
+
+      if (Math.hypot(candidate.x - player.x, candidate.y - player.y) < 130) {
+        continue;
+      }
+
+      if (state.relic && Math.hypot(candidate.x - state.relic.x, candidate.y - state.relic.y) < 76) {
+        continue;
+      }
+
+      if (state.healOrb && Math.hypot(candidate.x - state.healOrb.x, candidate.y - state.healOrb.y) < 76) {
+        continue;
+      }
+
+      if (state.aegisOrb && Math.hypot(candidate.x - state.aegisOrb.x, candidate.y - state.aegisOrb.y) < 76) {
+        continue;
+      }
+
+      return candidate;
+    }
+
+    return { x: CONFIG.width * 0.5, y: CONFIG.height * 0.5, r: CONFIG.chronoRadius };
+  }
+
   function computeDifficulty() {
     const timeRamp = clamp(state.elapsed / CONFIG.objectiveSeconds, 0, 1);
     const relicRamp = clamp(state.relics / 14, 0, 1);
@@ -1865,6 +1997,7 @@
     drawRelic();
     drawHealOrb();
     drawAegisOrb();
+    drawChronoOrb();
     drawMiniBoss();
     drawBossTelegraphs();
     if (!state.reducedFx) {
@@ -1890,6 +2023,12 @@
       ctx.fillRect(-2, 0, CONFIG.width, CONFIG.height);
       ctx.fillStyle = `rgba(255, 145, 210, ${0.06 * p})`;
       ctx.fillRect(2, 0, CONFIG.width, CONFIG.height);
+    }
+
+    if (state.timeSlowLeft > 0 && !state.reducedFx) {
+      const p = clamp(state.timeSlowLeft / CONFIG.chronoDuration, 0, 1);
+      ctx.fillStyle = `rgba(125, 195, 255, ${0.04 + p * 0.08})`;
+      ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
     }
 
     drawDamageVignette();
@@ -2122,6 +2261,45 @@
     ctx.fillStyle = "#b7f8ff";
     ctx.beginPath();
     ctx.arc(orb.x, orb.y, orb.r * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawChronoOrb() {
+    if (!state.chronoOrb) {
+      return;
+    }
+
+    const orb = state.chronoOrb;
+    const pulse = 0.62 + 0.38 * Math.sin(state.elapsed * 6.2);
+    const spin = state.elapsed * 2.4;
+
+    ctx.fillStyle = `rgba(148, 215, 255, ${0.2 + pulse * 0.22})`;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r + 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(176, 231, 255, 0.84)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r + 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(orb.x, orb.y);
+    ctx.rotate(spin);
+    ctx.strokeStyle = "rgba(231, 250, 255, 0.86)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-orb.r, 0);
+    ctx.lineTo(orb.r, 0);
+    ctx.moveTo(0, -orb.r);
+    ctx.lineTo(0, orb.r);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = "rgba(208, 244, 255, 0.95)";
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.r * 0.58, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -2567,6 +2745,23 @@
       comboX + comboW,
       comboY + 24
     );
+
+    if (state.timeSlowLeft > 0) {
+      const sw = 130;
+      const sh = 10;
+      const sx = CONFIG.width * 0.5 - sw * 0.5;
+      const sy = 18;
+      const sr = clamp(state.timeSlowLeft / CONFIG.chronoDuration, 0, 1);
+      ctx.fillStyle = "rgba(14, 31, 49, 0.8)";
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.strokeStyle = "rgba(173, 226, 255, 0.58)";
+      ctx.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 1);
+      ctx.fillStyle = "rgba(157, 220, 255, 0.85)";
+      ctx.fillRect(sx + 1.5, sy + 1.5, (sw - 3) * sr, sh - 3);
+      ctx.fillStyle = "rgba(219, 245, 255, 0.92)";
+      ctx.textAlign = "center";
+      ctx.fillText(`CHRONO ${state.timeSlowLeft.toFixed(1)}s`, sx + sw * 0.5, sy + 24);
+    }
   }
 
   function drawBossBanner() {
@@ -2931,6 +3126,11 @@
       playTone(640, 820, 0.06, "triangle", 0.035);
       return;
     }
+    if (name === "chrono") {
+      playTone(460, 320, 0.14, "triangle", 0.048);
+      playTone(620, 440, 0.12, "sine", 0.038);
+      return;
+    }
     if (name === "hit") {
       playTone(180, 70, 0.16, "square", 0.055);
       return;
@@ -3133,6 +3333,7 @@
           comboTimer: state.comboTimer,
           comboMultiplier: state.comboMultiplier,
           pendingDashLeft: state.pendingDashLeft,
+          timeSlowLeft: state.timeSlowLeft,
           difficulty: state.difficulty,
           objectiveSeconds: CONFIG.objectiveSeconds,
           nextCheckpointAt: state.nextCheckpointAt,
@@ -3158,6 +3359,9 @@
             : null,
           aegisOrb: state.aegisOrb
             ? { x: state.aegisOrb.x, y: state.aegisOrb.y, r: state.aegisOrb.r }
+            : null,
+          chronoOrb: state.chronoOrb
+            ? { x: state.chronoOrb.x, y: state.chronoOrb.y, r: state.chronoOrb.r }
             : null,
           miniBoss: boss
             ? {
@@ -3235,6 +3439,20 @@
       setReducedFx(enabled) {
         setReducedFx(!!enabled);
       },
+      setPlayerPosition(x, y) {
+        if (!state.player) {
+          return;
+        }
+        state.player.x = clamp(Number(x) || state.player.x, state.player.r, CONFIG.width - state.player.r);
+        state.player.y = clamp(Number(y) || state.player.y, state.player.r, CONFIG.height - state.player.r);
+      },
+      spawnChronoOrb() {
+        if (!state.player) {
+          return null;
+        }
+        state.chronoOrb = spawnChronoOrb(state.player);
+        return state.chronoOrb ? { ...state.chronoOrb } : null;
+      },
     };
   }
 
@@ -3265,7 +3483,7 @@
     renderLeaderboard();
     updateActionButton();
     showOverlay(
-      "Survis 60s. Boss a 30s (3 phases + patterns alternes). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis a collecter. Espace = rush. M = audio. V = FX."
+      "Survis 60s. Boss a 30s (3 phases + patterns alternes). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono a collecter. Espace = rush. M = audio. V = FX."
     );
     syncHud();
     requestAnimationFrame(loop);

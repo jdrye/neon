@@ -47,6 +47,7 @@ function computeControls(snapshot) {
   const relic = snapshot.relic;
   const healOrb = snapshot.healOrb;
   const aegisOrb = snapshot.aegisOrb;
+  const chronoOrb = snapshot.chronoOrb;
   const miniBoss = snapshot.miniBoss;
   const bossProjectiles = snapshot.bossProjectiles || [];
   const bossTelegraphs = snapshot.bossTelegraphs || [];
@@ -61,6 +62,13 @@ function computeControls(snapshot) {
     (miniBoss || bossProjectiles.length >= 1 || player.lives <= 4)
   ) {
     target = aegisOrb;
+  }
+  if (
+    chronoOrb &&
+    (snapshot.timeSlowLeft || 0) <= 0.6 &&
+    (miniBoss || bossProjectiles.length >= 2 || enemies.length >= 4)
+  ) {
+    target = chronoOrb;
   }
 
   let vx = 0;
