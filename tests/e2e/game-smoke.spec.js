@@ -129,6 +129,99 @@ test("la collecte de Chrono active bien le ralentissement", async ({ page }) => 
   expect(info.chronoConsumed).toBeTruthy();
 });
 
+test("le mute audio persiste apres rechargement", async ({ page }) => {
+  await page.goto("/");
+
+  await page.evaluate(() => {
+    localStorage.removeItem("ruins_dash_audio_enabled_v1");
+    window.__RUINS_DASH_DEBUG__.setAudioEnabled(false);
+  });
+
+  await page.reload();
+
+  const snapshot = await page.evaluate(() => window.__RUINS_DASH_DEBUG__.getState());
+  expect(snapshot.audioEnabled).toBeFalsy();
+});
+
+test("onglet masque: pause auto sans reprise implicite", async ({ page }) => {
+  await page.goto("/");
+
+  const info = await page.evaluate(() => {
+    const api = window.__RUINS_DASH_DEBUG__;
+    api.setAudioEnabled(false);
+    api.startGame();
+    const before = api.step(0.16, {
+      left: false,
+      right: true,
+      up: false,
+      down: false,
+      dash: false,
+    });
+    const hidden = api.simulateVisibility(true);
+    const whilePaused = api.step(0.25, {
+      left: true,
+      right: false,
+      up: false,
+      down: false,
+      dash: false,
+    });
+    const visible = api.simulateVisibility(false);
+    api.setPaused(false);
+    const resumed = api.step(0.2, {
+      left: false,
+      right: false,
+      up: true,
+      down: false,
+      dash: false,
+    });
+
+    return {
+      beforeElapsed: before.elapsed,
+      hiddenPaused: hidden.paused,
+      hiddenAutoPaused: hidden.autoPaused,
+      elapsedWhilePaused: whilePaused.elapsed,
+      visiblePaused: visible.paused,
+      visibleAutoPaused: visible.autoPaused,
+      resumedElapsed: resumed.elapsed,
+    };
+  });
+
+  expect(info.hiddenPaused).toBeTruthy();
+  expect(info.hiddenAutoPaused).toBeTruthy();
+  expect(info.elapsedWhilePaused).toBeCloseTo(info.beforeElapsed, 4);
+  expect(info.visiblePaused).toBeTruthy();
+  expect(info.visibleAutoPaused).toBeFalsy();
+  expect(info.resumedElapsed).toBeGreaterThan(info.beforeElapsed + 0.015);
+});
+
+test("a 1 PV, un orbe de secours apparait apres un impact", async ({ page }) => {
+  await page.goto("/");
+
+  const info = await page.evaluate(() => {
+    const api = window.__RUINS_DASH_DEBUG__;
+    api.setAudioEnabled(false);
+    api.startGame();
+    api.setPlayerPosition(90, 90);
+    api.setPlayerLives(2);
+    api.spawnEnemy("stalker", 90, 90);
+    const snapshot = api.step(0.016, {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      dash: false,
+    });
+
+    return {
+      lives: snapshot.player.lives,
+      hasHealOrb: !!snapshot.healOrb,
+    };
+  });
+
+  expect(info.lives).toBe(1);
+  expect(info.hasHealOrb).toBeTruthy();
+});
+
 test("le bot de base collecte au moins une relique et active le combo", async ({ page }) => {
   await page.goto("/");
 

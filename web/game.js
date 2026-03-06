@@ -43,6 +43,14 @@
     wispBurstWindupMin: 0.26,
     wispBurstWindupMax: 0.4,
     wispBurstSpeedMul: 2.45,
+    spinnerMinSpawnTime: 20,
+    spinnerMaxActive: 1,
+    spinnerSpinCooldownMin: 4.8,
+    spinnerSpinCooldownMax: 6.8,
+    spinnerSpinWindupMin: 0.26,
+    spinnerSpinWindupMax: 0.42,
+    spinnerSpinDuration: 0.22,
+    spinnerSpinSpeedMul: 2.04,
 
     relicRadius: 12,
     relicCatchBonus: 22,
@@ -81,6 +89,9 @@
     bossAttackLock: 0.24,
     bossMinVolleyDistance: 120,
     bossSweepStepDelay: 0.09,
+    bossNovaCooldownMin: 8.2,
+    bossNovaCooldownMax: 10.8,
+    bossNovaStepDelay: 0.042,
     bossHitScore: 140,
     bossDefeatScore: 900,
 
@@ -105,6 +116,7 @@
 
     leaderboardSize: 5,
     leaderboardKey: "ruins_dash_scores_v4",
+    audioEnabledKey: "ruins_dash_audio_enabled_v1",
     reducedFxKey: "ruins_dash_reduced_fx_v1",
   };
 
@@ -120,6 +132,7 @@
     drifter: { color: "#ffb26f", outline: "#ffe2c4", radius: 11 },
     lancer: { color: "#d08fff", outline: "#f3dfff", radius: 12 },
     wisp: { color: "#87d9ff", outline: "#d9f3ff", radius: 10 },
+    spinner: { color: "#9dffba", outline: "#dffff0", radius: 11 },
   };
 
   const dom = {
@@ -148,6 +161,7 @@
   const state = {
     running: false,
     paused: false,
+    autoPaused: false,
     finished: false,
     victory: false,
 
@@ -229,6 +243,7 @@
   function startGame() {
     state.running = true;
     state.paused = false;
+    state.autoPaused = false;
     state.finished = false;
     state.victory = false;
 
@@ -275,6 +290,8 @@
     state.trails = [];
     state.floatingTexts = [];
     state.botInput = null;
+    state.keys.clear();
+    state.touch.active = false;
 
     updateActionButton();
     dom.actionBtn.blur();
@@ -285,6 +302,8 @@
 
   function endGame(victory, message) {
     state.running = false;
+    state.paused = false;
+    state.autoPaused = false;
     state.finished = true;
     state.victory = victory;
 
@@ -444,6 +463,7 @@
         spawnMinionTimer: CONFIG.bossSpawnMinionEvery,
         shockwaveCooldown: 9,
         projectileCooldown: rand(CONFIG.bossProjectileCooldownMin, CONFIG.bossProjectileCooldownMax),
+        novaCooldown: rand(CONFIG.bossNovaCooldownMin, CONFIG.bossNovaCooldownMax),
         shockwaveWarned: false,
         attackLockLeft: 0,
         volleyRecoverLeft: 0,
@@ -468,6 +488,7 @@
       spawnMinionTimer: CONFIG.bossSpawnMinionEvery,
       shockwaveCooldown: 9,
       projectileCooldown: rand(CONFIG.bossProjectileCooldownMin, CONFIG.bossProjectileCooldownMax),
+      novaCooldown: rand(CONFIG.bossNovaCooldownMin, CONFIG.bossNovaCooldownMax),
       shockwaveWarned: false,
       attackLockLeft: 0,
       volleyRecoverLeft: 0,
@@ -551,6 +572,7 @@
     boss.spawnMinionTimer = Math.max(0, boss.spawnMinionTimer - simDt);
     boss.shockwaveCooldown = Math.max(0, (boss.shockwaveCooldown || 0) - simDt);
     boss.projectileCooldown = Math.max(0, (boss.projectileCooldown || 0) - simDt);
+    boss.novaCooldown = Math.max(0, (boss.novaCooldown || 0) - simDt);
 
     const toPlayerX = player.x - boss.x;
     const toPlayerY = player.y - boss.y;
@@ -632,6 +654,23 @@
     }
 
     if (
+      boss.phase >= 2 &&
+      boss.novaCooldown <= 0 &&
+      boss.windupLeft <= 0 &&
+      boss.chargeTimeLeft <= 0 &&
+      boss.attackLockLeft <= 0
+    ) {
+      queueBossNova(boss, boss.phase);
+      boss.attackLockLeft = Math.max(boss.attackLockLeft, CONFIG.bossAttackLock + 0.24);
+      boss.chargeCooldown = Math.max(boss.chargeCooldown, 1.45);
+      const speedUp = boss.phase === 3 ? 0.88 : 1;
+      boss.novaCooldown = rand(
+        CONFIG.bossNovaCooldownMin * speedUp,
+        CONFIG.bossNovaCooldownMax * speedUp
+      );
+    }
+
+    if (
       boss.spawnMinionTimer <= 0 &&
       state.enemies.length < CONFIG.enemyMax &&
       state.bossTelegraphs.length < 9 &&
@@ -662,7 +701,10 @@
         continue;
       }
 
-      return buildEnemy(x, y, "lancer");
+      const roll = Math.random();
+      const type =
+        boss.phase >= 3 && roll < 0.18 ? "spinner" : roll < 0.66 ? "lancer" : "drifter";
+      return buildEnemy(x, y, type);
     }
     return null;
   }
@@ -714,6 +756,27 @@
     playSfx("bossAim");
   }
 
+  function queueBossNova(boss, phase) {
+    const spokes = phase === 2 ? 6 : 8;
+    const base = rand(0, Math.PI * 2);
+    const speed = CONFIG.bossProjectileSpeed * (phase === 2 ? 0.82 : 0.9);
+    const delayStep = CONFIG.bossNovaStepDelay * (phase === 3 ? 0.85 : 1);
+    for (let i = 0; i < spokes; i += 1) {
+      const angle = base + (Math.PI * 2 * i) / spokes;
+      const delay = i * delayStep;
+      queueBossTelegraph(boss, angle, speed, {
+        kind: "nova",
+        radius: CONFIG.bossProjectileRadius - 1,
+        delay,
+        opensRecover: i === spokes - 1,
+        recoverDuration: CONFIG.bossVolleyRecover * 0.72,
+      });
+    }
+    addImpactRing(boss.x, boss.y, [164, 224, 255], 182, 0.34, 2.5);
+    showBossCallout("Nova radiale", 0.88, "bad");
+    playSfx("bossNova");
+  }
+
   function queueBossTelegraph(boss, angle, speed, options = null) {
     const opt = options || {};
     const delay = Math.max(0, Number(opt.delay) || 0);
@@ -727,7 +790,7 @@
       maxDelay: delay,
       life: CONFIG.bossProjectileTelegraph,
       maxLife: CONFIG.bossProjectileTelegraph,
-      radius: CONFIG.bossProjectileRadius,
+      radius: Math.max(4, Number(opt.radius) || CONFIG.bossProjectileRadius),
       opensRecover: !!opt.opensRecover,
       recoverDuration: Math.max(0.2, Number(opt.recoverDuration) || CONFIG.bossVolleyRecover),
     });
@@ -767,7 +830,11 @@
       addImpactRing(
         telegraph.x,
         telegraph.y,
-        telegraph.kind === "sweep" ? [255, 204, 176] : [247, 208, 255],
+        telegraph.kind === "nova"
+          ? [176, 228, 255]
+          : telegraph.kind === "sweep"
+            ? [255, 204, 176]
+            : [247, 208, 255],
         110,
         0.24,
         2
@@ -800,7 +867,13 @@
       projectile.x += projectile.vx * simDt;
       projectile.y += projectile.vy * simDt;
 
-      emitParticles(projectile.x, projectile.y, [255, 210, 250], 1, 20, 0.14, 1.3);
+      const trailRgb =
+        projectile.kind === "nova"
+          ? [186, 232, 255]
+          : projectile.kind === "sweep"
+            ? [255, 221, 192]
+            : [255, 210, 250];
+      emitParticles(projectile.x, projectile.y, trailRgb, 1, 20, 0.14, 1.3);
 
       const out =
         projectile.x < -20 ||
@@ -821,6 +894,7 @@
         }
 
         player.lives -= 1;
+        maybeSpawnEmergencyHeal(player);
         player.invuln = Math.max(player.invuln, 1.2);
         state.flashTimer = Math.max(state.flashTimer, 0.3);
         state.chromaPulse = Math.max(state.chromaPulse, 0.22);
@@ -1070,6 +1144,56 @@
         }
       }
 
+      if (enemy.type === "spinner") {
+        enemy.spinCooldown = Math.max(0, (enemy.spinCooldown || 0) - simDt);
+        enemy.spinWindup = Math.max(0, (enemy.spinWindup || 0) - simDt);
+        enemy.spinTime = Math.max(0, (enemy.spinTime || 0) - simDt);
+
+        const orbitDir = enemy.orbitDir || 1;
+        if (enemy.spinWindup > 0) {
+          speedMultiplier = 0.18;
+          const tangentX = -dirY * orbitDir;
+          const tangentY = dirX * orbitDir;
+          const aimX = dirX * 0.38 + tangentX * 0.62;
+          const aimY = dirY * 0.38 + tangentY * 0.62;
+          const n = Math.hypot(aimX, aimY) || 1;
+          enemy.spinDirX = aimX / n;
+          enemy.spinDirY = aimY / n;
+          if (enemy.spinWindup <= 0.02) {
+            enemy.spinTime = CONFIG.spinnerSpinDuration;
+            addImpactRing(enemy.x, enemy.y, [173, 255, 204], 92, 0.2, 1.8);
+          }
+        } else if (enemy.spinTime > 0) {
+          dirX = enemy.spinDirX || dirX;
+          dirY = enemy.spinDirY || dirY;
+          speedMultiplier = CONFIG.spinnerSpinSpeedMul;
+        } else {
+          if (enemy.spinCooldown <= 0 && dist > 120 && dist < 320) {
+            const windup = rand(CONFIG.spinnerSpinWindupMin, CONFIG.spinnerSpinWindupMax);
+            enemy.spinWindup = windup;
+            enemy.spinWindupMax = windup;
+            enemy.spinCooldown = rand(CONFIG.spinnerSpinCooldownMin, CONFIG.spinnerSpinCooldownMax);
+            const tangentX = -dirY * orbitDir;
+            const tangentY = dirX * orbitDir;
+            const n = Math.hypot(tangentX, tangentY) || 1;
+            enemy.spinDirX = tangentX / n;
+            enemy.spinDirY = tangentY / n;
+          }
+
+          const desiredDist = 168;
+          const pull = (dist - desiredDist) * 0.0085;
+          const tangentX = -dirY * orbitDir;
+          const tangentY = dirX * orbitDir;
+          const wobble = Math.sin(state.elapsed * 4 + enemy.phase * 1.3) * 0.45;
+          dirX = dirX * pull + tangentX * (0.98 + wobble * 0.28);
+          dirY = dirY * pull + tangentY * (0.98 + wobble * 0.28);
+          const n = Math.hypot(dirX, dirY) || 1;
+          dirX /= n;
+          dirY /= n;
+          speedMultiplier = 0.96;
+        }
+      }
+
       const baseSpeed = enemy.baseSpeed * state.difficulty * earlyEase;
       const speed = enemy.stunLeft > 0 ? baseSpeed * 0.2 : baseSpeed * speedMultiplier;
 
@@ -1274,6 +1398,16 @@
     playSfx("chrono");
   }
 
+  function maybeSpawnEmergencyHeal(player) {
+    if (!player || player.lives !== 1 || state.healOrb) {
+      return;
+    }
+
+    state.healOrb = spawnHealOrb(player);
+    addFloatingText(player.x, player.y - 24, "SOIN CRITIQUE", [186, 255, 205], 0.8, 13);
+    showBossCallout("Orbe de secours", 0.92, "good");
+  }
+
   function absorbShieldHit(player, sourceX, sourceY) {
     if ((player.shieldHits || 0) <= 0) {
       return false;
@@ -1343,6 +1477,7 @@
       }
 
       player.lives -= 1;
+      maybeSpawnEmergencyHeal(player);
       player.invuln = CONFIG.hitInvulnerability;
       state.flashTimer = 0.35;
 
@@ -1378,27 +1513,28 @@
         clampToBounds(boss);
         resolveObstacleOverlap(boss);
       } else {
-      player.lives -= 1;
-      player.invuln = CONFIG.hitInvulnerability;
-      state.flashTimer = 0.35;
+        player.lives -= 1;
+        maybeSpawnEmergencyHeal(player);
+        player.invuln = CONFIG.hitInvulnerability;
+        state.flashTimer = 0.35;
 
-      const dx = boss.x - player.x;
-      const dy = boss.y - player.y;
-      const dist = Math.max(0.1, Math.hypot(dx, dy));
-      boss.x += (dx / dist) * 62;
-      boss.y += (dy / dist) * 62;
-      boss.stunLeft = Math.max(boss.stunLeft, 0.28);
-      clampToBounds(boss);
-      resolveObstacleOverlap(boss);
+        const dx = boss.x - player.x;
+        const dy = boss.y - player.y;
+        const dist = Math.max(0.1, Math.hypot(dx, dy));
+        boss.x += (dx / dist) * 62;
+        boss.y += (dy / dist) * 62;
+        boss.stunLeft = Math.max(boss.stunLeft, 0.28);
+        clampToBounds(boss);
+        resolveObstacleOverlap(boss);
 
-      emitParticles(player.x, player.y, [255, 138, 138], 26, 240, 0.58, 3);
-      addImpactRing(player.x, player.y, [255, 125, 165], 190, 0.35, 3);
-      triggerShake(0.3, 4.4);
-      triggerHitStop(0.055);
-      state.chromaPulse = Math.max(state.chromaPulse, 0.28);
-      state.hurtOverlay = Math.max(state.hurtOverlay, 0.6);
-      breakCombo();
-      hit = true;
+        emitParticles(player.x, player.y, [255, 138, 138], 26, 240, 0.58, 3);
+        addImpactRing(player.x, player.y, [255, 125, 165], 190, 0.35, 3);
+        triggerShake(0.3, 4.4);
+        triggerHitStop(0.055);
+        state.chromaPulse = Math.max(state.chromaPulse, 0.28);
+        state.hurtOverlay = Math.max(state.hurtOverlay, 0.6);
+        breakCombo();
+        hit = true;
       }
     }
 
@@ -1593,6 +1729,10 @@
     if (!type) {
       const lancerCount = state.enemies.reduce((count, enemy) => count + (enemy.type === "lancer" ? 1 : 0), 0);
       const wispCount = state.enemies.reduce((count, enemy) => count + (enemy.type === "wisp" ? 1 : 0), 0);
+      const spinnerCount = state.enemies.reduce(
+        (count, enemy) => count + (enemy.type === "spinner" ? 1 : 0),
+        0
+      );
       const lancerChance = clamp(
         (state.difficulty - 0.95) * 0.18 + state.elapsed * 0.0014,
         0.03,
@@ -1603,13 +1743,20 @@
         0,
         0.1
       );
+      const spinnerChance = clamp(
+        (state.elapsed - CONFIG.spinnerMinSpawnTime) * 0.0035 + (state.difficulty - 1) * 0.1,
+        0,
+        0.06
+      );
       const drifterChance = clamp((state.difficulty - 0.95) * 0.26, 0.05, 0.3);
       const roll = Math.random();
       if (roll < wispChance && wispCount < CONFIG.wispMaxActive) {
         type = "wisp";
-      } else if (roll < wispChance + lancerChance && lancerCount < 2) {
+      } else if (roll < wispChance + spinnerChance && spinnerCount < CONFIG.spinnerMaxActive) {
+        type = "spinner";
+      } else if (roll < wispChance + spinnerChance + lancerChance && lancerCount < 2) {
         type = "lancer";
-      } else if (roll < wispChance + lancerChance + drifterChance) {
+      } else if (roll < wispChance + spinnerChance + lancerChance + drifterChance) {
         type = "drifter";
       } else {
         type = "stalker";
@@ -1625,6 +1772,8 @@
       baseSpeed:
         type === "wisp"
           ? rand(56, 78)
+          : type === "spinner"
+          ? rand(60, 82)
           : type === "lancer"
           ? rand(54, 72)
           : type === "drifter"
@@ -1646,6 +1795,13 @@
       wispBurstTime: 0,
       wispDirX: 0,
       wispDirY: 0,
+      spinCooldown: rand(CONFIG.spinnerSpinCooldownMin, CONFIG.spinnerSpinCooldownMax),
+      spinWindup: 0,
+      spinWindupMax: 0,
+      spinTime: 0,
+      spinDirX: 0,
+      spinDirY: 0,
+      orbitDir: Math.random() > 0.5 ? 1 : -1,
     };
   }
 
@@ -1935,6 +2091,7 @@
       if (dist < 82 && player.invuln <= 0) {
         if (!absorbShieldHit(player, boss.x, boss.y)) {
           player.lives -= 1;
+          maybeSpawnEmergencyHeal(player);
           player.invuln = Math.max(player.invuln, 0.9);
           state.flashTimer = Math.max(state.flashTimer, 0.28);
           state.hurtOverlay = Math.max(state.hurtOverlay, 0.46);
@@ -2039,7 +2196,12 @@
       ctx.fillStyle = "#e8f8ff";
       ctx.font = "700 44px Verdana, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Pause", CONFIG.width / 2, CONFIG.height / 2);
+      ctx.fillText(state.autoPaused ? "Pause auto" : "Pause", CONFIG.width / 2, CONFIG.height / 2);
+      if (state.autoPaused) {
+        ctx.font = "600 18px 'Trebuchet MS', sans-serif";
+        ctx.fillStyle = "rgba(222, 243, 255, 0.92)";
+        ctx.fillText("Appuie sur P pour reprendre", CONFIG.width / 2, CONFIG.height / 2 + 34);
+      }
     }
 
     ctx.restore();
@@ -2400,17 +2562,19 @@
   function drawBossTelegraphs() {
     ctx.save();
     for (const telegraph of state.bossTelegraphs) {
-      const warm = telegraph.kind === "sweep";
+      const kind = telegraph.kind || "fan";
+      const warm = kind === "sweep";
+      const nova = kind === "nova";
       const warmup =
         telegraph.maxDelay > 0 ? clamp(1 - (telegraph.delay || 0) / telegraph.maxDelay, 0, 1) : 1;
       const alpha = clamp(telegraph.life / telegraph.maxLife, 0, 1);
       const arming = (telegraph.delay || 0) > 0 ? warmup * 0.55 : 1 - alpha;
-      const len = warm ? 300 : 280;
+      const len = nova ? 255 : warm ? 300 : 280;
       const ex = telegraph.x + Math.cos(telegraph.angle) * len;
       const ey = telegraph.y + Math.sin(telegraph.angle) * len;
-      const core = warm ? "255, 176, 129" : "255, 121, 195";
-      const edge = warm ? "255, 238, 210" : "255, 235, 245";
-      const tip = warm ? "255, 227, 198" : "255, 214, 239";
+      const core = nova ? "137, 222, 255" : warm ? "255, 176, 129" : "255, 121, 195";
+      const edge = nova ? "223, 245, 255" : warm ? "255, 238, 210" : "255, 235, 245";
+      const tip = nova ? "199, 235, 255" : warm ? "255, 227, 198" : "255, 214, 239";
 
       ctx.strokeStyle = `rgba(${core}, ${0.08 + arming * 0.26})`;
       ctx.lineWidth = 8 + arming * 4;
@@ -2419,8 +2583,8 @@
       ctx.lineTo(ex, ey);
       ctx.stroke();
 
-      ctx.setLineDash(warm ? [8, 10] : [12, 8]);
-      ctx.lineDashOffset = -state.elapsed * (warm ? 220 : 180);
+      ctx.setLineDash(nova ? [5, 8] : warm ? [8, 10] : [12, 8]);
+      ctx.lineDashOffset = -state.elapsed * (nova ? 260 : warm ? 220 : 180);
       ctx.strokeStyle = `rgba(${edge}, ${0.34 + arming * 0.58})`;
       ctx.lineWidth = 2.2 + arming * 1.6;
       ctx.beginPath();
@@ -2439,13 +2603,17 @@
 
   function drawBossProjectiles() {
     for (const projectile of state.bossProjectiles) {
-      const warm = projectile.kind === "sweep";
+      const kind = projectile.kind || "fan";
+      const warm = kind === "sweep";
+      const nova = kind === "nova";
       const alpha = clamp(projectile.life / CONFIG.bossProjectileLife, 0, 1);
       const speed = Math.max(1, Math.hypot(projectile.vx, projectile.vy));
       const tailX = projectile.x - (projectile.vx / speed) * (16 + (1 - alpha) * 16);
       const tailY = projectile.y - (projectile.vy / speed) * (16 + (1 - alpha) * 16);
 
-      ctx.strokeStyle = warm
+      ctx.strokeStyle = nova
+        ? `rgba(154, 226, 255, ${0.26 + alpha * 0.3})`
+        : warm
         ? `rgba(255, 177, 132, ${0.26 + alpha * 0.3})`
         : `rgba(255, 162, 226, ${0.26 + alpha * 0.3})`;
       ctx.lineWidth = 3 + alpha * 2;
@@ -2454,21 +2622,27 @@
       ctx.lineTo(projectile.x, projectile.y);
       ctx.stroke();
 
-      ctx.fillStyle = warm
+      ctx.fillStyle = nova
+        ? `rgba(214, 243, 255, ${0.2 + alpha * 0.2})`
+        : warm
         ? `rgba(255, 214, 181, ${0.18 + alpha * 0.2})`
         : `rgba(255, 188, 238, ${0.18 + alpha * 0.2})`;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.r + 7.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = warm
+      ctx.fillStyle = nova
+        ? `rgba(145, 214, 255, ${0.8 + alpha * 0.18})`
+        : warm
         ? `rgba(255, 170, 115, ${0.8 + alpha * 0.18})`
         : `rgba(255, 162, 226, ${0.8 + alpha * 0.18})`;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.r, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = warm
+      ctx.fillStyle = nova
+        ? `rgba(241, 252, 255, ${0.6 + alpha * 0.35})`
+        : warm
         ? `rgba(255, 247, 233, ${0.55 + alpha * 0.35})`
         : `rgba(255, 242, 252, ${0.55 + alpha * 0.35})`;
       ctx.beginPath();
@@ -2549,6 +2723,50 @@
           ctx.beginPath();
           ctx.moveTo(enemy.x - bx * 3, enemy.y - by * 3);
           ctx.lineTo(enemy.x - bx * 20, enemy.y - by * 20);
+          ctx.stroke();
+        }
+      }
+
+      if (enemy.type === "spinner") {
+        const rot = state.elapsed * 7.8 * (enemy.orbitDir || 1) + enemy.phase;
+        const arm = enemy.r + 7;
+        const ax = Math.cos(rot) * arm;
+        const ay = Math.sin(rot) * arm;
+        ctx.strokeStyle = "rgba(196, 255, 221, 0.56)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(enemy.x - ax, enemy.y - ay);
+        ctx.lineTo(enemy.x + ax, enemy.y + ay);
+        ctx.stroke();
+
+        const haloPulse = 0.5 + 0.5 * Math.sin(state.elapsed * 8.2 + enemy.phase);
+        ctx.strokeStyle = `rgba(182, 255, 213, ${0.22 + haloPulse * 0.3})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.r + 5 + haloPulse * 2.2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (enemy.spinWindup > 0) {
+          const total = Math.max(0.001, enemy.spinWindupMax || enemy.spinWindup);
+          const p = clamp(1 - enemy.spinWindup / total, 0, 1);
+          const sx = enemy.spinDirX || 1;
+          const sy = enemy.spinDirY || 0;
+          ctx.strokeStyle = `rgba(220, 255, 234, ${0.34 + p * 0.48})`;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(enemy.x, enemy.y);
+          ctx.lineTo(enemy.x + sx * (64 + p * 74), enemy.y + sy * (64 + p * 74));
+          ctx.stroke();
+        }
+
+        if (enemy.spinTime > 0) {
+          const sx = enemy.spinDirX || 0;
+          const sy = enemy.spinDirY || 0;
+          ctx.strokeStyle = "rgba(205, 255, 230, 0.5)";
+          ctx.lineWidth = 2.6;
+          ctx.beginPath();
+          ctx.moveTo(enemy.x - sx * 6, enemy.y - sy * 6);
+          ctx.lineTo(enemy.x - sx * 24, enemy.y - sy * 24);
           ctx.stroke();
         }
       }
@@ -3057,6 +3275,11 @@
     if (state.audio.master) {
       state.audio.master.gain.setTargetAtTime(enabled ? 0.11 : 0.0, state.audio.ctx.currentTime, 0.02);
     }
+    try {
+      localStorage.setItem(CONFIG.audioEnabledKey, state.audio.enabled ? "1" : "0");
+    } catch {
+      // Keep runtime behavior even if storage is unavailable.
+    }
   }
 
   function setReducedFx(enabled) {
@@ -3162,6 +3385,11 @@
       playTone(260, 220, 0.08, "square", 0.036);
       return;
     }
+    if (name === "bossNova") {
+      playTone(280, 520, 0.11, "triangle", 0.05);
+      playTone(520, 320, 0.11, "sine", 0.038);
+      return;
+    }
     if (name === "bossAim") {
       playTone(360, 470, 0.12, "triangle", 0.045);
       return;
@@ -3220,6 +3448,7 @@
     if (event.key === "p" || event.key === "P") {
       if (state.running) {
         state.paused = !state.paused;
+        state.autoPaused = false;
       }
       return;
     }
@@ -3263,6 +3492,24 @@
 
   function handleKeyUp(event) {
     state.keys.delete(event.key);
+  }
+
+  function handleVisibilityChange(hidden = document.hidden) {
+    if (hidden) {
+      if (state.running && !state.finished && !state.paused) {
+        state.paused = true;
+        state.autoPaused = true;
+        state.keys.clear();
+        state.touch.active = false;
+        showBossCallout("Pause auto", 0.8, "warn");
+      }
+      return;
+    }
+
+    if (state.autoPaused && state.running && !state.finished) {
+      state.autoPaused = false;
+      showBossCallout("Reprendre: P", 0.9, "good");
+    }
   }
 
   function bindTouchControls() {
@@ -3312,6 +3559,9 @@
     window.addEventListener("pointerdown", ensureAudioReady, { passive: true });
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    document.addEventListener("visibilitychange", () => {
+      handleVisibilityChange(document.hidden);
+    });
     bindTouchControls();
   }
 
@@ -3324,6 +3574,7 @@
         return {
           running: state.running,
           paused: state.paused,
+          autoPaused: state.autoPaused,
           finished: state.finished,
           victory: state.victory,
           elapsed: state.elapsed,
@@ -3376,6 +3627,7 @@
                 chargeTimeLeft: boss.chargeTimeLeft,
                 shockwaveCooldown: boss.shockwaveCooldown || 0,
                 projectileCooldown: boss.projectileCooldown || 0,
+                novaCooldown: boss.novaCooldown || 0,
                 attackLockLeft: boss.attackLockLeft || 0,
                 volleyRecoverLeft: boss.volleyRecoverLeft || 0,
               }
@@ -3389,11 +3641,15 @@
             stunLeft: enemy.stunLeft,
             lanceWindup: enemy.lanceWindup || 0,
             lanceTime: enemy.lanceTime || 0,
+            spinWindup: enemy.spinWindup || 0,
+            spinTime: enemy.spinTime || 0,
           })),
           bossTelegraphs: state.bossTelegraphs.map((item) => ({
             x: item.x,
             y: item.y,
             angle: item.angle,
+            kind: item.kind,
+            delay: item.delay,
             life: item.life,
             maxLife: item.maxLife,
           })),
@@ -3401,6 +3657,7 @@
             x: item.x,
             y: item.y,
             r: item.r,
+            kind: item.kind,
             vx: item.vx,
             vy: item.vy,
             life: item.life,
@@ -3439,12 +3696,59 @@
       setReducedFx(enabled) {
         setReducedFx(!!enabled);
       },
+      setPaused(enabled) {
+        state.paused = !!enabled;
+        if (!enabled) {
+          state.autoPaused = false;
+        }
+      },
+      simulateVisibility(hidden) {
+        handleVisibilityChange(!!hidden);
+        return this.getState();
+      },
       setPlayerPosition(x, y) {
         if (!state.player) {
           return;
         }
         state.player.x = clamp(Number(x) || state.player.x, state.player.r, CONFIG.width - state.player.r);
         state.player.y = clamp(Number(y) || state.player.y, state.player.r, CONFIG.height - state.player.r);
+      },
+      setPlayerLives(lives) {
+        if (!state.player) {
+          return;
+        }
+        state.player.lives = clamp(
+          Math.round(Number(lives) || state.player.lives),
+          0,
+          CONFIG.playerMaxLives
+        );
+      },
+      spawnEnemy(type = "stalker", x = null, y = null) {
+        if (!state.player) {
+          return null;
+        }
+        const parsedX = Number(x);
+        const parsedY = Number(y);
+        const hasX = x !== null && x !== undefined && Number.isFinite(parsedX);
+        const hasY = y !== null && y !== undefined && Number.isFinite(parsedY);
+        const tx = clamp(
+          hasX ? parsedX : state.player.x + rand(-160, 160),
+          18,
+          CONFIG.width - 18
+        );
+        const ty = clamp(
+          hasY ? parsedY : state.player.y + rand(-120, 120),
+          18,
+          CONFIG.height - 18
+        );
+        const kind = ENEMY_STYLES[type] ? type : "stalker";
+        const enemy = buildEnemy(tx, ty, kind);
+        if (circleHitsAnyObstacle(enemy.x, enemy.y, enemy.r + 2)) {
+          enemy.x = clamp(state.player.x + 80, enemy.r, CONFIG.width - enemy.r);
+          enemy.y = clamp(state.player.y - 80, enemy.r, CONFIG.height - enemy.r);
+        }
+        state.enemies.push(enemy);
+        return { ...enemy };
       },
       spawnChronoOrb() {
         if (!state.player) {
@@ -3471,8 +3775,12 @@
 
   function init() {
     try {
-      const raw = localStorage.getItem(CONFIG.reducedFxKey);
-      state.reducedFx = raw === "1";
+      const reducedRaw = localStorage.getItem(CONFIG.reducedFxKey);
+      state.reducedFx = reducedRaw === "1";
+      const audioRaw = localStorage.getItem(CONFIG.audioEnabledKey);
+      if (audioRaw === "0") {
+        state.audio.enabled = false;
+      }
     } catch {
       state.reducedFx = false;
     }
@@ -3483,7 +3791,7 @@
     renderLeaderboard();
     updateActionButton();
     showOverlay(
-      "Survis 60s. Boss a 30s (3 phases + patterns alternes). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono a collecter. Espace = rush. M = audio. V = FX."
+      "Survis 60s. Boss a 30s (3 phases + salves Nova). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto."
     );
     syncHud();
     requestAnimationFrame(loop);
