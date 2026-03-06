@@ -2284,6 +2284,7 @@
     drawParticles();
     drawFloatingTexts();
     drawWorldTimer();
+    drawBossHealthBar();
     drawBossBanner();
 
     if (state.flashTimer > 0) {
@@ -3161,6 +3162,40 @@
       ctx.textAlign = "center";
       ctx.fillText(`SURGE ${state.surgeOrb.life.toFixed(1)}s`, sx + sw * 0.5, sy + 24);
     }
+  }
+
+  function drawBossHealthBar() {
+    if (!state.miniBoss) {
+      return;
+    }
+
+    const boss = state.miniBoss;
+    const ratio = clamp(boss.health / boss.maxHealth, 0, 1);
+    const w = 258;
+    const h = 14;
+    const x = CONFIG.width * 0.5 - w * 0.5;
+    const y = 42;
+    const phase = boss.phase || 1;
+    const fgA = phase === 1 ? "#d89aff" : phase === 2 ? "#ffb778" : "#ff82ba";
+    const fgB = phase === 1 ? "#f1d2ff" : phase === 2 ? "#ffe0b5" : "#ffd6ea";
+
+    ctx.fillStyle = "rgba(15, 26, 42, 0.78)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "rgba(216, 235, 255, 0.44)";
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+    const g = ctx.createLinearGradient(x, y, x + w, y);
+    g.addColorStop(0, fgA);
+    g.addColorStop(1, fgB);
+    ctx.fillStyle = g;
+    ctx.fillRect(x + 1.5, y + 1.5, (w - 3) * ratio, h - 3);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(235, 247, 255, 0.9)";
+    ctx.font = "700 12px 'Trebuchet MS', sans-serif";
+    const phaseText = phase === 1 ? "PHASE I" : phase === 2 ? "PHASE II" : "PHASE III";
+    const openText = (boss.volleyRecoverLeft || 0) > 0 ? " | BOSS-OPEN" : "";
+    ctx.fillText(`BOSS ${phaseText}${openText}`, CONFIG.width * 0.5, y - 6);
   }
 
   function drawBossBanner() {

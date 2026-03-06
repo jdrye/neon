@@ -81,6 +81,7 @@ Boucle de jeu:
 - Mini-boss a `30s`, en 3 phases (phase 3: onde de choc)
 - Patterns de projectiles boss telegraphies et alternes (eventail / balayage / nova)
 - Fenetre `BOSS-OPEN` apres salve pour contre-attaque au dash
+- Barre de vie boss + phase visible en permanence
 - Feedback de degats renforce (hit-stop court + vignette d'alerte)
 - Mouvements joueur lisses mais reactifs (inertie controlee)
 - Combo dynamique: enchainer les reliques augmente le multiplicateur de score
