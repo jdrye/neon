@@ -85,6 +85,7 @@ Boucle de jeu:
 - Feedback de degats renforce (hit-stop court + vignette d'alerte)
 - Mouvements joueur lisses mais reactifs (inertie controlee)
 - Combo dynamique: enchainer les reliques augmente le multiplicateur de score
+- Combo x3+: les reliques et orbes proches sont legerement attires pour garder le flow
 - Near-miss reward: frôler les projectiles sans se faire toucher rapporte des points bonus
 - Orbes Aegis: bouclier temporaire qui absorbe les impacts critiques
 - Orbe Chrono: ralentit temporairement ennemis, boss et projectiles
