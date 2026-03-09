@@ -131,6 +131,19 @@
     impactRingLife: 0.36,
     floatingTextLife: 0.82,
 
+    directiveStartDelay: 4.2,
+    directiveCooldownMin: 4.6,
+    directiveCooldownMax: 7.4,
+    directiveRewardScore: 220,
+    directiveRelicDuration: 12.4,
+    directiveRelicLateDuration: 11.2,
+    directiveRelicTargetEarly: 2,
+    directiveRelicTargetLate: 3,
+    directiveEvadeDuration: 8.5,
+    directiveDashDuration: 10.5,
+    directiveDashTarget: 3,
+    directiveBossDuration: 9.4,
+
     leaderboardSize: 5,
     leaderboardKey: "ruins_dash_scores_v4",
     audioEnabledKey: "ruins_dash_audio_enabled_v1",
@@ -160,6 +173,8 @@
     canvas: document.getElementById("game"),
     actionBtn: document.getElementById("actionBtn"),
     dashBtn: document.getElementById("dashBtn"),
+    audioBtn: document.getElementById("audioBtn"),
+    audioVal: document.getElementById("audioVal"),
     overlay: document.getElementById("overlay"),
     livesVal: document.getElementById("livesVal"),
     timeVal: document.getElementById("timeVal"),
@@ -171,6 +186,11 @@
     enemyVal: document.getElementById("enemyVal"),
     dashVal: document.getElementById("dashVal"),
     dangerVal: document.getElementById("dangerVal"),
+    contractTag: document.getElementById("contractTag"),
+    contractTimer: document.getElementById("contractTimer"),
+    contractText: document.getElementById("contractText"),
+    contractFill: document.getElementById("contractFill"),
+    eventText: document.getElementById("eventText"),
     leaderboard: document.getElementById("leaderboard"),
   };
 
@@ -219,6 +239,8 @@
     difficulty: 1,
     nextCheckpointAt: CONFIG.checkpointEverySeconds,
     nextMilestoneIdx: 0,
+    directives: { active: null, cooldown: CONFIG.directiveStartDelay, completed: 0, failed: 0, lastType: "", flash: 0 },
+    stats: { maxComboMultiplier: 1, nearMisses: 0, bossBreaks: 0, damageTaken: 0, directivesCompleted: 0 },
 
     player: null,
     enemies: [],
@@ -271,6 +293,27 @@
     };
   }
 
+  function createRunStats() {
+    return {
+      maxComboMultiplier: 1,
+      nearMisses: 0,
+      bossBreaks: 0,
+      damageTaken: 0,
+      directivesCompleted: 0,
+    };
+  }
+
+  function createDirectiveState() {
+    return {
+      active: null,
+      cooldown: CONFIG.directiveStartDelay,
+      completed: 0,
+      failed: 0,
+      lastType: "",
+      flash: 0,
+    };
+  }
+
   // ─── GAME LIFECYCLE ────────────────────────────────────────────────────────
   function startGame() {
     state.running = true;
@@ -302,6 +345,8 @@
     state.difficulty = 1;
     state.nextCheckpointAt = CONFIG.checkpointEverySeconds;
     state.nextMilestoneIdx = 0;
+    state.directives = createDirectiveState();
+    state.stats = createRunStats();
 
     state.player = createPlayer();
     state.enemies = [];
@@ -324,6 +369,7 @@
     state.impactRings = [];
     state.trails = [];
     state.floatingTexts = [];
+    state.directives.flash = 0;
     state.botInput = null;
     state.keys.clear();
     state.touch.active = false;
@@ -360,7 +406,7 @@
     const title = victory ? "Victoire" : "Defaite";
     const style = victory ? "good" : "bad";
     showOverlay(
-      `<div class="${style}">${title}</div><div>${summaryMessage}</div><div>Score: ${Math.floor(state.score)}</div><div>Reliques: ${state.relics}</div><div>Temps: ${state.elapsed.toFixed(1)}s</div><div style="margin-top:.6rem; font-size:.95rem; font-weight:500;">Clique sur Rejouer pour relancer.</div>`
+      `<div class="${style}">${title}</div><div>${summaryMessage}</div><div>Score: ${Math.floor(state.score)}</div><div>Reliques: ${state.relics}</div><div>Temps: ${state.elapsed.toFixed(1)}s</div><div style="margin-top:.55rem; font-size:.92rem; font-weight:500; line-height:1.55;">Directives: ${state.stats.directivesCompleted} | Combo max: x${state.stats.maxComboMultiplier.toFixed(2)}<br />Near-miss: ${state.stats.nearMisses} | Bris boss: ${state.stats.bossBreaks} | Impacts: ${state.stats.damageTaken}</div><div style="margin-top:.6rem; font-size:.95rem; font-weight:500;">Clique sur Rejouer pour relancer.</div>`
     );
   }
 
@@ -419,6 +465,7 @@
     updateMiniBoss(dt, player);
     updateBossTelegraphs(dt);
     updateBossProjectiles(dt, player);
+    updateDirectives(dt, player);
 
     maybeCollectRelic(player);
     maybeCollectHeal(player);
@@ -983,6 +1030,7 @@
     state.comboCount = Math.max(1, state.comboCount + amount);
     state.comboTimer = Math.max(state.comboTimer, CONFIG.comboWindow);
     refreshComboMultiplier();
+    state.stats.maxComboMultiplier = Math.max(state.stats.maxComboMultiplier, state.comboMultiplier);
   }
   function breakCombo() { state.comboCount = 0; state.comboTimer = 0; state.comboMultiplier = 1; }
   function softenComboOnShield() {
@@ -991,6 +1039,166 @@
     state.comboTimer = Math.max(0, state.comboTimer - 0.8);
     if (state.comboCount <= 0 || state.comboTimer <= 0) { breakCombo(); return; }
     refreshComboMultiplier();
+  }
+
+  // ─── DIRECTIVES ────────────────────────────────────────────────────────────
+  function pickDirectiveType() {
+    const pool = state.miniBoss ? ["bossOpen", "relic", "evade", "dash"] : ["relic", "evade", "dash"];
+    const filtered = pool.filter((type) => type !== state.directives.lastType || pool.length === 1);
+    const available = filtered.length ? filtered : pool;
+    if (state.miniBoss && (state.miniBoss.volleyRecoverLeft || 0) > 0.24 && available.includes("bossOpen")) return "bossOpen";
+    return available[Math.floor(rand(0, available.length))];
+  }
+
+  function buildDirective(type) {
+    const player = state.player;
+    const relicTarget = state.elapsed >= 20 ? CONFIG.directiveRelicTargetLate : CONFIG.directiveRelicTargetEarly;
+    const relicTime = state.elapsed >= 20 ? CONFIG.directiveRelicLateDuration : CONFIG.directiveRelicDuration;
+    if (type === "relic") {
+      return { type, tag: "COLLECTE", tone: "good", description: `Recupere ${relicTarget} relique${relicTarget > 1 ? "s" : ""}.`, rewardText: (player && (player.shieldHits || 0) < CONFIG.shieldMaxHits) ? "AEGIS +1" : "PV +1", progress: 0, target: relicTarget, timeLeft: relicTime, maxTime: relicTime, fillMode: "count", scoreReward: CONFIG.directiveRewardScore };
+    }
+    if (type === "evade") {
+      return { type, tag: "EVASION", tone: "warn", description: `Tiens ${CONFIG.directiveEvadeDuration.toFixed(1)}s sans encaisser.`, rewardText: (player && player.lives < CONFIG.playerMaxLives) ? "PV +1" : "Rush -0.8s", progress: 0, target: CONFIG.directiveEvadeDuration, timeLeft: CONFIG.directiveEvadeDuration, maxTime: CONFIG.directiveEvadeDuration, fillMode: "time", scoreReward: CONFIG.directiveRewardScore };
+    }
+    if (type === "dash") {
+      return { type, tag: "RUSH", tone: "accent", description: `Percute ${CONFIG.directiveDashTarget} menaces avec un rush.`, rewardText: "Rush pret", progress: 0, target: CONFIG.directiveDashTarget, timeLeft: CONFIG.directiveDashDuration, maxTime: CONFIG.directiveDashDuration, fillMode: "count", scoreReward: CONFIG.directiveRewardScore };
+    }
+    return { type: "bossOpen", tag: "BOSS", tone: "bad", description: "Casse l armure en fenetre BOSS-OPEN.", rewardText: "AEGIS + rush", progress: 0, target: 1, timeLeft: CONFIG.directiveBossDuration, maxTime: CONFIG.directiveBossDuration, fillMode: "count", scoreReward: CONFIG.directiveRewardScore + 80 };
+  }
+
+  function queueNextDirective(minDelay = CONFIG.directiveCooldownMin, maxDelay = CONFIG.directiveCooldownMax) {
+    state.directives.active = null;
+    state.directives.cooldown = rand(minDelay, maxDelay);
+  }
+
+  function activateDirective(type = null) {
+    if (!state.running || state.finished || !state.player) return null;
+    const directive = buildDirective(type || pickDirectiveType());
+    state.directives.active = directive;
+    state.directives.lastType = directive.type;
+    state.directives.cooldown = 0;
+    state.directives.flash = 0.34;
+    showBossCallout(`Directive ${directive.tag}`, 0.8, directive.type === "bossOpen" ? "warn" : "good");
+    return directive;
+  }
+
+  function noteDirectiveProgress(type, amount, player) {
+    const directive = state.directives.active;
+    if (!directive || directive.type !== type || amount <= 0) return;
+    directive.progress = Math.min(directive.target, directive.progress + amount);
+    if (directive.progress >= directive.target - 1e-6) completeDirective(player);
+  }
+
+  function completeDirective(player) {
+    const directive = state.directives.active;
+    if (!directive || !player) return;
+    state.directives.completed += 1;
+    state.stats.directivesCompleted += 1;
+    state.directives.flash = 0.8;
+
+    const rewardScore = Math.floor(directive.scoreReward || CONFIG.directiveRewardScore);
+    state.score += rewardScore;
+    let rewardLabel = directive.rewardText;
+
+    if (directive.type === "relic") {
+      if ((player.shieldHits || 0) < CONFIG.shieldMaxHits) {
+        player.shieldHits += 1;
+        rewardLabel = "AEGIS +1";
+      } else if (player.lives < CONFIG.playerMaxLives) {
+        player.lives += 1;
+        rewardLabel = "PV +1";
+      } else {
+        player.dashCooldownLeft = Math.max(0, player.dashCooldownLeft - 0.6);
+        rewardLabel = "Rush -0.6s";
+      }
+    } else if (directive.type === "evade") {
+      if (player.lives < CONFIG.playerMaxLives) {
+        player.lives += 1;
+        rewardLabel = "PV +1";
+      } else {
+        player.dashCooldownLeft = Math.max(0, player.dashCooldownLeft - 0.8);
+        rewardLabel = "Rush -0.8s";
+      }
+    } else if (directive.type === "dash") {
+      player.dashCooldownLeft = 0;
+      state.timeSlowLeft = Math.max(state.timeSlowLeft, 0.9);
+      rewardLabel = "Rush pret";
+    } else if (directive.type === "bossOpen") {
+      player.dashCooldownLeft = 0;
+      player.shieldHits = Math.min(CONFIG.shieldMaxHits, (player.shieldHits || 0) + 1);
+      state.timeSlowLeft = Math.max(state.timeSlowLeft, 0.65);
+      rewardLabel = "AEGIS + rush";
+    }
+
+    emitParticles(player.x, player.y, [255, 226, 150], 18, 170, 0.48, 2.5);
+    addImpactRing(player.x, player.y, [255, 222, 146], 160, 0.28, 2.3);
+    addFloatingText(player.x, player.y - 30, `DIRECTIVE +${rewardScore}`, [255, 235, 168], 0.9, 15);
+    addFloatingText(player.x, player.y - 50, rewardLabel.toUpperCase(), [192, 245, 255], 0.82, 13);
+    showBossCallout(`${directive.tag} OK`, 0.88, "good");
+    playSfx("checkpoint");
+    queueNextDirective(CONFIG.directiveCooldownMin * 0.78, CONFIG.directiveCooldownMax * 0.88);
+  }
+
+  function failDirective() {
+    if (!state.directives.active) return;
+    state.directives.failed += 1;
+    state.directives.flash = 0.24;
+    showBossCallout("Directive perdue", 0.72, "bad");
+    queueNextDirective(CONFIG.directiveCooldownMin * 0.52, CONFIG.directiveCooldownMax * 0.68);
+  }
+
+  function getDirectiveProgressText(directive) {
+    if (!directive) return "";
+    if (directive.type === "evade") return `${Math.min(directive.target, directive.progress).toFixed(1)}/${directive.target.toFixed(1)}s`;
+    if (directive.type === "bossOpen") return directive.progress > 0 ? "armure brisee" : "fenetre a trouver";
+    const progressValue = Number.isInteger(directive.target)
+      ? Math.max(0, Math.floor(directive.progress + 1e-6))
+      : directive.progress.toFixed(1);
+    return `${progressValue}/${directive.target}`;
+  }
+
+  function getDirectiveFillRatio(directive) {
+    if (!directive) return 0;
+    if (directive.fillMode === "time") return clamp(directive.progress / directive.target, 0, 1);
+    return clamp(directive.progress / directive.target, 0, 1);
+  }
+
+  function getIntelText() {
+    const checkpointEta = Math.max(0, state.nextCheckpointAt - state.elapsed);
+    if (state.miniBoss) {
+      const phase = state.miniBoss.phase || 1;
+      const openLeft = state.miniBoss.volleyRecoverLeft || 0;
+      if (openLeft > 0.05) return `BOSS-OPEN ${openLeft.toFixed(1)}s • Checkpoint ${checkpointEta.toFixed(1)}s`;
+      if (phase >= 3 && (state.miniBoss.shockwaveCooldown || 0) < 4.2) return `Onde ${state.miniBoss.shockwaveCooldown.toFixed(1)}s • Checkpoint ${checkpointEta.toFixed(1)}s`;
+      return `Boss phase ${phase} • Checkpoint ${checkpointEta.toFixed(1)}s`;
+    }
+    const bossEta = state.bossSpawned ? 0 : Math.max(0, CONFIG.bossSpawnAt - state.elapsed);
+    return bossEta > 0 ? `Checkpoint ${checkpointEta.toFixed(1)}s • Boss ${bossEta.toFixed(1)}s` : `Checkpoint ${checkpointEta.toFixed(1)}s`;
+  }
+
+  function updateDirectives(dt, player) {
+    state.directives.flash = Math.max(0, state.directives.flash - dt);
+    if (!state.running || state.finished || !player) return;
+
+    const directive = state.directives.active;
+    if (!directive) {
+      state.directives.cooldown = Math.max(0, state.directives.cooldown - dt);
+      if (state.directives.cooldown <= 0) activateDirective();
+      return;
+    }
+
+    directive.timeLeft = Math.max(0, directive.timeLeft - dt);
+    if (directive.type === "evade") {
+      directive.progress = Math.min(directive.target, directive.maxTime - directive.timeLeft);
+      if (directive.progress >= directive.target - 1e-6) { completeDirective(player); return; }
+    }
+
+    if (directive.type === "bossOpen" && state.bossSpawned && !state.miniBoss) {
+      failDirective();
+      return;
+    }
+
+    if (directive.timeLeft <= 0) failDirective();
   }
 
   // ─── COLLECTS & DAMAGE ─────────────────────────────────────────────────────
@@ -1008,6 +1216,7 @@
     addFloatingText(state.relic.x, state.relic.y - 10, `+${relicScore}`, [167, 255, 200], 0.88, 17);
     if (state.comboCount >= 2) addFloatingText(player.x, player.y - 28, `x${state.comboMultiplier.toFixed(2)}`, [194, 241, 255], 0.56, 14);
     playSfx("relic");
+    noteDirectiveProgress("relic", 1, player);
     state.relic = spawnRelic(player);
     if (state.relics % CONFIG.healEveryRelics === 0 && player.lives < CONFIG.playerMaxLives && !state.healOrb) state.healOrb = spawnHealOrb(player);
     if (state.relics % CONFIG.aegisEveryRelics === 0 && player.shieldHits < CONFIG.shieldMaxHits && !state.aegisOrb) state.aegisOrb = spawnAegisOrb(player);
@@ -1095,6 +1304,7 @@
     if (dist <= safe || dist > near) return;
     projectile.nearMissed = true;
     pushCombo(0.45);
+    state.stats.nearMisses += 1;
     const bonus = Math.floor(CONFIG.nearMissBonus * state.comboMultiplier);
     state.score += bonus;
     addImpactRing(player.x, player.y, [188, 225, 255], 120, 0.24, 1.8);
@@ -1116,6 +1326,8 @@
       }
       player.lives -= 1;
       maybeSpawnEmergencyHeal(player);
+      state.stats.damageTaken += 1;
+      if (state.directives.active && state.directives.active.type === "evade") failDirective();
       state.spawnRecoveryLeft = Math.max(state.spawnRecoveryLeft, CONFIG.hitRecoverySpawnEaseDuration);
       player.invuln = CONFIG.hitInvulnerability;
       state.flashTimer = 0.35;
@@ -1145,6 +1357,8 @@
       } else {
         player.lives -= 1;
         maybeSpawnEmergencyHeal(player);
+        state.stats.damageTaken += 1;
+        if (state.directives.active && state.directives.active.type === "evade") failDirective();
         state.spawnRecoveryLeft = Math.max(state.spawnRecoveryLeft, CONFIG.hitRecoverySpawnEaseDuration);
         player.invuln = CONFIG.hitInvulnerability;
         state.flashTimer = 0.35;
@@ -1190,6 +1404,7 @@
   }
 
   function applyDashPulse(player) {
+    let dashThreatHits = 0;
     for (const enemy of state.enemies) {
       const dx = enemy.x - player.x; const dy = enemy.y - player.y;
       const dist = Math.hypot(dx, dy);
@@ -1198,6 +1413,7 @@
       enemy.x += (dx / dist) * push; enemy.y += (dy / dist) * push;
       clampToBounds(enemy); resolveObstacleOverlap(enemy);
       enemy.stunLeft = Math.max(enemy.stunLeft, 0.42);
+      dashThreatHits += 1;
       emitParticles(enemy.x, enemy.y, [215, 241, 255], 4, 75, 0.24, 2);
       addImpactRing(enemy.x, enemy.y, [215, 241, 255], 95, 0.2, 1.8);
     }
@@ -1206,10 +1422,12 @@
       const dx = projectile.x - player.x; const dy = projectile.y - player.y;
       const dist = Math.hypot(dx, dy);
       if (dist <= CONFIG.dashShockRadius + 10) {
+        dashThreatHits += 1;
         addImpactRing(projectile.x, projectile.y, [214, 241, 255], 90, 0.18, 1.8);
         state.bossProjectiles.splice(i, 1);
       }
     }
+    if (dashThreatHits > 0) noteDirectiveProgress("dash", dashThreatHits, player);
     const boss = state.miniBoss;
     if (boss) {
       const dx = boss.x - player.x; const dy = boss.y - player.y;
@@ -1217,6 +1435,7 @@
       if (dist > 0 && dist <= CONFIG.dashShockRadius + 24) {
         const bonusWindow = (boss.volleyRecoverLeft || 0) > 0;
         const hitDamage = bonusWindow ? 2 : 1;
+        noteDirectiveProgress("dash", bonusWindow ? 2 : 1, player);
         const push = (CONFIG.dashShockRadius + 24 - dist) * 0.95 + 12;
         boss.x += (dx / dist) * push; boss.y += (dy / dist) * push;
         boss.stunLeft = Math.max(boss.stunLeft, 0.5);
@@ -1228,6 +1447,8 @@
         emitParticles(boss.x, boss.y, [232, 175, 255], 16, 180, 0.58, 3);
         addImpactRing(boss.x, boss.y, [236, 179, 255], 175, 0.34, 3);
         if (bonusWindow) {
+          state.stats.bossBreaks += 1;
+          noteDirectiveProgress("bossOpen", 1, player);
           emitParticles(boss.x, boss.y, [180, 255, 220], 18, 220, 0.46, 2.8);
           addImpactRing(boss.x, boss.y, [170, 255, 220], 210, 0.36, 3);
           triggerShake(0.22, 2.8); triggerHitStop(0.04);
@@ -2485,6 +2706,7 @@
   // ─── HUD ───────────────────────────────────────────────────────────────────
   function syncHud() {
     const player = state.player;
+    const directive = state.directives.active;
     const dashReady = player && player.dashCooldownLeft <= 0;
     dom.livesVal.textContent = String(player ? Math.max(0, player.lives) : CONFIG.playerMaxLives);
     dom.timeVal.textContent = `${state.elapsed.toFixed(1)}s`;
@@ -2503,12 +2725,43 @@
       else if (state.difficulty < 1.34) dom.dangerVal.textContent = "II";
       else dom.dangerVal.textContent = "III";
     }
+    if (dom.contractTag) {
+      dom.contractTag.textContent = directive ? directive.tag : state.running ? "SCAN" : "--";
+      dom.contractTag.dataset.tone = directive ? directive.tone : "idle";
+    }
+    if (dom.contractTimer) dom.contractTimer.textContent = directive ? `${directive.timeLeft.toFixed(1)}s` : state.running ? `${Math.max(0, state.directives.cooldown).toFixed(1)}s` : "-";
+    if (dom.contractText) {
+      dom.contractText.textContent = directive
+        ? `${directive.description} • ${getDirectiveProgressText(directive)}`
+        : state.running
+          ? "Analyse tactique en cours. La prochaine directive donnera un bonus de run."
+          : "Directives optionnelles: objectifs courts, bonus immediats, plus de rythme.";
+    }
+    if (dom.contractFill) {
+      const ratio = directive ? getDirectiveFillRatio(directive) : state.running ? 1 - clamp(state.directives.cooldown / CONFIG.directiveStartDelay, 0, 1) : 0;
+      dom.contractFill.style.width = `${Math.round(clamp(ratio, 0, 1) * 100)}%`;
+      dom.contractFill.dataset.tone = directive ? directive.tone : "idle";
+      dom.contractFill.style.opacity = directive ? "1" : state.running ? "0.72" : "0.4";
+    }
+    if (dom.eventText) {
+      const intel = getIntelText();
+      dom.eventText.textContent = directive ? `Gain: ${directive.rewardText} • ${intel}` : intel;
+    }
+    syncAudioUi();
     // Low HP heartbeat on lives element
     if (player && player.lives <= 2) {
       dom.livesVal.style.animation = "hp-critical 0.55s ease-in-out infinite";
     } else {
       dom.livesVal.style.animation = "";
     }
+  }
+
+  function syncAudioUi() {
+    if (!dom.audioVal || !dom.audioBtn) return;
+    const enabled = !!state.audio.enabled;
+    dom.audioVal.textContent = enabled ? "ON" : "OFF";
+    dom.audioBtn.classList.toggle("is-off", !enabled);
+    dom.audioBtn.setAttribute("aria-pressed", enabled ? "true" : "false");
   }
 
   function updateActionButton() {
@@ -2531,14 +2784,27 @@
       state.audio.master.gain.value = 0.11;
       state.audio.master.connect(state.audio.ctx.destination);
     }
-    if (state.audio.ctx.state === "suspended") state.audio.ctx.resume().catch(() => {});
+    if (state.audio.ctx.state !== "running") state.audio.ctx.resume().catch(() => {});
     return state.audio.ctx;
   }
 
   function setAudioEnabled(enabled) {
-    state.audio.enabled = enabled;
-    if (state.audio.master) state.audio.master.gain.setTargetAtTime(enabled ? 0.11 : 0.0, state.audio.ctx.currentTime, 0.02);
+    state.audio.enabled = !!enabled;
+    if (state.audio.enabled) ensureAudioReady();
+    if (state.audio.master) state.audio.master.gain.setTargetAtTime(state.audio.enabled ? 0.11 : 0.0, state.audio.ctx.currentTime, 0.02);
     try { localStorage.setItem(CONFIG.audioEnabledKey, state.audio.enabled ? "1" : "0"); } catch {}
+    syncAudioUi();
+  }
+
+  function toggleAudio() {
+    const nextEnabled = !state.audio.enabled;
+    setAudioEnabled(nextEnabled);
+    if (nextEnabled) {
+      playSfx("toggle");
+      showBossCallout("Audio actif", 0.8, "good");
+    } else {
+      showBossCallout("Audio coupe", 0.8, "warn");
+    }
   }
 
   function setReducedFx(enabled) {
@@ -2603,7 +2869,7 @@
     }
     if (event.key === "p" || event.key === "P") { if (state.running) { state.paused = !state.paused; state.autoPaused = false; } return; }
     if (event.key === "r" || event.key === "R") { startGame(); return; }
-    if (event.key === "m" || event.key === "M") { setAudioEnabled(!state.audio.enabled); if (state.audio.enabled) playSfx("toggle"); return; }
+    if (event.key === "m" || event.key === "M") { toggleAudio(); return; }
     if (event.key === "v" || event.key === "V") { setReducedFx(!state.reducedFx); showBossCallout(state.reducedFx ? "FX reduits" : "FX complets", 0.9, "warn"); playSfx("toggle"); return; }
     if (event.key.startsWith("Arrow") || ["w","W","a","A","s","S","d","D"].includes(event.key)) event.preventDefault();
     state.keys.add(event.key);
@@ -2643,6 +2909,9 @@
     if (dom.dashBtn) {
       dom.dashBtn.addEventListener("pointerdown", (event) => { ensureAudioReady(); event.preventDefault(); queueDashRequest(); tryDash(); }, { passive: false });
     }
+    if (dom.audioBtn) {
+      dom.audioBtn.addEventListener("click", () => { ensureAudioReady(); toggleAudio(); });
+    }
     window.addEventListener("pointerdown", ensureAudioReady, { passive: true });
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -2664,6 +2933,13 @@
           spawnRecoveryLeft: state.spawnRecoveryLeft, difficulty: state.difficulty,
           objectiveSeconds: CONFIG.objectiveSeconds, nextCheckpointAt: state.nextCheckpointAt,
           audioEnabled: state.audio.enabled, reducedFx: state.reducedFx,
+          directives: {
+            active: state.directives.active ? { type: state.directives.active.type, tag: state.directives.active.tag, tone: state.directives.active.tone, description: state.directives.active.description, rewardText: state.directives.active.rewardText, progress: state.directives.active.progress, target: state.directives.active.target, timeLeft: state.directives.active.timeLeft, maxTime: state.directives.active.maxTime } : null,
+            cooldown: state.directives.cooldown,
+            completed: state.directives.completed,
+            failed: state.directives.failed,
+          },
+          stats: { ...state.stats },
           player: player ? { x: player.x, y: player.y, r: player.r, lives: player.lives, shieldHits: player.shieldHits || 0, invuln: player.invuln, dashCooldownLeft: player.dashCooldownLeft, dashTimeLeft: player.dashTimeLeft } : null,
           relic: state.relic ? { x: state.relic.x, y: state.relic.y, r: state.relic.r } : null,
           healOrb: state.healOrb ? { x: state.healOrb.x, y: state.healOrb.y, r: state.healOrb.r } : null,
@@ -2714,6 +2990,7 @@
       },
       spawnChronoOrb() { if (!state.player) return null; state.chronoOrb = spawnChronoOrb(state.player); return state.chronoOrb ? { ...state.chronoOrb } : null; },
       spawnSurgeOrb() { if (!state.player) return null; state.surgeOrb = spawnSurgeOrb(state.player); return state.surgeOrb ? { ...state.surgeOrb } : null; },
+      activateDirective(type = null) { return activateDirective(type); },
     };
   }
 
@@ -2743,7 +3020,7 @@
     setupStars();
     renderLeaderboard();
     updateActionButton();
-    showOverlay("Survis 60s. Boss a 30s (3 phases + salves Nova). Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono/SURGE a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto.");
+    showOverlay("Survis 60s. Boss a 30s (3 phases + salves Nova). Les DIRECTIVES donnent des bonus tactiques rapides. Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono/SURGE a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto.");
     syncHud();
     requestAnimationFrame(loop);
   }

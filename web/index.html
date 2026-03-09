@@ -69,7 +69,26 @@
               <span class="statLabel">Intensite</span>
               <span id="dangerVal" class="statVal danger">I</span>
             </div>
+            <div class="stat fullWidth">
+              <span class="statLabel">Son</span>
+              <button id="audioBtn" class="statToggle" type="button" aria-pressed="true">
+                <span id="audioVal" class="statVal audio">ON</span>
+              </button>
+            </div>
           </div>
+        </div>
+
+        <div class="card directorCard">
+          <h2>Directives</h2>
+          <div class="directiveHead">
+            <span id="contractTag" class="directiveTag" data-tone="idle">--</span>
+            <span id="contractTimer" class="directiveTimer">-</span>
+          </div>
+          <p id="contractText" class="directiveText">Directives optionnelles: objectifs courts, bonus immediats, plus de rythme.</p>
+          <div class="directiveBar" aria-hidden="true">
+            <span id="contractFill" class="directiveFill" data-tone="idle"></span>
+          </div>
+          <p id="eventText" class="eventText">Checkpoint 15.0s • Boss 30.0s</p>
         </div>
 
         <div class="card">

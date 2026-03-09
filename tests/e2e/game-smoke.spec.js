@@ -100,6 +100,33 @@ test("le bouton RUSH mobile declenche bien un dash", async ({ page }) => {
   expect(snapshot.player.dashCooldownLeft).toBeGreaterThan(0.5);
 });
 
+test("le bouton Son toggle bien l'audio et met a jour l'etat", async ({ page }) => {
+  await page.goto("/");
+
+  const before = await page.evaluate(() => ({
+    state: window.__RUINS_DASH_DEBUG__.getState().audioEnabled,
+    text: document.getElementById("audioVal")?.textContent,
+    pressed: document.getElementById("audioBtn")?.getAttribute("aria-pressed"),
+  }));
+
+  await page.locator("#audioBtn").click();
+
+  const after = await page.evaluate(() => ({
+    state: window.__RUINS_DASH_DEBUG__.getState().audioEnabled,
+    text: document.getElementById("audioVal")?.textContent,
+    pressed: document.getElementById("audioBtn")?.getAttribute("aria-pressed"),
+    storage: localStorage.getItem("ruins_dash_audio_enabled_v1"),
+  }));
+
+  expect(before.state).toBeTruthy();
+  expect(before.text).toBe("ON");
+  expect(before.pressed).toBe("true");
+  expect(after.state).toBeFalsy();
+  expect(after.text).toBe("OFF");
+  expect(after.pressed).toBe("false");
+  expect(after.storage).toBe("0");
+});
+
 test("la collecte de Chrono active bien le ralentissement", async ({ page }) => {
   await page.goto("/");
 
