@@ -125,6 +125,10 @@
     aegisEveryRelics: 5,
     shieldMaxHits: 2,
 
+    pickupMagnetComboMin: 3,
+    pickupMagnetRange: 210,
+    pickupMagnetSpeed: 132,
+
     touchDeadZone: 10,
     starsCount: 120,
     impactRingMax: 240,
@@ -466,6 +470,7 @@
     updateBossTelegraphs(dt);
     updateBossProjectiles(dt, player);
     updateDirectives(dt, player);
+    updatePickupMagnet(dt, player);
 
     maybeCollectRelic(player);
     maybeCollectHeal(player);
@@ -1222,6 +1227,37 @@
     if (state.relics % CONFIG.aegisEveryRelics === 0 && player.shieldHits < CONFIG.shieldMaxHits && !state.aegisOrb) state.aegisOrb = spawnAegisOrb(player);
     if (state.relics % CONFIG.chronoEveryRelics === 0 && state.timeSlowLeft <= 0.4 && !state.chronoOrb) state.chronoOrb = spawnChronoOrb(player);
     if (state.comboCount >= CONFIG.surgeComboThreshold && !state.surgeOrb && player.dashCooldownLeft > 0.15) state.surgeOrb = spawnSurgeOrb(player);
+  }
+
+  function updatePickupMagnet(dt, player) {
+    if (!player || state.comboCount < CONFIG.pickupMagnetComboMin) return;
+    const comboBoost = clamp((state.comboCount - CONFIG.pickupMagnetComboMin) / 6, 0, 1);
+    const pullSpeed = CONFIG.pickupMagnetSpeed * (1 + comboBoost * 0.55);
+    const pullRadius = CONFIG.pickupMagnetRange + comboBoost * 26;
+
+    pullPickupTowardPlayer(state.relic, player, dt, pullSpeed, pullRadius, 0.95);
+    pullPickupTowardPlayer(state.healOrb, player, dt, pullSpeed * 0.78, pullRadius - 12, 0.86);
+    pullPickupTowardPlayer(state.aegisOrb, player, dt, pullSpeed * 0.84, pullRadius - 8, 0.9);
+    pullPickupTowardPlayer(state.chronoOrb, player, dt, pullSpeed * 0.9, pullRadius - 8, 0.9);
+    pullPickupTowardPlayer(state.surgeOrb, player, dt, pullSpeed * 0.94, pullRadius - 6, 0.92);
+  }
+
+  function pullPickupTowardPlayer(pickup, player, dt, speed, radius, strength = 1) {
+    if (!pickup) return;
+    const dx = player.x - pickup.x;
+    const dy = player.y - pickup.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist <= 1 || dist > radius) return;
+
+    const falloff = 1 - dist / radius;
+    const step = Math.min(speed * dt * falloff * strength, dist - 0.25);
+    if (step <= 0) return;
+
+    const nx = pickup.x + (dx / dist) * step;
+    const ny = pickup.y + (dy / dist) * step;
+    if (circleHitsAnyObstacle(nx, ny, pickup.r)) return;
+    pickup.x = clamp(nx, pickup.r, CONFIG.width - pickup.r);
+    pickup.y = clamp(ny, pickup.r, CONFIG.height - pickup.r);
   }
   function maybeCollectHeal(player) {
     if (!state.healOrb || !circlesOverlapRadius(player, state.healOrb, player.r + state.healOrb.r + 8)) return;
