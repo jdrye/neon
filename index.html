@@ -363,6 +363,72 @@
         align-items: center;
       }
 
+      .leaderboard-card {
+        padding: 18px;
+      }
+
+      .leaderboard-card h3 {
+        margin: 0 0 10px;
+        font-family: var(--display-font);
+        font-size: 1.35rem;
+      }
+
+      .leaderboard-card p {
+        margin: 0 0 14px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .leaderboard-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .leaderboard-entry {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .leaderboard-rank {
+        width: 2.2rem;
+        height: 2.2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(255, 211, 111, 0.12);
+        color: #ffe8a8;
+        font-weight: 700;
+      }
+
+      .leaderboard-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .leaderboard-score {
+        font-family: var(--display-font);
+        font-size: 1.28rem;
+        line-height: 1;
+        color: var(--text);
+      }
+
+      .leaderboard-detail {
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
       .footer-note {
         margin-top: 16px;
         text-align: center;
@@ -557,6 +623,34 @@
 
             <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
           </section>
+
+          <section class="panel leaderboard-card">
+            <h3>Top 3 local</h3>
+            <p>Les meilleurs scores sont conserves dans ce navigateur.</p>
+            <ol id="leaderboardList" class="leaderboard-list" aria-label="Tableau des meilleurs scores">
+              <li class="leaderboard-entry">
+                <span class="leaderboard-rank">1</span>
+                <div class="leaderboard-meta">
+                  <strong class="leaderboard-score">---</strong>
+                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                </div>
+              </li>
+              <li class="leaderboard-entry">
+                <span class="leaderboard-rank">2</span>
+                <div class="leaderboard-meta">
+                  <strong class="leaderboard-score">---</strong>
+                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                </div>
+              </li>
+              <li class="leaderboard-entry">
+                <span class="leaderboard-rank">3</span>
+                <div class="leaderboard-meta">
+                  <strong class="leaderboard-score">---</strong>
+                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                </div>
+              </li>
+            </ol>
+          </section>
         </aside>
       </section>
     </main>
@@ -564,6 +658,8 @@
     <script>
       (() => {
         "use strict";
+
+        const LEADERBOARD_KEY = "pulse-prism-top-scores-v1";
 
         const GEM_TYPES = [
           { name: "ember", base: "#ff8758", shine: "#ffd3ae", shadow: "#b94a1d" },
@@ -1275,6 +1371,7 @@
               gain: document.getElementById("gainValue"),
               state: document.getElementById("stateValue"),
               message: document.getElementById("statusMessage"),
+              leaderboardList: document.getElementById("leaderboardList"),
               titleOverlay: document.getElementById("titleOverlay"),
               gameOverOverlay: document.getElementById("gameOverOverlay"),
               gameOverSummary: document.getElementById("gameOverSummary"),
@@ -1288,6 +1385,7 @@
             };
 
             this.audio = new AudioEngine(this.ui.soundButtons);
+            this.leaderboard = this.loadLeaderboard();
             this.phase = "title";
             this.phaseClock = 0;
             this.score = 0;
@@ -1319,9 +1417,126 @@
             this.bindEvents();
             this.audio.setEnabled(true);
             this.board.reset();
+            this.renderLeaderboard();
+            this.updateUi();
             this.handleResize();
             this.render();
             requestAnimationFrame(this.loop);
+          }
+
+          normalizeLeaderboard(entries) {
+            return entries
+              .map((entry) => ({
+                score: Math.max(0, Math.round(Number(entry.score) || 0)),
+                level: Math.max(1, Math.round(Number(entry.level) || 1)),
+                cleared: Math.max(0, Math.round(Number(entry.cleared) || 0)),
+                combo: Math.max(1, Math.round(Number(entry.combo) || 1)),
+                at: Number(entry.at) || Date.now()
+              }))
+              .filter((entry) => entry.score > 0)
+              .sort((left, right) => {
+                if (right.score !== left.score) {
+                  return right.score - left.score;
+                }
+                if (right.level !== left.level) {
+                  return right.level - left.level;
+                }
+                return left.at - right.at;
+              })
+              .slice(0, 3);
+          }
+
+          // Best scores are stored locally so the single-file build stays fully static.
+          loadLeaderboard() {
+            try {
+              const rawValue = window.localStorage.getItem(LEADERBOARD_KEY);
+              if (!rawValue) {
+                return [];
+              }
+
+              const parsed = JSON.parse(rawValue);
+              if (!Array.isArray(parsed)) {
+                return [];
+              }
+
+              return this.normalizeLeaderboard(parsed);
+            } catch (error) {
+              console.warn("Leaderboard load failed", error);
+              return [];
+            }
+          }
+
+          saveLeaderboard() {
+            try {
+              window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(this.leaderboard));
+            } catch (error) {
+              console.warn("Leaderboard save failed", error);
+            }
+          }
+
+          recordLeaderboardEntry() {
+            const beforeSignature = JSON.stringify(this.leaderboard);
+            const entry = {
+              score: Math.round(this.score),
+              level: this.level,
+              cleared: this.totalCleared,
+              combo: this.bestCombo,
+              at: Date.now()
+            };
+
+            this.leaderboard = this.normalizeLeaderboard([...this.leaderboard, entry]);
+            this.saveLeaderboard();
+            this.renderLeaderboard();
+
+            const rank = this.leaderboard.findIndex(
+              (item) =>
+                item.score === entry.score &&
+                item.level === entry.level &&
+                item.cleared === entry.cleared &&
+                item.combo === entry.combo &&
+                item.at === entry.at
+            );
+
+            return {
+              rank: rank >= 0 ? rank + 1 : 0,
+              isNew: beforeSignature !== JSON.stringify(this.leaderboard)
+            };
+          }
+
+          renderLeaderboard() {
+            this.ui.leaderboardList.innerHTML = "";
+
+            for (let index = 0; index < 3; index += 1) {
+              const item = this.leaderboard[index];
+              const row = document.createElement("li");
+              row.className = "leaderboard-entry";
+
+              const rank = document.createElement("span");
+              rank.className = "leaderboard-rank";
+              rank.textContent = String(index + 1);
+
+              const meta = document.createElement("div");
+              meta.className = "leaderboard-meta";
+
+              const score = document.createElement("strong");
+              score.className = "leaderboard-score";
+
+              const detail = document.createElement("span");
+              detail.className = "leaderboard-detail";
+
+              if (item) {
+                score.textContent = item.score.toString();
+                detail.textContent =
+                  `Niv. ${item.level} • Combo x${item.combo} • ${item.cleared} prismes`;
+              } else {
+                score.textContent = "---";
+                detail.textContent = "Aucun score enregistre";
+              }
+
+              meta.append(score, detail);
+              row.append(rank, meta);
+              this.ui.leaderboardList.append(row);
+            }
           }
 
           bindEvents() {
@@ -1401,6 +1616,7 @@
           }
 
           endGame() {
+            const leaderboardResult = this.recordLeaderboardEntry();
             this.phase = "gameover";
             this.phaseClock = 0;
             this.stateLabel = "Fin";
@@ -1408,9 +1624,16 @@
             this.board.selectedCell = null;
             this.resetPointerState();
             this.audio.playGameOver();
+
+            const leaderboardText =
+              leaderboardResult.isNew && leaderboardResult.rank > 0
+                ? ` Nouveau top ${leaderboardResult.rank}.`
+                : "";
+
             this.ui.gameOverSummary.textContent =
               `Score final ${Math.round(this.score)}. Niveau ${this.level}. ` +
-              `Meilleur combo x${this.bestCombo}. Prismes casses ${this.totalCleared}.`;
+              `Meilleur combo x${this.bestCombo}. Prismes casses ${this.totalCleared}.` +
+              leaderboardText;
             this.ui.gameOverOverlay.classList.add("visible");
             this.updateUi();
           }
