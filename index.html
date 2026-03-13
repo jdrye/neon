@@ -168,8 +168,9 @@
 
       .layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+        grid-template-columns: minmax(230px, 0.68fr) minmax(0, 1.2fr) minmax(280px, 0.78fr);
         gap: 18px;
+        align-items: start;
       }
 
       .panel {
@@ -183,6 +184,7 @@
 
       .play-panel {
         padding: 16px;
+        min-width: 0;
       }
 
       .hud {
@@ -298,6 +300,7 @@
         margin-top: 22px;
       }
 
+      .left-panel,
       .side-panel {
         display: flex;
         flex-direction: column;
@@ -449,7 +452,7 @@
           grid-template-columns: 1fr;
         }
 
-        .side-panel {
+        .play-panel {
           order: -1;
         }
       }
@@ -517,6 +520,36 @@
       </header>
 
       <section class="layout">
+        <aside class="left-panel">
+          <section class="panel leaderboard-card">
+            <h3>Top 3 local</h3>
+            <p>Les meilleurs scores sont conserves dans ce navigateur.</p>
+            <ol id="leaderboardList" class="leaderboard-list" aria-label="Tableau des meilleurs scores">
+              <li class="leaderboard-entry">
+                <span class="leaderboard-rank">1</span>
+                <div class="leaderboard-meta">
+                  <strong class="leaderboard-score">---</strong>
+                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                </div>
+              </li>
+              <li class="leaderboard-entry">
+                <span class="leaderboard-rank">2</span>
+                <div class="leaderboard-meta">
+                  <strong class="leaderboard-score">---</strong>
+                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                </div>
+              </li>
+              <li class="leaderboard-entry">
+                <span class="leaderboard-rank">3</span>
+                <div class="leaderboard-meta">
+                  <strong class="leaderboard-score">---</strong>
+                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                </div>
+              </li>
+            </ol>
+          </section>
+        </aside>
+
         <section class="panel play-panel">
           <div class="hud">
             <article class="stat-card">
@@ -622,34 +655,6 @@
             </div>
 
             <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
-          </section>
-
-          <section class="panel leaderboard-card">
-            <h3>Top 3 local</h3>
-            <p>Les meilleurs scores sont conserves dans ce navigateur.</p>
-            <ol id="leaderboardList" class="leaderboard-list" aria-label="Tableau des meilleurs scores">
-              <li class="leaderboard-entry">
-                <span class="leaderboard-rank">1</span>
-                <div class="leaderboard-meta">
-                  <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistre</span>
-                </div>
-              </li>
-              <li class="leaderboard-entry">
-                <span class="leaderboard-rank">2</span>
-                <div class="leaderboard-meta">
-                  <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistre</span>
-                </div>
-              </li>
-              <li class="leaderboard-entry">
-                <span class="leaderboard-rank">3</span>
-                <div class="leaderboard-meta">
-                  <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistre</span>
-                </div>
-              </li>
-            </ol>
           </section>
         </aside>
       </section>
