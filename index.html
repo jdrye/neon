@@ -1827,26 +1827,58 @@
             this.updateUi();
           }
 
+          burstLevelBonus(levelsGained) {
+            const anchorCells = [
+              { row: 1, column: 1 },
+              { row: 1, column: this.board.columns - 2 },
+              { row: this.board.rows - 2, column: 1 },
+              { row: this.board.rows - 2, column: this.board.columns - 2 },
+              { row: Math.floor(this.board.rows / 2), column: Math.floor(this.board.columns / 2) }
+            ];
+
+            anchorCells.forEach((cell, index) => {
+              const center = this.board.getCellCenter(cell.row, cell.column);
+              const palette = GEM_TYPES[(index + this.level) % GEM_TYPES.length];
+              this.particles.burst(center.x, center.y, palette.base, 10 + levelsGained * 3, 1.2 + levelsGained * 0.1);
+            });
+          }
+
           advanceLevelIfNeeded() {
-            let leveledUp = false;
+            let levelsGained = 0;
+            let bonusScore = 0;
+            let timeBonus = 0;
 
             while (this.score >= this.goal) {
               this.level += 1;
+              levelsGained += 1;
+              bonusScore += 280 + this.level * 140;
+              timeBonus += 16;
               this.goal = Math.round(this.goal * 1.45 + 520);
-              this.timeLeft = Math.min(120, this.timeLeft + 16);
-              leveledUp = true;
             }
 
-            if (leveledUp) {
-              this.levelFlash = 1;
+            if (levelsGained > 0) {
+              this.score += bonusScore;
+              this.lastGain = bonusScore;
+              this.timeLeft = Math.min(120, this.timeLeft + timeBonus);
+              this.levelFlash = 1.15;
+              this.burstLevelBonus(levelsGained);
               this.audio.playLevelUp();
             }
 
-            return leveledUp;
+            return {
+              leveledUp: levelsGained > 0,
+              levelsGained,
+              bonusScore,
+              timeBonus
+            };
           }
 
           afterCascade() {
-            const leveledUp = this.advanceLevelIfNeeded();
+            const levelResult = this.advanceLevelIfNeeded();
+            const leveledUp = levelResult.leveledUp;
+            const levelBonusText = leveledUp
+              ? `Objectif atteint. Niveau ${this.level}. Bonus +${levelResult.bonusScore} points et +${levelResult.timeBonus} sec.`
+              : "";
 
             if (!this.board.hasPossibleMoves()) {
               this.board.shuffleKinds();
@@ -1854,7 +1886,7 @@
               this.phaseClock = 0;
               this.stateLabel = "Melange";
               this.statusText = leveledUp
-                ? `Objectif atteint. Niveau ${this.level}, temps rallonge. Plus de coups disponibles, melange du plateau.`
+                ? `${levelBonusText} Plus de coups disponibles, melange du plateau.`
                 : "Plus de coups disponibles, melange du plateau.";
               this.audio.playShuffle();
             } else {
@@ -1862,7 +1894,7 @@
               this.phaseClock = 0;
               this.stateLabel = leveledUp ? "Niveau +" : "En jeu";
               this.statusText = leveledUp
-                ? `Objectif atteint. Niveau ${this.level}, temps rallonge.`
+                ? levelBonusText
                 : "A toi de jouer.";
             }
 
