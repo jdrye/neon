@@ -238,6 +238,45 @@
         touch-action: none;
       }
 
+      .board-live-stats {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        right: 12px;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .board-live-card {
+        min-width: 0;
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(4, 10, 16, 0.54);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+      }
+
+      .board-live-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #bfe7df;
+      }
+
+      .board-live-value {
+        display: block;
+        font-family: var(--display-font);
+        font-size: clamp(1rem, 2vw, 1.35rem);
+        line-height: 1;
+        color: #fff3ca;
+      }
+
       .board-overlay {
         position: absolute;
         inset: 0;
@@ -572,6 +611,17 @@
 
           <div class="board-frame">
             <canvas id="gameCanvas" aria-label="Plateau du jeu Pulse Prism"></canvas>
+
+            <div class="board-live-stats" aria-hidden="true">
+              <div class="board-live-card">
+                <span class="board-live-label">Dernier gain</span>
+                <strong id="boardGainValue" class="board-live-value">+0</strong>
+              </div>
+              <div class="board-live-card">
+                <span class="board-live-label">Taux combo</span>
+                <strong id="boardComboRateValue" class="board-live-value">x1.00</strong>
+              </div>
+            </div>
 
             <div id="titleOverlay" class="board-overlay visible">
               <div class="overlay-card">
@@ -1606,6 +1656,8 @@
               combo: document.getElementById("comboValue"),
               cleared: document.getElementById("clearedValue"),
               gain: document.getElementById("gainValue"),
+              boardGain: document.getElementById("boardGainValue"),
+              boardComboRate: document.getElementById("boardComboRateValue"),
               state: document.getElementById("stateValue"),
               message: document.getElementById("statusMessage"),
               leaderboardList: document.getElementById("leaderboardList"),
@@ -1908,6 +1960,7 @@
           }
 
           updateUi() {
+            const comboRate = 1 + Math.max(0, this.comboChain - 1) * 0.45;
             this.ui.score.textContent = Math.round(this.score).toString();
             this.ui.level.textContent = this.level.toString();
             this.ui.goal.textContent = Math.round(this.goal).toString();
@@ -1915,6 +1968,8 @@
             this.ui.combo.textContent = `x${this.bestCombo}`;
             this.ui.cleared.textContent = this.totalCleared.toString();
             this.ui.gain.textContent = this.lastGain.toString();
+            this.ui.boardGain.textContent = `+${this.lastGain}`;
+            this.ui.boardComboRate.textContent = `x${comboRate.toFixed(2)}`;
             this.ui.state.textContent = this.stateLabel;
             this.ui.message.textContent = this.statusText;
           }
