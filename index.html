@@ -1640,6 +1640,7 @@
             this.levelFlash = 0;
             this.swapHintFlash = 0;
             this.centerCelebrations = [];
+            this.lastMoveAnchor = null;
             this.inputDrag = {
               active: false,
               pointerId: null,
@@ -1666,14 +1667,33 @@
             return 1 + Math.max(0, this.comboChain - 1) * 0.45;
           }
 
-          spawnCenterCelebration({ gain, comboRate, title = "Impact", color = "#ffe8a3" }) {
-            const { boardX, boardY, boardSize } = this.board.layout;
+          getCelebrationOrigin() {
+            const { boardX, boardY, boardSize, cellSize } = this.board.layout;
             if (!boardSize) {
+              return null;
+            }
+
+            if (this.lastMoveAnchor) {
+              return {
+                x: boardX + (this.lastMoveAnchor.column + 0.5) * cellSize,
+                y: boardY + (this.lastMoveAnchor.row + 0.5) * cellSize
+              };
+            }
+
+            return {
+              x: boardX + boardSize / 2,
+              y: boardY + boardSize / 2
+            };
+          }
+
+          spawnCenterCelebration({ gain, comboRate, title = "Impact", color = "#ffe8a3" }) {
+            const origin = this.getCelebrationOrigin();
+            if (!origin) {
               return;
             }
 
-            const originX = boardX + boardSize / 2 + randomBetween(-18, 18);
-            const originY = boardY + boardSize / 2 + randomBetween(-10, 16);
+            const originX = origin.x + randomBetween(-14, 14);
+            const originY = origin.y + randomBetween(-10, 12);
 
             this.centerCelebrations.push({
               x: originX,
@@ -1969,6 +1989,7 @@
             this.levelFlash = 0;
             this.swapHintFlash = 0;
             this.centerCelebrations = [];
+            this.lastMoveAnchor = null;
             this.hasBegun = true;
             this.ui.titleOverlay.classList.remove("visible");
             this.ui.gameOverOverlay.classList.remove("visible");
@@ -2137,6 +2158,10 @@
             }
 
             this.board.selectedCell = null;
+            this.lastMoveAnchor = {
+              row: (first.row + second.row) / 2,
+              column: (first.column + second.column) / 2
+            };
             this.pendingSwap = {
               first: { row: first.row, column: first.column },
               second: { row: second.row, column: second.column }
