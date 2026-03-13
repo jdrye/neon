@@ -1,29 +1,30 @@
-# Ruins Dash (Jeu Unique)
+# Neon Rift (DOM Edition)
 
-Ce dépôt a été nettoyé pour ne conserver **qu'un seul jeu**: `Ruins Dash`.
+Ce dépôt contient un **seul jeu web** refait complètement : **Neon Rift**.
 
-- Type: jeu web (canvas 2D)
-- Port: `8000`
-- Service: `systemd` (`neon-game.service`)
+- Type : jeu web **DOM/CSS/JS** (sans canvas)
+- Port : `8000`
+- Service : `systemd` (`neon-game.service`)
+- Runtime serveur : **Node.js** (sans Python)
 
 ## Structure
 
-- `server.py`: serveur HTTP simple et commenté
-- `web/index.html`: interface du jeu
-- `web/styles.css`: styles responsive
-- `web/game.js`: logique du jeu, commentée
-- `systemd/neon-game.service`: unité systemd
-- `scripts/install_systemd_service.sh`: script d'installation systemd
-- `scripts/bot_play.js`: bot de jeu automatique pour benchmark gameplay
+- `server.js` : serveur HTTP Node.js minimal (`/health` + fichiers statiques)
+- `web/index.html` : UI du jeu
+- `web/styles.css` : styles et effets visuels
+- `web/game.js` : moteur et logique du jeu
+- `tests/e2e/game-smoke.spec.js` : tests e2e Playwright
+- `scripts/bot_play.js` : bot Playwright pour simulation
+- `systemd/neon-game.service` : unité systemd
 
 ## Lancer manuellement
 
 ```bash
-cd /opt/neon
-python3 server.py
+npm install
+npm run start
 ```
 
-Puis ouvrir:
+Puis ouvrir :
 
 - `http://127.0.0.1:8000`
 
@@ -34,74 +35,25 @@ cd /opt/neon
 ./scripts/install_systemd_service.sh
 ```
 
-Commandes utiles:
+## Tests
 
 ```bash
-systemctl status neon-game.service
-journalctl -u neon-game.service -f
-curl http://127.0.0.1:8000/health
-```
-
-## Tests automatiques
-
-Le projet utilise:
-- des tests e2e Playwright (smoke + debug API)
-- un bot Playwright pour rejouer des parties et suivre l'equilibrage
-
-```bash
-cd /opt/neon
-npm ci
-npx playwright install chromium
 npm run test:e2e
 RUNS=8 npm run bot:play
 npm run test:all
 ```
 
+> Si Chromium Playwright n'est pas installé localement : `npx playwright install chromium`.
+
 ## Gameplay
 
-- But: survivre `60s` dans l'arene
-- Déplacement: `WASD` ou fleches
-- `Espace`: rush defensif (invulnerabilite courte + onde de repoussement)
-- `M`: activer / couper les effets sonores
-- `V`: basculer en mode effets visuels reduits
-- Mobile: glisser dans la zone de jeu + bouton `RUSH`
-- Onglet masque: pause automatique (reprise manuelle avec `P`)
-- `P`: pause/reprise
-- `R`: relancer
+- Déplacement : `WASD` ou flèches
+- `Espace` : dash
+- `P` : pause/reprise
+- `R` : relancer
+- `M` : son on/off
+- Collecte de reliques pour monter le score/combo
+- Orbes bonus : soin, chrono (ralentissement), surge (reset dash)
+- Victoire à `60s`, défaite à `0 PV`
 
-Boucle de jeu:
-- Ramasser les reliques augmente fortement le score
-- Un orbe de soin apparait regulierement
-- Quand les PV tombent a `1`, un orbe de secours apparait automatiquement
-- Apres un impact, un court ralentissement de spawn laisse un temps de reprise
-- Toutes les `15s`, un checkpoint declenche une onde de securite et regenere 1 PV
-- Nouveau pattern ennemi `lancer` (windup + charge, ajusté pour etre lisible)
-- Nouveau pattern ennemi `wisp` (orbite + burst telegraphie)
-- Nouveau pattern ennemi `spinner` (orbite + ruée oblique telegraphiee)
-- Mini-boss a `30s`, en 3 phases (phase 3: onde de choc)
-- Patterns de projectiles boss telegraphies et alternes (eventail / balayage / nova)
-- Fenetre `BOSS-OPEN` apres salve pour contre-attaque au dash
-- Barre de vie boss + phase visible en permanence
-- Feedback de degats renforce (hit-stop court + vignette d'alerte)
-- Mouvements joueur lisses mais reactifs (inertie controlee)
-- Combo dynamique: enchainer les reliques augmente le multiplicateur de score
-- Combo x3+: les reliques et orbes proches sont legerement attires pour garder le flow
-- Nouveau moteur de simulation fixe (120 Hz): gameplay plus stable, deterministic et fluide
-- Post-traitement visuel renforce: bloom neon, vignette dynamique, scanlines CRT et brume atmospherique
-- Near-miss reward: frôler les projectiles sans se faire toucher rapporte des points bonus
-- Orbes Aegis: bouclier temporaire qui absorbe les impacts critiques
-- Orbe Chrono: ralentit temporairement ennemis, boss et projectiles
-- Orbe SURGE: recharge instantanement le dash et ouvre une fenetre offensive
-- Difficulté adaptative légère (respiration quand PV bas)
-- Dash sur le boss pour casser son armure et gagner des bonus
-- Effets sonores reactifs (`M` pour mute/unmute), preference audio persistante
-- Defaite si PV a zero, victoire si `60s` atteintes
-
-Le leaderboard est stocké en local (`localStorage`) dans le navigateur.
-
-## Bot (benchmark)
-
-```bash
-cd /opt/neon
-RUNS=8 npm run bot:play
-```
+Le leaderboard est stocké en local (`localStorage`).

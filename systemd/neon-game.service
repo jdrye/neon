@@ -8,7 +8,7 @@ User=root
 WorkingDirectory=/opt/neon
 Environment=HOST=0.0.0.0
 Environment=PORT=8000
-ExecStart=/usr/bin/python3 /opt/neon/server.py
+ExecStart=/usr/bin/node /opt/neon/server.js
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true
