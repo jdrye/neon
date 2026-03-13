@@ -628,6 +628,7 @@
               <li>Souris : clique puis glisse, ou clique deux cases adjacentes.</li>
               <li>Tactile : glisse directement un prisme dans la direction voulue.</li>
               <li>Le plateau se melange automatiquement si plus aucun coup n'est possible.</li>
+              <li>Les bonus ligne, colonne et onde apparaissent via les combos et les niveaux.</li>
             </ul>
           </section>
 
@@ -939,6 +940,7 @@
               renderRow: row,
               renderColumn: column,
               kind,
+              bonus: null,
               alpha: 1,
               targetAlpha: 1,
               scale: 1,
@@ -1108,6 +1110,10 @@
             }
           }
 
+          getCellKey(cell) {
+            return `${cell.row}:${cell.column}`;
+          }
+
           swapTiles(first, second) {
             const firstTile = this.grid[first.row][first.column];
             const secondTile = this.grid[second.row][second.column];
@@ -1184,13 +1190,140 @@
             };
           }
 
-          markMatches(matchResult) {
+          getBonusAffectedCells(cell, bonusKind) {
+            const affected = [];
+
+            switch (bonusKind) {
+              case "row": {
+                for (let column = 0; column < this.columns; column += 1) {
+                  affected.push({ row: cell.row, column });
+                }
+                break;
+              }
+              case "column": {
+                for (let row = 0; row < this.rows; row += 1) {
+                  affected.push({ row, column: cell.column });
+                }
+                break;
+              }
+              default: {
+                for (let row = cell.row - 1; row <= cell.row + 1; row += 1) {
+                  for (let column = cell.column - 1; column <= cell.column + 1; column += 1) {
+                    if (this.inBounds(row, column)) {
+                      affected.push({ row, column });
+                    }
+                  }
+                }
+                break;
+              }
+            }
+
+            return affected;
+          }
+
+          expandBonusMatches(matchResult) {
+            const cellsByKey = new Map();
+            const queue = [];
+            const triggeredBonuses = [];
+            const processedBonuses = new Set();
+
+            const enqueue = (cell) => {
+              const key = this.getCellKey(cell);
+              if (cellsByKey.has(key)) {
+                return;
+              }
+
+              const normalized = { row: cell.row, column: cell.column };
+              cellsByKey.set(key, normalized);
+              queue.push(normalized);
+            };
+
+            matchResult.cells.forEach(enqueue);
+
+            while (queue.length > 0) {
+              const cell = queue.shift();
+              const tile = this.grid[cell.row][cell.column];
+              if (!tile || !tile.bonus) {
+                continue;
+              }
+
+              const bonusKey = this.getCellKey(cell);
+              if (processedBonuses.has(bonusKey)) {
+                continue;
+              }
+
+              processedBonuses.add(bonusKey);
+              triggeredBonuses.push({ row: cell.row, column: cell.column, kind: tile.bonus });
+              this.getBonusAffectedCells(cell, tile.bonus).forEach(enqueue);
+            }
+
+            return {
+              cells: Array.from(cellsByKey.values()),
+              lines: matchResult.lines,
+              triggeredBonuses
+            };
+          }
+
+          markMatches(matchResult, bonusSpawns = []) {
+            const spawnMap = new Map(
+              bonusSpawns.map((spawn) => [this.getCellKey(spawn), spawn.kind])
+            );
+
             matchResult.cells.forEach((cell) => {
               const tile = this.grid[cell.row][cell.column];
+              const spawnedBonus = spawnMap.get(this.getCellKey(cell));
+              if (spawnedBonus) {
+                tile.bonus = spawnedBonus;
+                tile.removing = false;
+                tile.targetAlpha = 1;
+                tile.targetScale = 1.18;
+                tile.alpha = Math.max(tile.alpha, 0.65);
+                tile.scale = Math.max(tile.scale, 0.55);
+                return;
+              }
+
               tile.removing = true;
+              tile.bonus = null;
               tile.targetAlpha = 0;
               tile.targetScale = 0.12;
             });
+          }
+
+          injectBonusTokens(count, mode = "level") {
+            const candidates = [];
+            this.forEachTile((tile) => {
+              if (!tile.removing) {
+                candidates.push(tile);
+              }
+            });
+
+            const chosen = [];
+            const shuffled = shuffleArray(candidates);
+
+            for (const tile of shuffled) {
+              if (chosen.length >= count) {
+                break;
+              }
+
+              if (tile.bonus && Math.random() < 0.7) {
+                continue;
+              }
+
+              const sequence =
+                mode === "combo"
+                  ? ["row", "column", "burst"]
+                  : ["burst", "row", "column"];
+              const bonusKind = sequence[chosen.length % sequence.length];
+              tile.bonus = bonusKind;
+              tile.removing = false;
+              tile.alpha = Math.max(tile.alpha, 0.55);
+              tile.targetAlpha = 1;
+              tile.scale = Math.max(tile.scale, 0.72);
+              tile.targetScale = 1.2;
+              chosen.push({ row: tile.row, column: tile.column, kind: bonusKind });
+            }
+
+            return chosen;
           }
 
           collapseAndRefill() {
@@ -1310,7 +1443,7 @@
             const centerY = boardY + (tile.renderRow + 0.5) * cellSize;
             const radius = cellSize * 0.34 * tile.scale * palette.sizeBias;
             const hover = 1 + Math.sin(pulseTime * 1.8 + tile.column * 0.3 + tile.row * 0.25) * 0.012;
-            const glowStrength = 18 + flashAmount * 14;
+            const glowStrength = 18 + flashAmount * 14 + (tile.bonus ? 12 : 0);
 
             ctx.save();
             ctx.globalAlpha = tile.alpha;
@@ -1359,6 +1492,45 @@
             ctx.arc(-radius * 0.22, -radius * 0.28, radius * 0.18, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
+
+            if (tile.bonus) {
+              this.drawBonusMark(ctx, tile, radius, pulseTime);
+            }
+
+            ctx.restore();
+          }
+
+          drawBonusMark(ctx, tile, radius, pulseTime) {
+            const pulse = 0.7 + Math.sin(pulseTime * 5.4 + tile.row * 0.4 + tile.column * 0.31) * 0.16;
+
+            ctx.save();
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = "rgba(255, 244, 196, 0.48)";
+            ctx.strokeStyle = `rgba(255, 246, 214, ${0.72 + pulse * 0.18})`;
+            ctx.fillStyle = `rgba(255, 246, 214, ${0.16 + pulse * 0.06})`;
+            ctx.lineWidth = Math.max(2, radius * 0.11);
+
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.82, 0, Math.PI * 2);
+            ctx.stroke();
+
+            switch (tile.bonus) {
+              case "row": {
+                roundedRectPath(ctx, -radius * 0.92, -radius * 0.18, radius * 1.84, radius * 0.36, radius * 0.16);
+                ctx.fill();
+                break;
+              }
+              case "column": {
+                roundedRectPath(ctx, -radius * 0.18, -radius * 0.92, radius * 0.36, radius * 1.84, radius * 0.16);
+                ctx.fill();
+                break;
+              }
+              default: {
+                starPath(ctx, 4, radius * 0.88, radius * 0.42, pulseTime * 1.6);
+                ctx.fill();
+                break;
+              }
+            }
 
             ctx.restore();
           }
@@ -1887,35 +2059,85 @@
             this.updateUi();
           }
 
+          createComboBonusSpawns(matchResult) {
+            if (this.comboChain < 2) {
+              return [];
+            }
+
+            const sortedLines = [...matchResult.lines].sort((left, right) => right.length - left.length);
+            const selectedLine = sortedLines[0];
+            if (!selectedLine) {
+              return [];
+            }
+
+            const candidates = selectedLine.cells.filter((cell) => {
+              const tile = this.board.grid[cell.row][cell.column];
+              return tile && !tile.bonus;
+            });
+
+            if (candidates.length === 0) {
+              return [];
+            }
+
+            const spawnCell = candidates[Math.floor(candidates.length / 2)];
+            let kind = selectedLine.orientation === "row" ? "row" : "column";
+
+            if (this.comboChain >= 3 || selectedLine.length >= 5 || matchResult.triggeredBonuses.length > 0) {
+              kind = "burst";
+            }
+
+            return [{ row: spawnCell.row, column: spawnCell.column, kind }];
+          }
+
           queueMatchResolution(matchResult) {
             this.comboChain += 1;
             this.bestCombo = Math.max(this.bestCombo, this.comboChain);
+            const expandedMatch = this.board.expandBonusMatches(matchResult);
+            const comboBonusSpawns = this.createComboBonusSpawns(expandedMatch);
 
-            const lineBonus = matchResult.lines.reduce(
+            const lineBonus = expandedMatch.lines.reduce(
               (total, line) => total + Math.max(0, line.length - 3) * 85,
               0
             );
-            const base = matchResult.cells.length * 120 + lineBonus;
+            const triggeredBonusScore = expandedMatch.triggeredBonuses.length * 180;
+            const createdBonusScore = comboBonusSpawns.length * 140;
+            const base = expandedMatch.cells.length * 120 + lineBonus + triggeredBonusScore + createdBonusScore;
             const gained = Math.round(base * (1 + (this.comboChain - 1) * 0.45));
             this.score += gained;
             this.lastGain = gained;
-            this.totalCleared += matchResult.cells.length;
+            this.totalCleared += expandedMatch.cells.length;
             this.stateLabel = this.comboChain > 1 ? `Cascade x${this.comboChain}` : "Match";
-            this.statusText =
-              this.comboChain > 1
-                ? `Cascade x${this.comboChain} ! ${gained} points.`
-                : `${matchResult.cells.length} prismes brises, ${gained} points.`;
+            const bonusSummary = [
+              expandedMatch.triggeredBonuses.length > 0
+                ? `${expandedMatch.triggeredBonuses.length} jeton${expandedMatch.triggeredBonuses.length > 1 ? "s" : ""} active${expandedMatch.triggeredBonuses.length > 1 ? "s" : ""}`
+                : "",
+              comboBonusSpawns.length > 0
+                ? `${comboBonusSpawns.length} nouveau${comboBonusSpawns.length > 1 ? "x" : ""} bonus`
+                : ""
+            ]
+              .filter(Boolean)
+              .join(" • ");
 
-            matchResult.cells.forEach((cell) => {
+            this.statusText = this.comboChain > 1
+              ? `Cascade x${this.comboChain} ! ${gained} points${bonusSummary ? ` • ${bonusSummary}` : ""}.`
+              : `${expandedMatch.cells.length} prismes brises, ${gained} points${bonusSummary ? ` • ${bonusSummary}` : ""}.`;
+
+            expandedMatch.cells.forEach((cell) => {
               const tile = this.board.grid[cell.row][cell.column];
               const center = this.board.getCellCenter(cell.row, cell.column);
               this.particles.burst(center.x, center.y, this.board.types[tile.kind].base, 8, 1 + this.comboChain * 0.18);
             });
 
-            this.board.markMatches(matchResult);
+            comboBonusSpawns.forEach((spawn, index) => {
+              const center = this.board.getCellCenter(spawn.row, spawn.column);
+              const palette = this.board.types[(spawn.row + spawn.column + index) % this.board.types.length];
+              this.particles.burst(center.x, center.y, palette.shine, 12, 1.05);
+            });
+
+            this.board.markMatches(expandedMatch, comboBonusSpawns);
             this.phase = "clear";
             this.phaseClock = 0;
-            this.audio.playMatch(this.comboChain, matchResult.cells.length);
+            this.audio.playMatch(this.comboChain, expandedMatch.cells.length + expandedMatch.triggeredBonuses.length * 2);
             this.updateUi();
           }
 
@@ -1968,6 +2190,7 @@
           afterCascade() {
             const levelResult = this.advanceLevelIfNeeded();
             const leveledUp = levelResult.leveledUp;
+            let levelBonusTokens = [];
             const levelBonusText = leveledUp
               ? `Objectif atteint. Niveau ${this.level}. Bonus +${levelResult.bonusScore} points et +${levelResult.timeBonus} sec.`
               : "";
@@ -1988,6 +2211,19 @@
               this.statusText = leveledUp
                 ? levelBonusText
                 : "A toi de jouer.";
+            }
+
+            if (leveledUp) {
+              levelBonusTokens = this.board.injectBonusTokens(Math.min(3, levelResult.levelsGained + 1), "level");
+              levelBonusTokens.forEach((spawn, index) => {
+                const center = this.board.getCellCenter(spawn.row, spawn.column);
+                const palette = this.board.types[(spawn.row + spawn.column + index) % this.board.types.length];
+                this.particles.burst(center.x, center.y, palette.shine, 14, 1.18);
+              });
+
+              if (levelBonusTokens.length > 0) {
+                this.statusText += ` ${levelBonusTokens.length} jeton${levelBonusTokens.length > 1 ? "s" : ""} bonus charge${levelBonusTokens.length > 1 ? "s" : ""}.`;
+              }
             }
 
             this.updateUi();
