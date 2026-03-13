@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Pulse Prism Match-3</title>
+    <style>
+      :root {
+        --bg-1: #08141f;
+        --bg-2: #102b34;
+        --bg-3: #16394b;
+        --panel: rgba(7, 17, 24, 0.8);
+        --panel-strong: rgba(8, 20, 28, 0.92);
+        --line: rgba(157, 244, 229, 0.22);
+        --text: #ebfbf7;
+        --muted: #9dd7ce;
+        --accent: #ffd36f;
+        --accent-2: #ff7d5c;
+        --glow: rgba(255, 211, 111, 0.38);
+        --ok: #6ef2bf;
+        --danger: #ff8d88;
+        --shadow: 0 20px 80px rgba(0, 0, 0, 0.42);
+        --display-font: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+        --ui-font: "Trebuchet MS", "Verdana", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top left, rgba(255, 168, 86, 0.17), transparent 28%),
+          radial-gradient(circle at 78% 18%, rgba(87, 230, 206, 0.18), transparent 30%),
+          linear-gradient(140deg, var(--bg-1), var(--bg-2) 48%, var(--bg-3));
+        color: var(--text);
+        font-family: var(--ui-font);
+        overflow-x: hidden;
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        inset: auto;
+        pointer-events: none;
+        border-radius: 999px;
+        filter: blur(48px);
+        opacity: 0.65;
+      }
+
+      body::before {
+        width: 18rem;
+        height: 18rem;
+        top: -5rem;
+        left: -4rem;
+        background: rgba(255, 156, 74, 0.16);
+      }
+
+      body::after {
+        width: 22rem;
+        height: 22rem;
+        right: -7rem;
+        bottom: -8rem;
+        background: rgba(80, 220, 206, 0.14);
+      }
+
+      .app-shell {
+        position: relative;
+        width: min(1180px, calc(100vw - 24px));
+        margin: 0 auto;
+        padding: 18px 0 28px;
+      }
+
+      .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 14px 18px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(5, 13, 19, 0.5);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand-lockup {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .eyebrow {
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--display-font);
+        font-size: clamp(2rem, 4vw, 3.4rem);
+        line-height: 0.95;
+        letter-spacing: 0.03em;
+      }
+
+      .tagline {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .control-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .pill-button,
+      .primary-button {
+        border: 0;
+        border-radius: 999px;
+        font: inherit;
+        cursor: pointer;
+        transition:
+          transform 140ms ease,
+          box-shadow 140ms ease,
+          background 140ms ease,
+          color 140ms ease;
+      }
+
+      .pill-button {
+        padding: 0.8rem 1rem;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .pill-button:hover,
+      .pill-button:focus-visible,
+      .primary-button:hover,
+      .primary-button:focus-visible {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+        outline: none;
+      }
+
+      .pill-button[aria-pressed="true"] {
+        background: rgba(111, 242, 191, 0.18);
+        color: #eafff8;
+        border-color: rgba(111, 242, 191, 0.32);
+      }
+
+      .primary-button {
+        padding: 0.95rem 1.35rem;
+        background: linear-gradient(135deg, var(--accent), #ffba58 42%, var(--accent-2));
+        color: #13212b;
+        font-weight: 700;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+        gap: 18px;
+      }
+
+      .panel {
+        position: relative;
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .play-panel {
+        padding: 16px;
+      }
+
+      .hud {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .stat-card {
+        padding: 12px 14px;
+        min-height: 76px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .stat-label {
+        display: block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .stat-value {
+        font-family: var(--display-font);
+        font-size: clamp(1.3rem, 2.5vw, 2rem);
+        line-height: 1;
+      }
+
+      .board-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 28px;
+        overflow: hidden;
+        background:
+          linear-gradient(160deg, rgba(255, 255, 255, 0.08), transparent 35%),
+          linear-gradient(180deg, rgba(9, 17, 27, 0.92), rgba(6, 12, 20, 0.9));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      #gameCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+      }
+
+      .board-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(4, 10, 15, 0.66);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+      }
+
+      .board-overlay.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .overlay-card {
+        width: min(100%, 520px);
+        padding: clamp(22px, 4vw, 36px);
+        border-radius: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background:
+          linear-gradient(180deg, rgba(12, 24, 34, 0.94), rgba(7, 15, 23, 0.95)),
+          rgba(8, 16, 24, 0.92);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      }
+
+      .overlay-card h2 {
+        margin: 0 0 12px;
+        font-family: var(--display-font);
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 0.98;
+      }
+
+      .overlay-card p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .instruction-list,
+      .bullet-list {
+        margin: 0 0 18px;
+        padding-left: 1.1rem;
+        color: #d8f5ef;
+        line-height: 1.5;
+      }
+
+      .instruction-list li,
+      .bullet-list li {
+        margin-bottom: 0.45rem;
+      }
+
+      .overlay-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .side-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .info-card,
+      .status-card {
+        padding: 18px;
+      }
+
+      .info-card h3,
+      .status-card h3 {
+        margin: 0 0 10px;
+        font-family: var(--display-font);
+        font-size: 1.35rem;
+      }
+
+      .info-card p,
+      .status-card p {
+        margin: 0;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .mini-stat {
+        padding: 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .mini-stat strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.76rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .mini-stat span {
+        font-family: var(--display-font);
+        font-size: 1.35rem;
+      }
+
+      .status-message {
+        margin-top: 12px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(255, 211, 111, 0.08);
+        border: 1px solid rgba(255, 211, 111, 0.16);
+        color: #fff1cf;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+      }
+
+      .footer-note {
+        margin-top: 16px;
+        text-align: center;
+        color: rgba(235, 251, 247, 0.62);
+        font-size: 0.82rem;
+      }
+
+      .accent {
+        color: var(--accent);
+      }
+
+      .danger {
+        color: var(--danger);
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .side-panel {
+          order: -1;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .app-shell {
+          width: min(100vw - 16px, 100%);
+          padding: 10px 0 20px;
+        }
+
+        .top-bar {
+          padding: 14px;
+          border-radius: 22px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .control-row {
+          width: 100%;
+          justify-content: stretch;
+        }
+
+        .control-row > * {
+          flex: 1 1 160px;
+        }
+
+        .play-panel,
+        .info-card,
+        .status-card {
+          padding: 14px;
+        }
+
+        .hud {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .overlay-card {
+          padding: 22px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition-duration: 0ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="top-bar">
+        <div class="brand-lockup">
+          <span class="eyebrow">Arcade solo HTML</span>
+          <h1>Pulse Prism</h1>
+          <p class="tagline">Match-3 nerveux, autonome, jouable sur desktop et mobile.</p>
+        </div>
+        <div class="control-row">
+          <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">Son actif</button>
+          <button id="restartButton" class="pill-button" type="button">Relancer</button>
+        </div>
+      </header>
+
+      <section class="layout">
+        <section class="panel play-panel">
+          <div class="hud">
+            <article class="stat-card">
+              <span class="stat-label">Score</span>
+              <span id="scoreValue" class="stat-value">0</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Niveau</span>
+              <span id="levelValue" class="stat-value">1</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Objectif</span>
+              <span id="goalValue" class="stat-value">1800</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Temps</span>
+              <span id="timeValue" class="stat-value">75</span>
+            </article>
+          </div>
+
+          <div class="board-frame">
+            <canvas id="gameCanvas" aria-label="Plateau du jeu Pulse Prism"></canvas>
+
+            <div id="titleOverlay" class="board-overlay visible">
+              <div class="overlay-card">
+                <p class="eyebrow">Match-3 canvas</p>
+                <h2>Allume la grille.</h2>
+                <p>
+                  Echange deux prismes voisins pour aligner au moins trois formes identiques.
+                  Fais grimper le score avant la fin du chrono, puis atteins chaque objectif pour
+                  ouvrir le niveau suivant.
+                </p>
+                <ul class="instruction-list">
+                  <li>Glisse un prisme vers une case voisine, ou touche deux cases adjacentes.</li>
+                  <li>Les cascades rapportent plus, et chaque niveau ajoute du temps.</li>
+                  <li>Le bouton son active ou coupe les effets Web Audio.</li>
+                </ul>
+                <div class="overlay-actions">
+                  <button id="startButton" class="primary-button" type="button">Lancer la partie</button>
+                  <button id="titleSoundButton" class="pill-button" type="button">Basculer le son</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="gameOverOverlay" class="board-overlay">
+              <div class="overlay-card">
+                <p class="eyebrow">Fin de partie</p>
+                <h2>Le flux se dissipe.</h2>
+                <p id="gameOverSummary">
+                  Tu as tenu la grille jusqu'au dernier battement. Reprends la main et vise un
+                  niveau encore plus haut.
+                </p>
+                <ul class="bullet-list">
+                  <li>Un bon timing sur les cascades change tout.</li>
+                  <li>Sur mobile, privilegie les glissements courts et francs.</li>
+                  <li>Le chrono remonte a chaque objectif atteint.</li>
+                </ul>
+                <div class="overlay-actions">
+                  <button id="playAgainButton" class="primary-button" type="button">Rejouer</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="footer-note">Un seul fichier HTML. Aucun serveur. Aucune dependance externe.</p>
+        </section>
+
+        <aside class="side-panel">
+          <section class="panel info-card">
+            <h3>Comment jouer</h3>
+            <p>
+              Assemble les prismes par trois ou plus. Les lignes de quatre et cinq valent plus, et
+              les reactions en chaine font exploser le multiplicateur.
+            </p>
+            <ul class="bullet-list">
+              <li>Souris : clique puis glisse, ou clique deux cases adjacentes.</li>
+              <li>Tactile : glisse directement un prisme dans la direction voulue.</li>
+              <li>Le plateau se melange automatiquement si plus aucun coup n'est possible.</li>
+            </ul>
+          </section>
+
+          <section class="panel status-card">
+            <h3>Pulse log</h3>
+            <p>Surveille ta progression et la qualite de tes reactions en chaine.</p>
+
+            <div class="status-grid">
+              <div class="mini-stat">
+                <strong>Meilleur combo</strong>
+                <span id="comboValue">x1</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Prismes casses</strong>
+                <span id="clearedValue">0</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Dernier gain</strong>
+                <span id="gainValue">0</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Etat</strong>
+                <span id="stateValue">Pret</span>
+              </div>
+            </div>
+
+            <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const GEM_TYPES = [
+          { name: "ember", base: "#ff8758", shine: "#ffd3ae", shadow: "#b94a1d" },
+          { name: "lagoon", base: "#49d2f0", shine: "#d9feff", shadow: "#167d9e" },
+          { name: "lime", base: "#89f26c", shine: "#ecffd6", shadow: "#3b8f2c" },
+          { name: "solar", base: "#ffd35a", shine: "#fff5c0", shadow: "#bd8f16" },
+          { name: "rose", base: "#ff74a8", shine: "#ffe0ef", shadow: "#af3b69" },
+          { name: "violet", base: "#a98bff", shine: "#f0e8ff", shadow: "#5941aa" }
+        ];
+
+        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+        const lerp = (start, end, amount) => start + (end - start) * amount;
+
+        function roundedRectPath(ctx, x, y, width, height, radius) {
+          const r = Math.min(radius, width / 2, height / 2);
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + width, y, x + width, y + height, r);
+          ctx.arcTo(x + width, y + height, x, y + height, r);
+          ctx.arcTo(x, y + height, x, y, r);
+          ctx.arcTo(x, y, x + width, y, r);
+          ctx.closePath();
+        }
+
+        class AudioEngine {
+          constructor(buttons) {
+            this.buttons = buttons;
+            this.enabled = true;
+            this.context = null;
+          }
+
+          setEnabled(value) {
+            this.enabled = value;
+            this.buttons.forEach((button) => {
+              button.setAttribute("aria-pressed", String(value));
+              button.textContent = value ? "Son actif" : "Son coupe";
+            });
+          }
+
+          toggle() {
+            this.setEnabled(!this.enabled);
+          }
+
+          async unlock() {
+            if (!this.enabled) {
+              return;
+            }
+
+            if (!this.context) {
+              const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+              if (!AudioContextClass) {
+                this.enabled = false;
+                this.setEnabled(false);
+                return;
+              }
+
+              this.context = new AudioContextClass();
+            }
+
+            if (this.context.state === "suspended") {
+              try {
+                await this.context.resume();
+              } catch (error) {
+                console.warn("Audio resume failed", error);
+              }
+            }
+          }
+
+          playTone({
+            frequency,
+            duration = 0.12,
+            type = "triangle",
+            volume = 0.05,
+            detune = 0,
+            slideTo = null
+          }) {
+            if (!this.enabled || !this.context) {
+              return;
+            }
+
+            const now = this.context.currentTime;
+            const oscillator = this.context.createOscillator();
+            const gainNode = this.context.createGain();
+
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, now);
+            oscillator.detune.setValueAtTime(detune, now);
+
+            gainNode.gain.setValueAtTime(0.0001, now);
+            gainNode.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+            if (slideTo) {
+              oscillator.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+            }
+
+            oscillator.connect(gainNode);
+            gainNode.connect(this.context.destination);
+            oscillator.start(now);
+            oscillator.stop(now + duration + 0.02);
+          }
+
+          playSwap() {
+            this.playTone({ frequency: 440, duration: 0.08, type: "triangle", volume: 0.04, slideTo: 520 });
+          }
+
+          playInvalid() {
+            this.playTone({ frequency: 240, duration: 0.12, type: "sawtooth", volume: 0.035, slideTo: 170 });
+          }
+
+          playMatch(combo, cleared) {
+            const volume = clamp(0.04 + combo * 0.01, 0.04, 0.085);
+            this.playTone({
+              frequency: 420 + combo * 36 + cleared * 8,
+              duration: 0.16,
+              type: "triangle",
+              volume,
+              slideTo: 620 + combo * 40
+            });
+            this.playTone({
+              frequency: 620 + combo * 18,
+              duration: 0.14,
+              type: "sine",
+              volume: volume * 0.7,
+              detune: 4
+            });
+          }
+
+          playLevelUp() {
+            this.playTone({ frequency: 523, duration: 0.16, type: "triangle", volume: 0.06, slideTo: 784 });
+            this.playTone({ frequency: 784, duration: 0.24, type: "sine", volume: 0.045, slideTo: 988 });
+          }
+
+          playGameOver() {
+            this.playTone({ frequency: 392, duration: 0.18, type: "triangle", volume: 0.045, slideTo: 292 });
+            this.playTone({ frequency: 260, duration: 0.28, type: "sine", volume: 0.04, slideTo: 170 });
+          }
+
+          playShuffle() {
+            this.playTone({ frequency: 300, duration: 0.1, type: "triangle", volume: 0.04, slideTo: 510 });
+            this.playTone({ frequency: 480, duration: 0.12, type: "sine", volume: 0.035, slideTo: 640 });
+          }
+        }
+
+        class ParticleSystem {
+          constructor() {
+            this.items = [];
+          }
+
+          burst(x, y, color, count, intensity = 1) {
+            for (let index = 0; index < count; index += 1) {
+              const angle = (Math.PI * 2 * index) / count + Math.random() * 0.4;
+              const speed = (75 + Math.random() * 150) * intensity;
+              this.items.push({
+                x,
+                y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 12,
+                life: 0.4 + Math.random() * 0.28,
+                age: 0,
+                radius: 2 + Math.random() * 4,
+                color
+              });
+            }
+          }
+
+          update(dt) {
+            this.items = this.items.filter((item) => {
+              item.age += dt;
+              if (item.age >= item.life) {
+                return false;
+              }
+
+              item.x += item.vx * dt;
+              item.y += item.vy * dt;
+              item.vx *= 0.985;
+              item.vy += 320 * dt;
+              return true;
+            });
+          }
+
+          draw(ctx) {
+            this.items.forEach((item) => {
+              const alpha = 1 - item.age / item.life;
+              ctx.save();
+              ctx.globalAlpha = alpha * 0.95;
+              ctx.fillStyle = item.color;
+              ctx.beginPath();
+              ctx.arc(item.x, item.y, item.radius * alpha, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            });
+          }
+        }
+
+        class Match3Board {
+          constructor(columns, rows, types) {
+            this.columns = columns;
+            this.rows = rows;
+            this.types = types;
+            this.grid = [];
+            this.selectedCell = null;
+            this.layout = {
+              boardX: 0,
+              boardY: 0,
+              boardSize: 0,
+              cellSize: 0
+            };
+          }
+
+          reset() {
+            const matrix = this.generatePlayableMatrix();
+            this.grid = [];
+
+            for (let row = 0; row < this.rows; row += 1) {
+              const line = [];
+              for (let column = 0; column < this.columns; column += 1) {
+                line.push(this.makeTile(row, column, matrix[row][column]));
+              }
+              this.grid.push(line);
+            }
+          }
+
+          makeTile(row, column, kind) {
+            return {
+              row,
+              column,
+              renderRow: row,
+              renderColumn: column,
+              kind,
+              alpha: 1,
+              targetAlpha: 1,
+              scale: 1,
+              targetScale: 1,
+              removing: false
+            };
+          }
+
+          randomKind() {
+            return Math.floor(Math.random() * this.types.length);
+          }
+
+          generatePlayableMatrix() {
+            let matrix = [];
+            let attempts = 0;
+
+            do {
+              attempts += 1;
+              matrix = [];
+
+              for (let row = 0; row < this.rows; row += 1) {
+                const line = [];
+                for (let column = 0; column < this.columns; column += 1) {
+                  let candidate = this.randomKind();
+                  while (
+                    (column >= 2 && line[column - 1] === candidate && line[column - 2] === candidate) ||
+                    (row >= 2 &&
+                      matrix[row - 1][column] === candidate &&
+                      matrix[row - 2][column] === candidate)
+                  ) {
+                    candidate = this.randomKind();
+                  }
+                  line.push(candidate);
+                }
+                matrix.push(line);
+              }
+            } while (!this.matrixHasPossibleMoves(matrix) && attempts < 120);
+
+            return matrix;
+          }
+
+          matrixHasPossibleMoves(matrix) {
+            for (let row = 0; row < this.rows; row += 1) {
+              for (let column = 0; column < this.columns; column += 1) {
+                const directions = [
+                  { row: 0, column: 1 },
+                  { row: 1, column: 0 }
+                ];
+
+                for (const direction of directions) {
+                  const nextRow = row + direction.row;
+                  const nextColumn = column + direction.column;
+                  if (!this.inBounds(nextRow, nextColumn)) {
+                    continue;
+                  }
+
+                  const clone = matrix.map((line) => line.slice());
+                  [clone[row][column], clone[nextRow][nextColumn]] = [
+                    clone[nextRow][nextColumn],
+                    clone[row][column]
+                  ];
+
+                  if (this.matrixHasMatch(clone)) {
+                    return true;
+                  }
+                }
+              }
+            }
+
+            return false;
+          }
+
+          matrixHasMatch(matrix) {
+            for (let row = 0; row < this.rows; row += 1) {
+              let streak = 1;
+              for (let column = 1; column <= this.columns; column += 1) {
+                if (column < this.columns && matrix[row][column] === matrix[row][column - 1]) {
+                  streak += 1;
+                } else {
+                  if (streak >= 3) {
+                    return true;
+                  }
+                  streak = 1;
+                }
+              }
+            }
+
+            for (let column = 0; column < this.columns; column += 1) {
+              let streak = 1;
+              for (let row = 1; row <= this.rows; row += 1) {
+                if (row < this.rows && matrix[row][column] === matrix[row - 1][column]) {
+                  streak += 1;
+                } else {
+                  if (streak >= 3) {
+                    return true;
+                  }
+                  streak = 1;
+                }
+              }
+            }
+
+            return false;
+          }
+
+          inBounds(row, column) {
+            return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
+          }
+
+          areAdjacent(first, second) {
+            return Math.abs(first.row - second.row) + Math.abs(first.column - second.column) === 1;
+          }
+
+          getKindsMatrix() {
+            return this.grid.map((line) => line.map((tile) => tile.kind));
+          }
+
+          hasPossibleMoves() {
+            return this.matrixHasPossibleMoves(this.getKindsMatrix());
+          }
+
+          shuffleKinds() {
+            const matrix = this.generatePlayableMatrix();
+
+            for (let row = 0; row < this.rows; row += 1) {
+              for (let column = 0; column < this.columns; column += 1) {
+                const tile = this.grid[row][column];
+                tile.kind = matrix[row][column];
+                tile.scale = 0.82;
+                tile.targetScale = 1;
+                tile.alpha = 0.25;
+                tile.targetAlpha = 1;
+                tile.removing = false;
+              }
+            }
+          }
+
+          updateAnimations(dt) {
+            const follow = clamp(dt * 16, 0.12, 0.42);
+            this.forEachTile((tile) => {
+              tile.renderRow = lerp(tile.renderRow, tile.row, follow);
+              tile.renderColumn = lerp(tile.renderColumn, tile.column, follow);
+              tile.scale = lerp(tile.scale, tile.targetScale, clamp(dt * 20, 0.15, 0.48));
+              tile.alpha = lerp(tile.alpha, tile.targetAlpha, clamp(dt * 20, 0.12, 0.45));
+            });
+          }
+
+          isSettled() {
+            let settled = true;
+            this.forEachTile((tile) => {
+              if (
+                Math.abs(tile.renderRow - tile.row) > 0.015 ||
+                Math.abs(tile.renderColumn - tile.column) > 0.015 ||
+                Math.abs(tile.scale - tile.targetScale) > 0.02 ||
+                Math.abs(tile.alpha - tile.targetAlpha) > 0.02
+              ) {
+                settled = false;
+              }
+            });
+            return settled;
+          }
+
+          forEachTile(callback) {
+            for (let row = 0; row < this.rows; row += 1) {
+              for (let column = 0; column < this.columns; column += 1) {
+                callback(this.grid[row][column], row, column);
+              }
+            }
+          }
+
+          swapTiles(first, second) {
+            const firstTile = this.grid[first.row][first.column];
+            const secondTile = this.grid[second.row][second.column];
+
+            this.grid[first.row][first.column] = secondTile;
+            this.grid[second.row][second.column] = firstTile;
+
+            secondTile.row = first.row;
+            secondTile.column = first.column;
+            firstTile.row = second.row;
+            firstTile.column = second.column;
+          }
+
+          findMatches() {
+            const map = new Map();
+            const lines = [];
+
+            const pushLine = (cells, orientation) => {
+              lines.push({ cells, length: cells.length, orientation });
+              cells.forEach((cell) => {
+                map.set(`${cell.row}:${cell.column}`, cell);
+              });
+            };
+
+            for (let row = 0; row < this.rows; row += 1) {
+              let startColumn = 0;
+              while (startColumn < this.columns) {
+                let endColumn = startColumn + 1;
+                while (
+                  endColumn < this.columns &&
+                  this.grid[row][endColumn].kind === this.grid[row][startColumn].kind
+                ) {
+                  endColumn += 1;
+                }
+
+                if (endColumn - startColumn >= 3) {
+                  const cells = [];
+                  for (let column = startColumn; column < endColumn; column += 1) {
+                    cells.push({ row, column });
+                  }
+                  pushLine(cells, "row");
+                }
+
+                startColumn = endColumn;
+              }
+            }
+
+            for (let column = 0; column < this.columns; column += 1) {
+              let startRow = 0;
+              while (startRow < this.rows) {
+                let endRow = startRow + 1;
+                while (
+                  endRow < this.rows &&
+                  this.grid[endRow][column].kind === this.grid[startRow][column].kind
+                ) {
+                  endRow += 1;
+                }
+
+                if (endRow - startRow >= 3) {
+                  const cells = [];
+                  for (let row = startRow; row < endRow; row += 1) {
+                    cells.push({ row, column });
+                  }
+                  pushLine(cells, "column");
+                }
+
+                startRow = endRow;
+              }
+            }
+
+            return {
+              cells: Array.from(map.values()),
+              lines
+            };
+          }
+
+          markMatches(matchResult) {
+            matchResult.cells.forEach((cell) => {
+              const tile = this.grid[cell.row][cell.column];
+              tile.removing = true;
+              tile.targetAlpha = 0;
+              tile.targetScale = 0.12;
+            });
+          }
+
+          collapseAndRefill() {
+            for (let column = 0; column < this.columns; column += 1) {
+              const survivors = [];
+
+              for (let row = this.rows - 1; row >= 0; row -= 1) {
+                const tile = this.grid[row][column];
+                if (!tile.removing) {
+                  survivors.push(tile);
+                }
+              }
+
+              let writeRow = this.rows - 1;
+
+              survivors.forEach((tile) => {
+                tile.row = writeRow;
+                tile.column = column;
+                tile.targetAlpha = 1;
+                tile.targetScale = 1;
+                tile.removing = false;
+                this.grid[writeRow][column] = tile;
+                writeRow -= 1;
+              });
+
+              while (writeRow >= 0) {
+                const tile = this.makeTile(writeRow, column, this.randomKind());
+                tile.renderRow = writeRow - (1.2 + Math.random() * 2.8);
+                tile.renderColumn = column;
+                tile.alpha = 0.9;
+                tile.scale = 0.88;
+                this.grid[writeRow][column] = tile;
+                writeRow -= 1;
+              }
+            }
+          }
+
+          setLayout(boardX, boardY, boardSize) {
+            this.layout.boardX = boardX;
+            this.layout.boardY = boardY;
+            this.layout.boardSize = boardSize;
+            this.layout.cellSize = boardSize / this.columns;
+          }
+
+          getCellCenter(row, column) {
+            return {
+              x: this.layout.boardX + (column + 0.5) * this.layout.cellSize,
+              y: this.layout.boardY + (row + 0.5) * this.layout.cellSize
+            };
+          }
+
+          cellFromPoint(x, y) {
+            const { boardX, boardY, boardSize, cellSize } = this.layout;
+            if (
+              x < boardX ||
+              x > boardX + boardSize ||
+              y < boardY ||
+              y > boardY + boardSize
+            ) {
+              return null;
+            }
+
+            return {
+              row: clamp(Math.floor((y - boardY) / cellSize), 0, this.rows - 1),
+              column: clamp(Math.floor((x - boardX) / cellSize), 0, this.columns - 1)
+            };
+          }
+
+          draw(ctx, pulseTime, flashAmount) {
+            const { boardX, boardY, boardSize, cellSize } = this.layout;
+            if (!boardSize) {
+              return;
+            }
+
+            const corner = cellSize * 0.34;
+
+            ctx.save();
+            roundedRectPath(ctx, boardX - cellSize * 0.17, boardY - cellSize * 0.17, boardSize + cellSize * 0.34, boardSize + cellSize * 0.34, cellSize * 0.48);
+            ctx.fillStyle = "rgba(4, 10, 16, 0.78)";
+            ctx.fill();
+            ctx.restore();
+
+            for (let row = 0; row < this.rows; row += 1) {
+              for (let column = 0; column < this.columns; column += 1) {
+                const x = boardX + column * cellSize;
+                const y = boardY + row * cellSize;
+                const glow = 0.08 + ((row + column) % 2) * 0.02;
+                roundedRectPath(ctx, x + 2, y + 2, cellSize - 4, cellSize - 4, corner);
+                ctx.fillStyle = `rgba(165, 240, 230, ${glow})`;
+                ctx.fill();
+              }
+            }
+
+            if (this.selectedCell) {
+              const highlightX = boardX + this.selectedCell.column * cellSize;
+              const highlightY = boardY + this.selectedCell.row * cellSize;
+              const pulse = 0.5 + Math.sin(pulseTime * 7.5) * 0.18;
+              ctx.save();
+              roundedRectPath(ctx, highlightX + 3, highlightY + 3, cellSize - 6, cellSize - 6, corner);
+              ctx.strokeStyle = `rgba(255, 227, 149, ${0.65 + pulse * 0.3})`;
+              ctx.lineWidth = 4;
+              ctx.shadowBlur = 20;
+              ctx.shadowColor = "rgba(255, 211, 111, 0.55)";
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            this.forEachTile((tile) => {
+              this.drawTile(ctx, tile, pulseTime, flashAmount);
+            });
+          }
+
+          drawTile(ctx, tile, pulseTime, flashAmount) {
+            const { boardX, boardY, cellSize } = this.layout;
+            const palette = this.types[tile.kind];
+            const centerX = boardX + (tile.renderColumn + 0.5) * cellSize;
+            const centerY = boardY + (tile.renderRow + 0.5) * cellSize;
+            const radius = cellSize * 0.34 * tile.scale;
+            const hover = 1 + Math.sin(pulseTime * 1.8 + tile.column * 0.3 + tile.row * 0.25) * 0.012;
+            const glowStrength = 18 + flashAmount * 14;
+
+            ctx.save();
+            ctx.globalAlpha = tile.alpha;
+            ctx.translate(centerX, centerY);
+            ctx.scale(hover, hover);
+
+            ctx.shadowBlur = glowStrength;
+            ctx.shadowColor = palette.base;
+
+            ctx.save();
+            ctx.translate(0, cellSize * 0.08);
+            ctx.scale(1, 0.45);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 1.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            const gradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.15, 0, 0, radius * 1.3);
+            gradient.addColorStop(0, palette.shine);
+            gradient.addColorStop(0.28, palette.base);
+            gradient.addColorStop(1, palette.shadow);
+            ctx.fillStyle = gradient;
+
+            this.drawShape(ctx, tile.kind, radius);
+            ctx.fill();
+
+            ctx.lineWidth = Math.max(2, radius * 0.1);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.34)";
+            ctx.stroke();
+
+            ctx.save();
+            ctx.globalAlpha = 0.7;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.52)";
+            ctx.beginPath();
+            ctx.arc(-radius * 0.22, -radius * 0.28, radius * 0.18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.restore();
+          }
+
+          drawShape(ctx, kind, radius) {
+            ctx.beginPath();
+
+            switch (kind) {
+              case 0: {
+                ctx.moveTo(0, -radius);
+                ctx.lineTo(radius * 0.76, 0);
+                ctx.lineTo(0, radius);
+                ctx.lineTo(-radius * 0.76, 0);
+                ctx.closePath();
+                break;
+              }
+              case 1: {
+                ctx.arc(0, 0, radius * 0.96, 0, Math.PI * 2);
+                break;
+              }
+              case 2: {
+                roundedRectPath(ctx, -radius * 0.86, -radius * 0.86, radius * 1.72, radius * 1.72, radius * 0.42);
+                break;
+              }
+              case 3: {
+                ctx.moveTo(0, -radius);
+                ctx.lineTo(radius * 0.94, radius * 0.62);
+                ctx.lineTo(-radius * 0.94, radius * 0.62);
+                ctx.closePath();
+                break;
+              }
+              case 4: {
+                for (let index = 0; index < 6; index += 1) {
+                  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / 6;
+                  const x = Math.cos(angle) * radius;
+                  const y = Math.sin(angle) * radius;
+                  if (index === 0) {
+                    ctx.moveTo(x, y);
+                  } else {
+                    ctx.lineTo(x, y);
+                  }
+                }
+                ctx.closePath();
+                break;
+              }
+              default: {
+                ctx.moveTo(0, -radius);
+                ctx.bezierCurveTo(radius * 0.78, -radius * 0.72, radius * 0.98, 0, 0, radius);
+                ctx.bezierCurveTo(-radius * 0.98, 0, -radius * 0.78, -radius * 0.72, 0, -radius);
+                ctx.closePath();
+              }
+            }
+          }
+        }
+
+        class PulsePrismGame {
+          constructor() {
+            this.canvas = document.getElementById("gameCanvas");
+            this.ctx = this.canvas.getContext("2d");
+            this.board = new Match3Board(8, 8, GEM_TYPES);
+            this.particles = new ParticleSystem();
+            this.ui = {
+              score: document.getElementById("scoreValue"),
+              level: document.getElementById("levelValue"),
+              goal: document.getElementById("goalValue"),
+              time: document.getElementById("timeValue"),
+              combo: document.getElementById("comboValue"),
+              cleared: document.getElementById("clearedValue"),
+              gain: document.getElementById("gainValue"),
+              state: document.getElementById("stateValue"),
+              message: document.getElementById("statusMessage"),
+              titleOverlay: document.getElementById("titleOverlay"),
+              gameOverOverlay: document.getElementById("gameOverOverlay"),
+              gameOverSummary: document.getElementById("gameOverSummary"),
+              soundButtons: [
+                document.getElementById("soundToggle"),
+                document.getElementById("titleSoundButton")
+              ],
+              startButton: document.getElementById("startButton"),
+              playAgainButton: document.getElementById("playAgainButton"),
+              restartButton: document.getElementById("restartButton")
+            };
+
+            this.audio = new AudioEngine(this.ui.soundButtons);
+            this.phase = "title";
+            this.phaseClock = 0;
+            this.score = 0;
+            this.level = 1;
+            this.goal = 1800;
+            this.timeLeft = 75;
+            this.bestCombo = 1;
+            this.totalCleared = 0;
+            this.lastGain = 0;
+            this.hasBegun = false;
+            this.pendingSwap = null;
+            this.comboChain = 0;
+            this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
+            this.stateLabel = "Pret";
+            this.levelFlash = 0;
+            this.swapHintFlash = 0;
+            this.inputDrag = {
+              active: false,
+              pointerId: null,
+              startPoint: null,
+              startCell: null,
+              moved: false
+            };
+            this.lastTimestamp = performance.now();
+
+            this.handleResize = this.handleResize.bind(this);
+            this.loop = this.loop.bind(this);
+
+            this.bindEvents();
+            this.audio.setEnabled(true);
+            this.board.reset();
+            this.handleResize();
+            this.render();
+            requestAnimationFrame(this.loop);
+          }
+
+          bindEvents() {
+            window.addEventListener("resize", this.handleResize);
+
+            this.ui.startButton.addEventListener("click", async () => {
+              await this.audio.unlock();
+              this.startNewGame();
+            });
+
+            this.ui.playAgainButton.addEventListener("click", async () => {
+              await this.audio.unlock();
+              this.startNewGame();
+            });
+
+            this.ui.restartButton.addEventListener("click", async () => {
+              await this.audio.unlock();
+              this.startNewGame();
+            });
+
+            this.ui.soundButtons.forEach((button) => {
+              button.addEventListener("click", async () => {
+                this.audio.toggle();
+                if (this.audio.enabled) {
+                  await this.audio.unlock();
+                  this.audio.playSwap();
+                }
+              });
+            });
+
+            this.canvas.addEventListener("pointerdown", (event) => this.onPointerDown(event));
+            this.canvas.addEventListener("pointermove", (event) => this.onPointerMove(event));
+            this.canvas.addEventListener("pointerup", (event) => this.onPointerUp(event));
+            this.canvas.addEventListener("pointercancel", () => this.resetPointerState());
+          }
+
+          handleResize() {
+            const rect = this.canvas.getBoundingClientRect();
+            const ratio = window.devicePixelRatio || 1;
+
+            this.canvas.width = Math.round(rect.width * ratio);
+            this.canvas.height = Math.round(rect.height * ratio);
+            this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+            const size = Math.min(rect.width, rect.height);
+            const boardSize = size * 0.86;
+            const boardX = (rect.width - boardSize) / 2;
+            const boardY = (rect.height - boardSize) / 2;
+            this.board.setLayout(boardX, boardY, boardSize);
+            this.render();
+          }
+
+          async startNewGame() {
+            await this.audio.unlock();
+            this.board.reset();
+            this.board.selectedCell = null;
+            this.phase = "idle";
+            this.phaseClock = 0;
+            this.score = 0;
+            this.level = 1;
+            this.goal = 1800;
+            this.timeLeft = 75;
+            this.bestCombo = 1;
+            this.totalCleared = 0;
+            this.lastGain = 0;
+            this.pendingSwap = null;
+            this.comboChain = 0;
+            this.statusText = "Fais ton premier echange pour lancer la reaction.";
+            this.stateLabel = "En jeu";
+            this.levelFlash = 0;
+            this.swapHintFlash = 0;
+            this.hasBegun = true;
+            this.ui.titleOverlay.classList.remove("visible");
+            this.ui.gameOverOverlay.classList.remove("visible");
+            this.resetPointerState();
+            this.updateUi();
+          }
+
+          endGame() {
+            this.phase = "gameover";
+            this.phaseClock = 0;
+            this.stateLabel = "Fin";
+            this.statusText = "Temps ecoule. Relance pour une nouvelle grille.";
+            this.board.selectedCell = null;
+            this.resetPointerState();
+            this.audio.playGameOver();
+            this.ui.gameOverSummary.textContent =
+              `Score final ${Math.round(this.score)}. Niveau ${this.level}. ` +
+              `Meilleur combo x${this.bestCombo}. Prismes casses ${this.totalCleared}.`;
+            this.ui.gameOverOverlay.classList.add("visible");
+            this.updateUi();
+          }
+
+          updateUi() {
+            this.ui.score.textContent = Math.round(this.score).toString();
+            this.ui.level.textContent = this.level.toString();
+            this.ui.goal.textContent = Math.round(this.goal).toString();
+            this.ui.time.textContent = Math.max(0, Math.ceil(this.timeLeft)).toString();
+            this.ui.combo.textContent = `x${this.bestCombo}`;
+            this.ui.cleared.textContent = this.totalCleared.toString();
+            this.ui.gain.textContent = this.lastGain.toString();
+            this.ui.state.textContent = this.stateLabel;
+            this.ui.message.textContent = this.statusText;
+          }
+
+          onPointerDown(event) {
+            if (!this.canReceiveInput()) {
+              return;
+            }
+
+            const point = this.canvasPointFromEvent(event);
+            const cell = this.board.cellFromPoint(point.x, point.y);
+            if (!cell) {
+              return;
+            }
+
+            this.inputDrag = {
+              active: true,
+              pointerId: event.pointerId,
+              startPoint: point,
+              startCell: cell,
+              moved: false
+            };
+
+            this.canvas.setPointerCapture(event.pointerId);
+          }
+
+          onPointerMove(event) {
+            if (!this.inputDrag.active || this.inputDrag.pointerId !== event.pointerId || !this.canReceiveInput()) {
+              return;
+            }
+
+            const point = this.canvasPointFromEvent(event);
+            const dx = point.x - this.inputDrag.startPoint.x;
+            const dy = point.y - this.inputDrag.startPoint.y;
+            const threshold = this.board.layout.cellSize * 0.26;
+
+            if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) {
+              return;
+            }
+
+            this.inputDrag.moved = true;
+
+            const direction =
+              Math.abs(dx) > Math.abs(dy)
+                ? { row: 0, column: dx > 0 ? 1 : -1 }
+                : { row: dy > 0 ? 1 : -1, column: 0 };
+
+            const target = {
+              row: this.inputDrag.startCell.row + direction.row,
+              column: this.inputDrag.startCell.column + direction.column
+            };
+
+            if (!this.board.inBounds(target.row, target.column)) {
+              return;
+            }
+
+            this.trySwap(this.inputDrag.startCell, target);
+            this.resetPointerState();
+          }
+
+          onPointerUp(event) {
+            if (!this.inputDrag.active || this.inputDrag.pointerId !== event.pointerId || !this.canReceiveInput()) {
+              this.resetPointerState();
+              return;
+            }
+
+            const point = this.canvasPointFromEvent(event);
+            const cell = this.board.cellFromPoint(point.x, point.y);
+
+            if (!this.inputDrag.moved && cell) {
+              this.handleTapSelection(cell);
+            }
+
+            this.resetPointerState();
+          }
+
+          resetPointerState() {
+            this.inputDrag.active = false;
+            this.inputDrag.pointerId = null;
+            this.inputDrag.startPoint = null;
+            this.inputDrag.startCell = null;
+            this.inputDrag.moved = false;
+          }
+
+          canvasPointFromEvent(event) {
+            const rect = this.canvas.getBoundingClientRect();
+            return {
+              x: event.clientX - rect.left,
+              y: event.clientY - rect.top
+            };
+          }
+
+          handleTapSelection(cell) {
+            if (!this.board.selectedCell) {
+              this.board.selectedCell = cell;
+              this.statusText = "Selectionne une case voisine pour echanger.";
+              this.stateLabel = "Selection";
+              this.updateUi();
+              return;
+            }
+
+            if (this.board.selectedCell.row === cell.row && this.board.selectedCell.column === cell.column) {
+              this.board.selectedCell = null;
+              this.statusText = "Selection annulee.";
+              this.stateLabel = "En jeu";
+              this.updateUi();
+              return;
+            }
+
+            if (this.board.areAdjacent(this.board.selectedCell, cell)) {
+              this.trySwap(this.board.selectedCell, cell);
+              return;
+            }
+
+            this.board.selectedCell = cell;
+            this.statusText = "Cases non adjacentes. Choisis une voisine.";
+            this.stateLabel = "Selection";
+            this.updateUi();
+          }
+
+          canReceiveInput() {
+            return this.hasBegun && this.phase === "idle" && !this.ui.gameOverOverlay.classList.contains("visible");
+          }
+
+          trySwap(first, second) {
+            if (!this.canReceiveInput() || !this.board.areAdjacent(first, second)) {
+              return;
+            }
+
+            this.board.selectedCell = null;
+            this.pendingSwap = {
+              first: { row: first.row, column: first.column },
+              second: { row: second.row, column: second.column }
+            };
+            this.board.swapTiles(first, second);
+            this.phase = "swap";
+            this.phaseClock = 0;
+            this.comboChain = 0;
+            this.stateLabel = "Swap";
+            this.statusText = "Verification des alignements...";
+            this.audio.playSwap();
+            this.updateUi();
+          }
+
+          queueMatchResolution(matchResult) {
+            this.comboChain += 1;
+            this.bestCombo = Math.max(this.bestCombo, this.comboChain);
+
+            const lineBonus = matchResult.lines.reduce(
+              (total, line) => total + Math.max(0, line.length - 3) * 85,
+              0
+            );
+            const base = matchResult.cells.length * 120 + lineBonus;
+            const gained = Math.round(base * (1 + (this.comboChain - 1) * 0.45));
+            this.score += gained;
+            this.lastGain = gained;
+            this.totalCleared += matchResult.cells.length;
+            this.stateLabel = this.comboChain > 1 ? `Cascade x${this.comboChain}` : "Match";
+            this.statusText =
+              this.comboChain > 1
+                ? `Cascade x${this.comboChain} ! ${gained} points.`
+                : `${matchResult.cells.length} prismes brises, ${gained} points.`;
+
+            matchResult.cells.forEach((cell) => {
+              const tile = this.board.grid[cell.row][cell.column];
+              const center = this.board.getCellCenter(cell.row, cell.column);
+              this.particles.burst(center.x, center.y, GEM_TYPES[tile.kind].base, 8, 1 + this.comboChain * 0.18);
+            });
+
+            this.board.markMatches(matchResult);
+            this.phase = "clear";
+            this.phaseClock = 0;
+            this.audio.playMatch(this.comboChain, matchResult.cells.length);
+            this.updateUi();
+          }
+
+          advanceLevelIfNeeded() {
+            let leveledUp = false;
+
+            while (this.score >= this.goal) {
+              this.level += 1;
+              this.goal = Math.round(this.goal * 1.45 + 520);
+              this.timeLeft = Math.min(120, this.timeLeft + 16);
+              leveledUp = true;
+            }
+
+            if (leveledUp) {
+              this.levelFlash = 1;
+              this.stateLabel = "Niveau +";
+              this.statusText = `Objectif atteint. Niveau ${this.level}, temps rallonge.`;
+              this.board.shuffleKinds();
+              this.phase = "shuffle";
+              this.phaseClock = 0;
+              this.audio.playLevelUp();
+            }
+
+            return leveledUp;
+          }
+
+          afterCascade() {
+            if (this.advanceLevelIfNeeded()) {
+              this.updateUi();
+              return;
+            }
+
+            if (!this.board.hasPossibleMoves()) {
+              this.board.shuffleKinds();
+              this.phase = "shuffle";
+              this.phaseClock = 0;
+              this.stateLabel = "Melange";
+              this.statusText = "Plus de coups disponibles, melange du plateau.";
+              this.audio.playShuffle();
+            } else {
+              this.phase = "idle";
+              this.phaseClock = 0;
+              this.stateLabel = "En jeu";
+              this.statusText = "A toi de jouer.";
+            }
+
+            this.updateUi();
+          }
+
+          update(dt, timestamp) {
+            this.phaseClock += dt;
+            this.levelFlash = Math.max(0, this.levelFlash - dt * 1.8);
+            this.swapHintFlash = Math.max(0, this.swapHintFlash - dt * 3);
+
+            if (this.hasBegun && this.phase !== "title" && this.phase !== "gameover") {
+              this.timeLeft = Math.max(0, this.timeLeft - dt);
+              if (this.timeLeft <= 0) {
+                this.endGame();
+                return;
+              }
+            }
+
+            this.board.updateAnimations(dt);
+            this.particles.update(dt);
+
+            switch (this.phase) {
+              case "swap": {
+                if (this.phaseClock >= 0.14 && this.board.isSettled()) {
+                  const matches = this.board.findMatches();
+                  if (matches.cells.length === 0) {
+                    this.board.swapTiles(this.pendingSwap.first, this.pendingSwap.second);
+                    this.phase = "revert";
+                    this.phaseClock = 0;
+                    this.stateLabel = "Annule";
+                    this.statusText = "Aucun match. Essaie un autre echange.";
+                    this.swapHintFlash = 1;
+                    this.audio.playInvalid();
+                    this.updateUi();
+                  } else {
+                    this.queueMatchResolution(matches);
+                  }
+                }
+                break;
+              }
+
+              case "revert": {
+                if (this.phaseClock >= 0.14 && this.board.isSettled()) {
+                  this.phase = "idle";
+                  this.phaseClock = 0;
+                  this.stateLabel = "En jeu";
+                  this.statusText = "Cherche une meilleure ouverture.";
+                  this.updateUi();
+                }
+                break;
+              }
+
+              case "clear": {
+                if (this.phaseClock >= 0.18) {
+                  this.board.collapseAndRefill();
+                  this.phase = "fall";
+                  this.phaseClock = 0;
+                }
+                break;
+              }
+
+              case "fall": {
+                if (this.phaseClock >= 0.18 && this.board.isSettled()) {
+                  const matches = this.board.findMatches();
+                  if (matches.cells.length > 0) {
+                    this.queueMatchResolution(matches);
+                  } else {
+                    this.afterCascade();
+                  }
+                }
+                break;
+              }
+
+              case "shuffle": {
+                if (this.phaseClock >= 0.26 && this.board.isSettled()) {
+                  this.phase = "idle";
+                  this.phaseClock = 0;
+                  this.stateLabel = "En jeu";
+                  this.statusText = "Nouvelle disposition. Exploite-la vite.";
+                  this.updateUi();
+                }
+                break;
+              }
+
+              default:
+                break;
+            }
+
+            if (Math.floor(timestamp * 10) % 2 === 0) {
+              this.updateUi();
+            }
+          }
+
+          drawBackdrop() {
+            const rect = this.canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+            const gradient = this.ctx.createLinearGradient(0, 0, width, height);
+
+            gradient.addColorStop(0, "rgba(19, 47, 58, 0.72)");
+            gradient.addColorStop(0.52, "rgba(6, 15, 24, 0.92)");
+            gradient.addColorStop(1, "rgba(16, 37, 50, 0.85)");
+
+            this.ctx.clearRect(0, 0, width, height);
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(0, 0, width, height);
+
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.18;
+            for (let index = 0; index < 20; index += 1) {
+              const x = (width / 20) * index + 18;
+              const y = (height / 20) * ((index * 7) % 20) + 14;
+              this.ctx.beginPath();
+              this.ctx.arc(x, y, 1.4 + (index % 3), 0, Math.PI * 2);
+              this.ctx.fillStyle = index % 2 === 0 ? "#ffcf85" : "#9bece4";
+              this.ctx.fill();
+            }
+            this.ctx.restore();
+          }
+
+          drawHudEffects(timestamp) {
+            const rect = this.canvas.getBoundingClientRect();
+            const width = rect.width;
+            const pulse = 0.5 + Math.sin(timestamp * 1.4) * 0.5;
+
+            if (this.timeLeft <= 12 && this.phase !== "title" && this.phase !== "gameover") {
+              this.ctx.save();
+              this.ctx.fillStyle = `rgba(255, 92, 92, ${0.12 + pulse * 0.08})`;
+              this.ctx.fillRect(0, 0, width, rect.height);
+              this.ctx.restore();
+            }
+
+            if (this.levelFlash > 0) {
+              this.ctx.save();
+              this.ctx.fillStyle = `rgba(255, 211, 111, ${this.levelFlash * 0.16})`;
+              this.ctx.fillRect(0, 0, width, rect.height);
+              this.ctx.restore();
+            }
+          }
+
+          render() {
+            const timestamp = performance.now() / 1000;
+            this.drawBackdrop();
+            this.board.draw(this.ctx, timestamp, this.levelFlash);
+            this.particles.draw(this.ctx);
+            this.drawHudEffects(timestamp);
+          }
+
+          loop(now) {
+            const dt = clamp((now - this.lastTimestamp) / 1000, 0.001, 0.033);
+            this.lastTimestamp = now;
+            this.update(dt, now / 1000);
+            this.render();
+            requestAnimationFrame(this.loop);
+          }
+        }
+
+        new PulsePrismGame();
+      })();
+    </script>
+  </body>
+</html>
