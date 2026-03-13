@@ -273,7 +273,7 @@
     keys: new Set(),
     botInput: null,
     touch: { active: false, x: 0, y: 0 },
-    frame: { lastTs: 0 },
+    frame: { lastTs: 0, accumulator: 0, alpha: 0, step: 1 / 120, maxSubSteps: 8, stepsLastFrame: 0, fps: 60, fpsTimer: 0, fpsSamples: 0, fpsAccum: 0 },
 
     audio: { enabled: true, ctx: null, master: null },
     reducedFx: false,
@@ -1776,7 +1776,7 @@
   function showBossCallout(text, duration = 0.9, tone = "warn") { state.bossCalloutText = text; state.bossCalloutTone = tone; state.bossCalloutTimer = Math.max(state.bossCalloutTimer, duration); }
 
   // ─── RENDER MAIN ───────────────────────────────────────────────────────────
-  function render() {
+  function render(alpha = 0) {
     const player = state.player;
     const shakeX = state.shakeTime > 0 ? (Math.random() - 0.5) * state.shakePower * 2 : 0;
     const shakeY = state.shakeTime > 0 ? (Math.random() - 0.5) * state.shakePower * 2 : 0;
@@ -1785,6 +1785,7 @@
     ctx.translate(shakeX, shakeY);
 
     drawBackground();
+    drawAtmosphericFog();
     drawObstacles();
     drawRelic();
     drawHealOrb();
@@ -1796,11 +1797,13 @@
     if (!state.reducedFx) drawTrails();
     drawEnemies();
     drawBossProjectiles();
+    drawEnergyLinks(player);
     drawComboAura(player);
     drawPlayer(player);
     drawImpactRings();
     drawParticles();
     drawFloatingTexts();
+    drawNeonBloomOverlay(player, alpha);
     drawWorldTimer();
     drawBossHealthBar();
     drawBossBanner();
@@ -1826,6 +1829,7 @@
 
     drawDamageVignette();
     drawDangerBorder(player);
+    drawCrtPostFx(alpha);
 
     if (state.paused) {
       ctx.fillStyle = "#00000088";
@@ -1845,6 +1849,78 @@
   }
 
   // ─── DRAW HELPERS ──────────────────────────────────────────────────────────
+  function drawAtmosphericFog() {
+    if (state.reducedFx) return;
+    const t = state.elapsed;
+    const g = ctx.createLinearGradient(0, 0, 0, CONFIG.height);
+    g.addColorStop(0, `rgba(84, 162, 255, ${0.055 + Math.sin(t * 0.43) * 0.015})`);
+    g.addColorStop(0.55, "rgba(42, 112, 198, 0.03)");
+    g.addColorStop(1, `rgba(20, 55, 125, ${0.09 + Math.sin(t * 0.27 + 1.2) * 0.02})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+  }
+
+  function drawEnergyLinks(player) {
+    if (!player || state.reducedFx) return;
+    const pickups = [state.relic, state.healOrb, state.aegisOrb, state.chronoOrb, state.surgeOrb].filter(Boolean);
+    for (const item of pickups) {
+      const dx = item.x - player.x;
+      const dy = item.y - player.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 220) continue;
+      const p = 1 - dist / 220;
+      ctx.strokeStyle = `rgba(142, 224, 255, ${0.08 + p * 0.16})`;
+      ctx.lineWidth = 0.8 + p * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y);
+      const bend = Math.sin(state.elapsed * 6 + dist * 0.02) * (8 + p * 10);
+      ctx.quadraticCurveTo((player.x + item.x) * 0.5 + dy / Math.max(dist, 1) * bend, (player.y + item.y) * 0.5 - dx / Math.max(dist, 1) * bend, item.x, item.y);
+      ctx.stroke();
+    }
+  }
+
+  function drawNeonBloomOverlay(player, alpha = 0) {
+    if (state.reducedFx) return;
+    const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 5.5 + alpha * 0.6);
+    ctx.globalCompositeOperation = "screen";
+    if (player) {
+      const glow = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, 180);
+      glow.addColorStop(0, `rgba(120, 212, 255, ${0.08 + pulse * 0.08})`);
+      glow.addColorStop(0.75, "rgba(88, 180, 255, 0.02)");
+      glow.addColorStop(1, "rgba(88, 180, 255, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 180, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (state.miniBoss) {
+      const boss = state.miniBoss;
+      const bossGlow = ctx.createRadialGradient(boss.x, boss.y, 0, boss.x, boss.y, 240);
+      bossGlow.addColorStop(0, "rgba(255, 154, 214, 0.17)");
+      bossGlow.addColorStop(1, "rgba(255, 154, 214, 0)");
+      ctx.fillStyle = bossGlow;
+      ctx.beginPath();
+      ctx.arc(boss.x, boss.y, 240, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function drawCrtPostFx(alpha = 0) {
+    if (state.reducedFx) return;
+    const v = ctx.createRadialGradient(CONFIG.width * 0.5, CONFIG.height * 0.5, CONFIG.height * 0.2, CONFIG.width * 0.5, CONFIG.height * 0.5, CONFIG.width * 0.7);
+    v.addColorStop(0, "rgba(8, 25, 55, 0)");
+    v.addColorStop(1, "rgba(4, 10, 26, 0.34)");
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+    ctx.globalAlpha = 0.09;
+    ctx.fillStyle = "#b6dcff";
+    const offset = (state.elapsed * 42 + alpha * 6) % 4;
+    for (let y = -offset; y < CONFIG.height; y += 4) ctx.fillRect(0, y, CONFIG.width, 1);
+    ctx.globalAlpha = 1;
+  }
+
   function drawDamageVignette() {
     if (state.hurtOverlay <= 0) return;
     const p = clamp(state.hurtOverlay, 0, 1);
@@ -2648,10 +2724,32 @@
   // ─── LOOP ──────────────────────────────────────────────────────────────────
   function loop(ts) {
     if (!state.frame.lastTs) state.frame.lastTs = ts;
-    const dt = Math.min(0.05, (ts - state.frame.lastTs) / 1000);
+    const frameDt = clamp((ts - state.frame.lastTs) / 1000, 0, 0.09);
     state.frame.lastTs = ts;
-    update(dt);
-    render();
+
+    const frame = state.frame;
+    frame.accumulator += frameDt;
+    frame.fpsTimer += frameDt;
+    frame.fpsAccum += frameDt;
+    frame.fpsSamples += 1;
+    if (frame.fpsTimer >= 0.4) {
+      frame.fps = frame.fpsAccum > 0 ? frame.fpsSamples / frame.fpsAccum : frame.fps;
+      frame.fpsTimer = 0;
+      frame.fpsAccum = 0;
+      frame.fpsSamples = 0;
+    }
+
+    let steps = 0;
+    while (frame.accumulator >= frame.step && steps < frame.maxSubSteps) {
+      update(frame.step);
+      frame.accumulator -= frame.step;
+      steps += 1;
+    }
+    if (steps >= frame.maxSubSteps && frame.accumulator > frame.step) frame.accumulator = frame.step * 0.5;
+
+    frame.stepsLastFrame = steps;
+    frame.alpha = clamp(frame.accumulator / frame.step, 0, 1);
+    render(frame.alpha);
     requestAnimationFrame(loop);
   }
 
@@ -2968,6 +3066,7 @@
           pendingDashLeft: state.pendingDashLeft, timeSlowLeft: state.timeSlowLeft,
           spawnRecoveryLeft: state.spawnRecoveryLeft, difficulty: state.difficulty,
           objectiveSeconds: CONFIG.objectiveSeconds, nextCheckpointAt: state.nextCheckpointAt,
+          engine: { step: state.frame.step, maxSubSteps: state.frame.maxSubSteps, alpha: state.frame.alpha, fps: state.frame.fps, stepsLastFrame: state.frame.stepsLastFrame },
           audioEnabled: state.audio.enabled, reducedFx: state.reducedFx,
           directives: {
             active: state.directives.active ? { type: state.directives.active.type, tag: state.directives.active.tag, tone: state.directives.active.tone, description: state.directives.active.description, rewardText: state.directives.active.rewardText, progress: state.directives.active.progress, target: state.directives.active.target, timeLeft: state.directives.active.timeLeft, maxTime: state.directives.active.maxTime } : null,
@@ -2992,8 +3091,16 @@
       setBotInput(input) { state.botInput = { left: !!input?.left, right: !!input?.right, up: !!input?.up, down: !!input?.down }; },
       step(dt = 1 / 60, input = null) {
         if (input) { this.setBotInput(input); if (input.dash) tryDash(); }
-        const safeDt = clamp(Number(dt) || 0.016, 0.001, 0.09);
-        update(safeDt); return this.getState();
+        const safeDt = clamp(Number(dt) || 0.016, 0.001, 0.2);
+        let remaining = safeDt;
+        let guard = 0;
+        while (remaining > 0 && guard < 80) {
+          const slice = Math.min(state.frame.step, remaining);
+          update(slice);
+          remaining -= slice;
+          guard += 1;
+        }
+        return this.getState();
       },
       clearBotInput() { state.botInput = null; },
       setAudioEnabled(enabled) { setAudioEnabled(!!enabled); },
@@ -3056,7 +3163,7 @@
     setupStars();
     renderLeaderboard();
     updateActionButton();
-    showOverlay("Survis 60s. Boss a 30s (3 phases + salves Nova). Les DIRECTIVES donnent des bonus tactiques rapides. Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono/SURGE a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto.");
+    showOverlay("Survis 60s. Nouveau moteur fixe 120 Hz + rendu neon renforce. Boss a 30s (3 phases + salves Nova). Les DIRECTIVES donnent des bonus tactiques rapides. Dash en fenetre BOSS-OPEN. Combo reliques + Aegis/Chrono/SURGE a collecter. Espace = rush. M = audio. V = FX. Onglet masque = pause auto.");
     syncHud();
     requestAnimationFrame(loop);
   }
