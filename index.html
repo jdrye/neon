@@ -5,116 +5,128 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Pulse Prism Match-3</title>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+
       :root {
-        --bg-1: #08141f;
-        --bg-2: #102b34;
-        --bg-3: #16394b;
-        --panel: rgba(7, 17, 24, 0.8);
-        --panel-strong: rgba(8, 20, 28, 0.92);
-        --line: rgba(157, 244, 229, 0.22);
-        --text: #ebfbf7;
-        --muted: #9dd7ce;
-        --accent: #ffd36f;
-        --accent-2: #ff7d5c;
-        --glow: rgba(255, 211, 111, 0.38);
-        --ok: #6ef2bf;
-        --danger: #ff8d88;
-        --shadow: 0 20px 80px rgba(0, 0, 0, 0.42);
-        --display-font: "Palatino Linotype", "Book Antiqua", Georgia, serif;
-        --ui-font: "Trebuchet MS", "Verdana", sans-serif;
+        --bg-1: #040d14;
+        --bg-2: #081822;
+        --bg-3: #0d2233;
+        --panel: rgba(4, 10, 18, 0.82);
+        --panel-strong: rgba(3, 8, 15, 0.94);
+        --line: rgba(120, 220, 210, 0.18);
+        --line-bright: rgba(120, 220, 210, 0.38);
+        --text: #e8faf6;
+        --muted: #7ec8c0;
+        --accent: #ffc94d;
+        --accent-2: #ff6e44;
+        --accent-3: #44dfff;
+        --glow: rgba(255, 201, 77, 0.45);
+        --ok: #4df2b8;
+        --danger: #ff7070;
+        --shadow: 0 24px 90px rgba(0,0,0,0.55);
+        --panel-glow: 0 0 0 1px rgba(120,220,210,0.12), 0 20px 60px rgba(0,0,0,0.48);
+        --display-font: 'Cinzel', 'Palatino Linotype', Georgia, serif;
+        --ui-font: 'Rajdhani', 'Trebuchet MS', sans-serif;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
-      html,
-      body {
+      html, body {
         margin: 0;
         min-height: 100%;
-        background:
-          radial-gradient(circle at top left, rgba(255, 168, 86, 0.17), transparent 28%),
-          radial-gradient(circle at 78% 18%, rgba(87, 230, 206, 0.18), transparent 30%),
-          linear-gradient(140deg, var(--bg-1), var(--bg-2) 48%, var(--bg-3));
+        background: var(--bg-1);
         color: var(--text);
         font-family: var(--ui-font);
+        font-size: 15px;
         overflow-x: hidden;
       }
 
-      body::before,
-      body::after {
-        content: "";
-        position: fixed;
-        inset: auto;
-        pointer-events: none;
-        border-radius: 999px;
-        filter: blur(48px);
-        opacity: 0.65;
-      }
-
+      /* Nebula background */
       body::before {
-        width: 18rem;
-        height: 18rem;
-        top: -5rem;
-        left: -4rem;
-        background: rgba(255, 156, 74, 0.16);
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(ellipse at 15% 20%, rgba(255,130,60,0.13) 0%, transparent 40%),
+          radial-gradient(ellipse at 80% 10%, rgba(68,223,255,0.12) 0%, transparent 38%),
+          radial-gradient(ellipse at 50% 90%, rgba(120,80,255,0.09) 0%, transparent 45%),
+          radial-gradient(ellipse at 90% 75%, rgba(68,242,184,0.08) 0%, transparent 35%),
+          linear-gradient(165deg, var(--bg-1) 0%, #060f1a 40%, #0a1e2e 70%, var(--bg-3) 100%);
+        pointer-events: none;
+        z-index: 0;
+        animation: nebula-drift 18s ease-in-out infinite alternate;
       }
 
-      body::after {
-        width: 22rem;
-        height: 22rem;
-        right: -7rem;
-        bottom: -8rem;
-        background: rgba(80, 220, 206, 0.14);
+      @keyframes nebula-drift {
+        0% { opacity: 1; }
+        50% { opacity: 0.85; }
+        100% { opacity: 1; }
       }
+
+      body > * { position: relative; z-index: 1; }
 
       .app-shell {
-        position: relative;
-        width: min(1180px, calc(100vw - 24px));
+        width: min(1220px, calc(100vw - 20px));
         margin: 0 auto;
-        padding: 18px 0 28px;
+        padding: 16px 0 28px;
       }
 
+      /* ── TOP BAR ── */
       .top-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 16px;
-        padding: 14px 18px;
+        gap: 14px;
+        margin-bottom: 14px;
+        padding: 16px 22px;
+        border-radius: 22px;
         border: 1px solid var(--line);
-        border-radius: 24px;
-        background: rgba(5, 13, 19, 0.5);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(18px);
+        background: var(--panel);
+        box-shadow: var(--panel-glow);
+        backdrop-filter: blur(24px);
+        position: relative;
+        overflow: hidden;
       }
 
-      .brand-lockup {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+      .top-bar::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, rgba(68,223,255,0.5) 30%, rgba(255,201,77,0.6) 70%, transparent 100%);
+        animation: shimmer-bar 4s linear infinite;
       }
+
+      @keyframes shimmer-bar {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+
+      .brand-lockup { display: flex; flex-direction: column; gap: 2px; }
 
       .eyebrow {
-        letter-spacing: 0.22em;
+        letter-spacing: 0.28em;
         text-transform: uppercase;
-        font-size: 0.72rem;
-        color: var(--accent);
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--accent-3);
+        font-family: var(--ui-font);
       }
 
       h1 {
         margin: 0;
         font-family: var(--display-font);
-        font-size: clamp(2rem, 4vw, 3.4rem);
+        font-size: clamp(1.9rem, 3.8vw, 3.2rem);
         line-height: 0.95;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.06em;
+        background: linear-gradient(135deg, #ffe08a 0%, #ffc94d 40%, #ff9040 70%, #ff6e44 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: drop-shadow(0 0 18px rgba(255,180,60,0.4));
       }
 
-      .tagline {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
+      .tagline { margin: 0; color: var(--muted); font-size: 0.9rem; letter-spacing: 0.04em; }
 
       .control-row {
         display: flex;
@@ -124,109 +136,173 @@
         gap: 10px;
       }
 
-      .pill-button,
-      .primary-button {
+      /* ── BUTTONS ── */
+      .pill-button, .primary-button {
         border: 0;
         border-radius: 999px;
         font: inherit;
+        font-family: var(--ui-font);
+        font-weight: 600;
+        letter-spacing: 0.06em;
         cursor: pointer;
-        transition:
-          transform 140ms ease,
-          box-shadow 140ms ease,
-          background 140ms ease,
-          color 140ms ease;
+        transition: transform 130ms ease, box-shadow 130ms ease, background 130ms ease;
       }
 
       .pill-button {
-        padding: 0.8rem 1rem;
-        background: rgba(255, 255, 255, 0.08);
+        padding: 0.72rem 1.1rem;
+        background: rgba(255,255,255,0.07);
         color: var(--text);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255,255,255,0.13);
+        font-size: 0.88rem;
       }
 
-      .pill-button:hover,
-      .pill-button:focus-visible,
-      .primary-button:hover,
-      .primary-button:focus-visible {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+      .pill-button:hover, .pill-button:focus-visible {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(68,223,255,0.3);
         outline: none;
+        border-color: rgba(68,223,255,0.35);
       }
 
       .pill-button[aria-pressed="true"] {
-        background: rgba(111, 242, 191, 0.18);
-        color: #eafff8;
-        border-color: rgba(111, 242, 191, 0.32);
+        background: rgba(68,223,255,0.14);
+        color: #c8f8ff;
+        border-color: rgba(68,223,255,0.36);
       }
 
       .primary-button {
-        padding: 0.95rem 1.35rem;
-        background: linear-gradient(135deg, var(--accent), #ffba58 42%, var(--accent-2));
-        color: #13212b;
+        padding: 0.9rem 1.5rem;
+        font-size: 0.96rem;
+        background: linear-gradient(135deg, #ffd25e 0%, #ffb030 45%, #ff6e30 100%);
+        color: #1a0e00;
         font-weight: 700;
+        letter-spacing: 0.08em;
+        box-shadow: 0 0 24px rgba(255,170,50,0.3);
       }
 
+      .primary-button:hover, .primary-button:focus-visible {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 28px rgba(255,150,30,0.45);
+        outline: none;
+      }
+
+      /* ── LAYOUT ── */
       .layout {
         display: grid;
-        grid-template-columns: minmax(230px, 0.68fr) minmax(0, 1.2fr) minmax(280px, 0.78fr);
-        gap: 18px;
+        grid-template-columns: minmax(220px, 0.64fr) minmax(0, 1.2fr) minmax(260px, 0.76fr);
+        gap: 14px;
         align-items: start;
       }
 
       .panel {
-        position: relative;
-        border-radius: 28px;
+        border-radius: 26px;
         border: 1px solid var(--line);
         background: var(--panel);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(18px);
+        box-shadow: var(--panel-glow);
+        backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
       }
 
-      .play-panel {
-        padding: 16px;
-        min-width: 0;
+      .panel::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 12px; right: 12px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(120,220,210,0.3), transparent);
+        pointer-events: none;
       }
 
+      /* ── PLAY PANEL ── */
+      .play-panel { padding: 14px; min-width: 0; }
+
+      /* ── HUD ── */
       .hud {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 14px;
+        gap: 10px;
+        margin-bottom: 12px;
       }
 
       .stat-card {
-        padding: 12px 14px;
-        min-height: 76px;
+        padding: 12px 14px 10px;
+        min-height: 72px;
         border-radius: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255,255,255,0.07);
+        background: rgba(255,255,255,0.04);
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.3s;
       }
+
+      .stat-card.danger {
+        border-color: rgba(255,100,100,0.4);
+        animation: card-pulse 0.6s ease-in-out infinite alternate;
+      }
+
+      @keyframes card-pulse {
+        from { box-shadow: none; }
+        to { box-shadow: inset 0 0 16px rgba(255,80,80,0.18), 0 0 12px rgba(255,80,80,0.12); }
+      }
+
+      .stat-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 2px;
+        border-radius: 0 0 18px 18px;
+        background: var(--accent);
+        opacity: 0.5;
+      }
+
+      .stat-card.time-card::after { background: var(--accent-3); }
+      .stat-card.level-card::after { background: var(--ok); }
+      .stat-card.goal-card::after { background: linear-gradient(90deg, var(--ok), var(--accent)); }
 
       .stat-label {
         display: block;
-        font-size: 0.72rem;
-        letter-spacing: 0.18em;
+        font-size: 0.68rem;
+        letter-spacing: 0.22em;
         text-transform: uppercase;
         color: var(--muted);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
+        font-weight: 600;
       }
 
       .stat-value {
         font-family: var(--display-font);
-        font-size: clamp(1.3rem, 2.5vw, 2rem);
+        font-size: clamp(1.2rem, 2.4vw, 1.9rem);
         line-height: 1;
+        letter-spacing: 0.02em;
       }
 
+      /* Progress bar for goal */
+      .goal-progress {
+        position: absolute;
+        bottom: 2px; left: 0; right: 0;
+        height: 3px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 0 0 18px 18px;
+        overflow: hidden;
+      }
+
+      .goal-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--ok), var(--accent));
+        border-radius: 4px;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 8px rgba(78,242,184,0.6);
+      }
+
+      /* ── BOARD ── */
       .board-frame {
         position: relative;
         width: 100%;
         aspect-ratio: 1 / 1;
-        border-radius: 28px;
+        border-radius: 26px;
         overflow: hidden;
-        background:
-          linear-gradient(160deg, rgba(255, 255, 255, 0.08), transparent 35%),
-          linear-gradient(180deg, rgba(9, 17, 27, 0.92), rgba(6, 12, 20, 0.9));
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(4,10,18,0.85);
+        border: 1px solid rgba(120,220,210,0.18);
+        box-shadow: 0 0 0 1px rgba(120,220,210,0.06), inset 0 0 40px rgba(0,0,0,0.5);
       }
 
       #gameCanvas {
@@ -238,269 +314,242 @@
         touch-action: none;
       }
 
+      /* ── OVERLAYS ── */
       .board-overlay {
         position: absolute;
         inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 24px;
-        background: rgba(4, 10, 15, 0.66);
+        padding: 20px;
+        background: rgba(2, 6, 12, 0.72);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 180ms ease;
+        transition: opacity 220ms ease;
+        backdrop-filter: blur(4px);
       }
 
-      .board-overlay.visible {
-        opacity: 1;
-        pointer-events: auto;
-      }
+      .board-overlay.visible { opacity: 1; pointer-events: auto; }
 
       .overlay-card {
-        width: min(100%, 520px);
-        padding: clamp(22px, 4vw, 36px);
-        border-radius: 28px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background:
-          linear-gradient(180deg, rgba(12, 24, 34, 0.94), rgba(7, 15, 23, 0.95)),
-          rgba(8, 16, 24, 0.92);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+        width: min(100%, 500px);
+        padding: clamp(20px, 4vw, 34px);
+        border-radius: 26px;
+        border: 1px solid rgba(120,220,210,0.22);
+        background: linear-gradient(165deg, rgba(8,20,34,0.97) 0%, rgba(4,12,22,0.98) 100%);
+        box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(68,223,255,0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .overlay-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(68,223,255,0.5), rgba(255,201,77,0.5), transparent);
       }
 
       .overlay-card h2 {
-        margin: 0 0 12px;
-        font-family: var(--display-font);
-        font-size: clamp(2rem, 4vw, 3rem);
-        line-height: 0.98;
-      }
-
-      .overlay-card p {
-        margin: 0 0 14px;
-        color: var(--muted);
-        line-height: 1.55;
-      }
-
-      .instruction-list,
-      .bullet-list {
-        margin: 0 0 18px;
-        padding-left: 1.1rem;
-        color: #d8f5ef;
-        line-height: 1.5;
-      }
-
-      .instruction-list li,
-      .bullet-list li {
-        margin-bottom: 0.45rem;
-      }
-
-      .overlay-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 22px;
-      }
-
-      .left-panel,
-      .side-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-      }
-
-      .info-card,
-      .status-card {
-        padding: 18px;
-      }
-
-      .info-card h3,
-      .status-card h3 {
         margin: 0 0 10px;
         font-family: var(--display-font);
-        font-size: 1.35rem;
+        font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+        line-height: 0.96;
+        background: linear-gradient(135deg, #fff 0%, #ffe08a 50%, #ffa040 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: 0.04em;
       }
 
-      .info-card p,
-      .status-card p {
-        margin: 0;
+      .overlay-card p { margin: 0 0 12px; color: var(--muted); line-height: 1.58; font-size: 0.94rem; }
+
+      .instruction-list, .bullet-list {
+        margin: 0 0 16px;
+        padding-left: 1rem;
+        color: #c8ede8;
         line-height: 1.55;
+        font-size: 0.9rem;
+      }
+
+      .instruction-list li, .bullet-list li { margin-bottom: 0.4rem; }
+
+      .overlay-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+
+      /* ── SIDEBARS ── */
+      .left-panel, .side-panel { display: flex; flex-direction: column; gap: 14px; }
+
+      .info-card, .status-card, .leaderboard-card { padding: 18px 20px; }
+
+      .info-card h3, .status-card h3, .leaderboard-card h3 {
+        margin: 0 0 8px;
+        font-family: var(--display-font);
+        font-size: 1.2rem;
+        letter-spacing: 0.04em;
+        color: var(--text);
+      }
+
+      .info-card p, .status-card p, .leaderboard-card p {
+        margin: 0;
+        line-height: 1.58;
         color: var(--muted);
+        font-size: 0.88rem;
       }
 
       .status-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 14px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 12px;
       }
 
       .mini-stat {
-        padding: 12px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.07);
       }
 
       .mini-stat strong {
         display: block;
-        margin-bottom: 6px;
-        font-size: 0.76rem;
-        letter-spacing: 0.16em;
+        margin-bottom: 4px;
+        font-size: 0.66rem;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
         color: var(--muted);
+        font-family: var(--ui-font);
+        font-weight: 600;
       }
 
       .mini-stat span {
         font-family: var(--display-font);
-        font-size: 1.35rem;
+        font-size: 1.22rem;
+        letter-spacing: 0.02em;
       }
 
       .status-message {
-        margin-top: 12px;
-        padding: 14px 16px;
-        border-radius: 18px;
-        background: rgba(255, 211, 111, 0.08);
-        border: 1px solid rgba(255, 211, 111, 0.16);
-        color: #fff1cf;
-        min-height: 56px;
+        margin-top: 10px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(255,201,77,0.07);
+        border: 1px solid rgba(255,201,77,0.15);
+        color: #fff3cc;
+        min-height: 48px;
         display: flex;
         align-items: center;
+        font-size: 0.88rem;
+        line-height: 1.5;
       }
 
-      .leaderboard-card {
-        padding: 18px;
-      }
-
-      .leaderboard-card h3 {
-        margin: 0 0 10px;
-        font-family: var(--display-font);
-        font-size: 1.35rem;
-      }
-
-      .leaderboard-card p {
-        margin: 0 0 14px;
-        line-height: 1.55;
-        color: var(--muted);
-      }
-
-      .leaderboard-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: grid;
-        gap: 10px;
-      }
+      /* ── LEADERBOARD ── */
+      .leaderboard-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 
       .leaderboard-entry {
         display: grid;
         grid-template-columns: auto 1fr;
-        gap: 12px;
+        gap: 10px;
         align-items: center;
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.07);
+        transition: border-color 0.3s;
+      }
+
+      .leaderboard-entry:first-child {
+        border-color: rgba(255,201,77,0.22);
+        background: rgba(255,201,77,0.06);
       }
 
       .leaderboard-rank {
-        width: 2.2rem;
-        height: 2.2rem;
+        width: 2rem;
+        height: 2rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 999px;
-        background: rgba(255, 211, 111, 0.12);
-        color: #ffe8a8;
+        border-radius: 50%;
+        background: rgba(255,201,77,0.1);
+        color: #ffe8a0;
         font-weight: 700;
-      }
-
-      .leaderboard-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-      }
-
-      .leaderboard-score {
-        font-family: var(--display-font);
-        font-size: 1.28rem;
-        line-height: 1;
-        color: var(--text);
-      }
-
-      .leaderboard-detail {
-        color: var(--muted);
-        font-size: 0.86rem;
-      }
-
-      .footer-note {
-        margin-top: 16px;
-        text-align: center;
-        color: rgba(235, 251, 247, 0.62);
         font-size: 0.82rem;
+        border: 1px solid rgba(255,201,77,0.2);
+        font-family: var(--display-font);
       }
 
-      .accent {
+      .leaderboard-entry:first-child .leaderboard-rank {
+        background: linear-gradient(135deg, rgba(255,201,77,0.25), rgba(255,130,30,0.2));
+        border-color: rgba(255,201,77,0.45);
         color: var(--accent);
       }
 
-      .danger {
-        color: var(--danger);
+      .leaderboard-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+      .leaderboard-score {
+        font-family: var(--display-font);
+        font-size: 1.18rem;
+        line-height: 1;
+        color: var(--text);
+        letter-spacing: 0.02em;
       }
 
-      @media (max-width: 980px) {
-        .layout {
-          grid-template-columns: 1fr;
-        }
+      .leaderboard-detail { color: var(--muted); font-size: 0.8rem; }
 
-        .play-panel {
-          order: -1;
-        }
+      /* ── FOOTER ── */
+      .footer-note {
+        margin-top: 12px;
+        text-align: center;
+        color: rgba(126,200,192,0.45);
+        font-size: 0.78rem;
+        letter-spacing: 0.05em;
+      }
+
+      /* ── COMBO BAR ── */
+      .combo-indicator {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 14px;
+        border-radius: 999px;
+        background: rgba(4,10,18,0.8);
+        border: 1px solid rgba(255,201,77,0.3);
+        font-family: var(--display-font);
+        font-size: 0.95rem;
+        color: var(--accent);
+        letter-spacing: 0.05em;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+        white-space: nowrap;
+        backdrop-filter: blur(8px);
+        z-index: 10;
+      }
+
+      .combo-indicator.show { opacity: 1; }
+
+      /* ── RESPONSIVE ── */
+      @media (max-width: 980px) {
+        .layout { grid-template-columns: 1fr; }
+        .play-panel { order: -1; }
       }
 
       @media (max-width: 720px) {
-        .app-shell {
-          width: min(100vw - 16px, 100%);
-          padding: 10px 0 20px;
-        }
-
-        .top-bar {
-          padding: 14px;
-          border-radius: 22px;
-          flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .control-row {
-          width: 100%;
-          justify-content: stretch;
-        }
-
-        .control-row > * {
-          flex: 1 1 160px;
-        }
-
-        .play-panel,
-        .info-card,
-        .status-card {
-          padding: 14px;
-        }
-
-        .hud {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .overlay-card {
-          padding: 22px;
-        }
+        .app-shell { width: calc(100vw - 14px); padding: 8px 0 18px; }
+        .top-bar { padding: 14px; border-radius: 20px; flex-direction: column; align-items: flex-start; }
+        .control-row { width: 100%; justify-content: stretch; }
+        .control-row > * { flex: 1 1 140px; }
+        .play-panel, .info-card, .status-card { padding: 12px; }
+        .hud { grid-template-columns: repeat(2, 1fr); }
+        .overlay-card { padding: 20px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
+        *, *::before, *::after {
           animation: none !important;
           transition-duration: 0ms !important;
-          scroll-behavior: auto !important;
         }
       }
     </style>
@@ -509,41 +558,41 @@
     <main class="app-shell">
       <header class="top-bar">
         <div class="brand-lockup">
-          <span class="eyebrow">Arcade solo HTML</span>
+          <span class="eyebrow">Match-3 Canvas · Solo</span>
           <h1>Pulse Prism</h1>
-          <p class="tagline">Match-3 nerveux, autonome, jouable sur desktop et mobile.</p>
+          <p class="tagline">Aligne, casse, enchaîne. Un seul fichier HTML.</p>
         </div>
         <div class="control-row">
-          <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">Son actif</button>
-          <button id="restartButton" class="pill-button" type="button">Relancer</button>
+          <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
+          <button id="restartButton" class="pill-button" type="button">↺ Relancer</button>
         </div>
       </header>
 
       <section class="layout">
         <aside class="left-panel">
           <section class="panel leaderboard-card">
-            <h3>Top 3 local</h3>
-            <p>Les meilleurs scores sont conserves dans ce navigateur.</p>
-            <ol id="leaderboardList" class="leaderboard-list" aria-label="Tableau des meilleurs scores">
+            <h3>Top 3</h3>
+            <p>Scores locaux conservés dans ce navigateur.</p>
+            <ol id="leaderboardList" class="leaderboard-list" aria-label="Meilleurs scores">
               <li class="leaderboard-entry">
                 <span class="leaderboard-rank">1</span>
                 <div class="leaderboard-meta">
                   <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                  <span class="leaderboard-detail">Aucun score enregistré</span>
                 </div>
               </li>
               <li class="leaderboard-entry">
                 <span class="leaderboard-rank">2</span>
                 <div class="leaderboard-meta">
                   <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                  <span class="leaderboard-detail">Aucun score enregistré</span>
                 </div>
               </li>
               <li class="leaderboard-entry">
                 <span class="leaderboard-rank">3</span>
                 <div class="leaderboard-meta">
                   <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistre</span>
+                  <span class="leaderboard-detail">Aucun score enregistré</span>
                 </div>
               </li>
             </ol>
@@ -556,15 +605,18 @@
               <span class="stat-label">Score</span>
               <span id="scoreValue" class="stat-value">0</span>
             </article>
-            <article class="stat-card">
+            <article class="stat-card level-card">
               <span class="stat-label">Niveau</span>
               <span id="levelValue" class="stat-value">1</span>
             </article>
-            <article class="stat-card">
+            <article class="stat-card goal-card">
               <span class="stat-label">Objectif</span>
               <span id="goalValue" class="stat-value">1800</span>
+              <div class="goal-progress" aria-hidden="true">
+                <div id="goalBar" class="goal-progress-fill" style="width:0%"></div>
+              </div>
             </article>
-            <article class="stat-card">
+            <article class="stat-card time-card" id="timeCard">
               <span class="stat-label">Temps</span>
               <span id="timeValue" class="stat-value">75</span>
             </article>
@@ -572,23 +624,20 @@
 
           <div class="board-frame">
             <canvas id="gameCanvas" aria-label="Plateau du jeu Pulse Prism"></canvas>
+            <div id="comboIndicator" class="combo-indicator" aria-live="polite"></div>
 
             <div id="titleOverlay" class="board-overlay visible">
               <div class="overlay-card">
                 <p class="eyebrow">Match-3 canvas</p>
                 <h2>Allume la grille.</h2>
-                <p>
-                  Echange deux prismes voisins pour aligner au moins trois formes identiques.
-                  Fais grimper le score avant la fin du chrono, puis atteins chaque objectif pour
-                  ouvrir le niveau suivant.
-                </p>
+                <p>Échange deux prismes voisins pour aligner au moins trois formes identiques et déclencher des réactions en chaîne.</p>
                 <ul class="instruction-list">
-                  <li>Glisse un prisme vers une case voisine, ou touche deux cases adjacentes.</li>
-                  <li>Les cascades rapportent plus, et chaque niveau ajoute du temps.</li>
-                  <li>Le bouton son active ou coupe les effets Web Audio.</li>
+                  <li>Glisse un prisme ou touche deux cases adjacentes.</li>
+                  <li>Les cascades et les bonus rapportent plus — enchaîne.</li>
+                  <li>Atteins l'objectif pour passer au niveau suivant et gagner du temps.</li>
                 </ul>
                 <div class="overlay-actions">
-                  <button id="startButton" class="primary-button" type="button">Lancer la partie</button>
+                  <button id="startButton" class="primary-button" type="button">▶ Lancer la partie</button>
                   <button id="titleSoundButton" class="pill-button" type="button">Basculer le son</button>
                 </div>
               </div>
@@ -598,51 +647,44 @@
               <div class="overlay-card">
                 <p class="eyebrow">Fin de partie</p>
                 <h2>Le flux se dissipe.</h2>
-                <p id="gameOverSummary">
-                  Tu as tenu la grille jusqu'au dernier battement. Reprends la main et vise un
-                  niveau encore plus haut.
-                </p>
+                <p id="gameOverSummary">Tu as tenu la grille jusqu'au dernier battement.</p>
                 <ul class="bullet-list">
                   <li>Un bon timing sur les cascades change tout.</li>
-                  <li>Sur mobile, privilegie les glissements courts et francs.</li>
-                  <li>Le chrono remonte a chaque objectif atteint.</li>
+                  <li>Utilise les jetons bonus pour effacer des lignes entières.</li>
+                  <li>Le chrono remonte à chaque objectif atteint.</li>
                 </ul>
                 <div class="overlay-actions">
-                  <button id="playAgainButton" class="primary-button" type="button">Rejouer</button>
+                  <button id="playAgainButton" class="primary-button" type="button">▶ Rejouer</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <p class="footer-note">Un seul fichier HTML. Aucun serveur. Aucune dependance externe.</p>
+          <p class="footer-note">Un seul fichier HTML · Aucun serveur · Aucune dépendance externe</p>
         </section>
 
         <aside class="side-panel">
           <section class="panel info-card">
             <h3>Comment jouer</h3>
-            <p>
-              Assemble les prismes par trois ou plus. Les lignes de quatre et cinq valent plus, et
-              les reactions en chaine font exploser le multiplicateur.
-            </p>
+            <p>Aligne trois prismes identiques ou plus. Les lignes de 4 et 5 créent des bonus de ligne/colonne. Les cascades multiplient ton score.</p>
             <ul class="bullet-list">
-              <li>Souris : clique puis glisse, ou clique deux cases adjacentes.</li>
-              <li>Tactile : glisse directement un prisme dans la direction voulue.</li>
-              <li>Le plateau se melange automatiquement si plus aucun coup n'est possible.</li>
-              <li>Les bonus ligne, colonne et onde apparaissent via les combos et les niveaux.</li>
+              <li>Souris : glisse ou clique deux cases adjacentes.</li>
+              <li>Tactile : glisse directement dans la direction voulue.</li>
+              <li>Auto-mélange si aucun coup possible.</li>
+              <li>Après 5s d'inactivité : un indice s'affiche.</li>
             </ul>
           </section>
 
           <section class="panel status-card">
             <h3>Pulse log</h3>
-            <p>Surveille ta progression et la qualite de tes reactions en chaine.</p>
-
+            <p>Progression et qualité de tes réactions en chaîne.</p>
             <div class="status-grid">
               <div class="mini-stat">
                 <strong>Meilleur combo</strong>
-                <span id="comboValue">x1</span>
+                <span id="comboValue">×1</span>
               </div>
               <div class="mini-stat">
-                <strong>Prismes casses</strong>
+                <strong>Prismes cassés</strong>
                 <span id="clearedValue">0</span>
               </div>
               <div class="mini-stat">
@@ -650,11 +692,10 @@
                 <span id="gainValue">0</span>
               </div>
               <div class="mini-stat">
-                <strong>Etat</strong>
-                <span id="stateValue">Pret</span>
+                <strong>État</strong>
+                <span id="stateValue">Prêt</span>
               </div>
             </div>
-
             <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
           </section>
         </aside>
@@ -665,75 +706,56 @@
       (() => {
         "use strict";
 
-        const LEADERBOARD_KEY = "pulse-prism-top-scores-v1";
+        const LEADERBOARD_KEY = "pulse-prism-top-scores-v2";
 
-        const GEM_SHAPES = [
-          "diamond",
-          "orb",
-          "rounded-square",
-          "triangle",
-          "hexagon",
-          "droplet",
-          "star",
-          "kite",
-          "octagon"
-        ];
+        const GEM_SHAPES = ["diamond","orb","rounded-square","triangle","hexagon","droplet","star","kite","octagon"];
 
-        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-        const lerp = (start, end, amount) => start + (end - start) * amount;
-        const randomBetween = (min, max) => min + Math.random() * (max - min);
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 
-        function shuffleArray(items) {
-          const clone = [...items];
-          for (let index = clone.length - 1; index > 0; index -= 1) {
-            const swapIndex = Math.floor(Math.random() * (index + 1));
-            [clone[index], clone[swapIndex]] = [clone[swapIndex], clone[index]];
+        function shuffle(arr) {
+          const a = [...arr];
+          for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
           }
-          return clone;
+          return a;
         }
 
-        function roundedRectPath(ctx, x, y, width, height, radius) {
-          const r = Math.min(radius, width / 2, height / 2);
+        function rrPath(ctx, x, y, w, h, r) {
+          const rad = Math.min(r, w / 2, h / 2);
           ctx.beginPath();
-          ctx.moveTo(x + r, y);
-          ctx.arcTo(x + width, y, x + width, y + height, r);
-          ctx.arcTo(x + width, y + height, x, y + height, r);
-          ctx.arcTo(x, y + height, x, y, r);
-          ctx.arcTo(x, y, x + width, y, r);
+          ctx.moveTo(x + rad, y);
+          ctx.arcTo(x + w, y, x + w, y + h, rad);
+          ctx.arcTo(x + w, y + h, x, y + h, rad);
+          ctx.arcTo(x, y + h, x, y, rad);
+          ctx.arcTo(x, y, x + w, y, rad);
           ctx.closePath();
         }
 
-        function polygonPath(ctx, sides, radius, rotation = -Math.PI / 2) {
+        function polyPath(ctx, sides, radius, rot = -Math.PI / 2) {
           ctx.beginPath();
-          for (let index = 0; index < sides; index += 1) {
-            const angle = rotation + (Math.PI * 2 * index) / sides;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            if (index === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
-            }
+          for (let i = 0; i < sides; i++) {
+            const a = rot + (Math.PI * 2 * i) / sides;
+            i === 0 ? ctx.moveTo(Math.cos(a) * radius, Math.sin(a) * radius)
+                    : ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
           }
           ctx.closePath();
         }
 
-        function starPath(ctx, points, outerRadius, innerRadius, rotation = -Math.PI / 2) {
+        function starPath(ctx, pts, outer, inner, rot = -Math.PI / 2) {
           ctx.beginPath();
-          for (let index = 0; index < points * 2; index += 1) {
-            const angle = rotation + (Math.PI * index) / points;
-            const radius = index % 2 === 0 ? outerRadius : innerRadius;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            if (index === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
-            }
+          for (let i = 0; i < pts * 2; i++) {
+            const a = rot + (Math.PI * i) / pts;
+            const r = i % 2 === 0 ? outer : inner;
+            i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r)
+                    : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
           }
           ctx.closePath();
         }
 
+        // ──────────────── AUDIO ────────────────
         class AudioEngine {
           constructor(buttons) {
             this.buttons = buttons;
@@ -741,856 +763,681 @@
             this.context = null;
           }
 
-          setEnabled(value) {
-            this.enabled = value;
-            this.buttons.forEach((button) => {
-              button.setAttribute("aria-pressed", String(value));
-              button.textContent = value ? "Son actif" : "Son coupe";
+          setEnabled(v) {
+            this.enabled = v;
+            this.buttons.forEach(b => {
+              b.setAttribute("aria-pressed", String(v));
+              b.textContent = v ? "🔊 Son actif" : "🔇 Son coupé";
             });
           }
 
-          toggle() {
-            this.setEnabled(!this.enabled);
-          }
+          toggle() { this.setEnabled(!this.enabled); }
 
           async unlock() {
-            if (!this.enabled) {
-              return;
-            }
-
+            if (!this.enabled) return;
             if (!this.context) {
-              const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-              if (!AudioContextClass) {
-                this.enabled = false;
-                this.setEnabled(false);
-                return;
-              }
-
-              this.context = new AudioContextClass();
+              const Ctx = window.AudioContext || window.webkitAudioContext;
+              if (!Ctx) { this.setEnabled(false); return; }
+              this.context = new Ctx();
             }
-
             if (this.context.state === "suspended") {
-              try {
-                await this.context.resume();
-              } catch (error) {
-                console.warn("Audio resume failed", error);
-              }
+              try { await this.context.resume(); } catch(e) {}
             }
           }
 
-          playTone({
-            frequency,
-            duration = 0.12,
-            type = "triangle",
-            volume = 0.05,
-            detune = 0,
-            slideTo = null
-          }) {
-            if (!this.enabled || !this.context) {
-              return;
-            }
-
+          tone({ frequency, duration = 0.12, type = "triangle", volume = 0.05, detune = 0, slideTo = null }) {
+            if (!this.enabled || !this.context) return;
             const now = this.context.currentTime;
-            const oscillator = this.context.createOscillator();
-            const gainNode = this.context.createGain();
-
-            oscillator.type = type;
-            oscillator.frequency.setValueAtTime(frequency, now);
-            oscillator.detune.setValueAtTime(detune, now);
-
-            gainNode.gain.setValueAtTime(0.0001, now);
-            gainNode.gain.exponentialRampToValueAtTime(volume, now + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-            if (slideTo) {
-              oscillator.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
-            }
-
-            oscillator.connect(gainNode);
-            gainNode.connect(this.context.destination);
-            oscillator.start(now);
-            oscillator.stop(now + duration + 0.02);
+            const osc = this.context.createOscillator();
+            const gain = this.context.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(frequency, now);
+            osc.detune.setValueAtTime(detune, now);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+            if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+            osc.connect(gain);
+            gain.connect(this.context.destination);
+            osc.start(now);
+            osc.stop(now + duration + 0.02);
           }
 
-          playSwap() {
-            this.playTone({ frequency: 440, duration: 0.08, type: "triangle", volume: 0.04, slideTo: 520 });
-          }
-
-          playInvalid() {
-            this.playTone({ frequency: 240, duration: 0.12, type: "sawtooth", volume: 0.035, slideTo: 170 });
-          }
-
+          playSwap() { this.tone({ frequency: 460, duration: 0.08, type: "triangle", volume: 0.04, slideTo: 540 }); }
+          playInvalid() { this.tone({ frequency: 250, duration: 0.14, type: "sawtooth", volume: 0.035, slideTo: 170 }); }
           playMatch(combo, cleared) {
-            const volume = clamp(0.04 + combo * 0.01, 0.04, 0.085);
-            this.playTone({
-              frequency: 420 + combo * 36 + cleared * 8,
-              duration: 0.16,
-              type: "triangle",
-              volume,
-              slideTo: 620 + combo * 40
-            });
-            this.playTone({
-              frequency: 620 + combo * 18,
-              duration: 0.14,
-              type: "sine",
-              volume: volume * 0.7,
-              detune: 4
-            });
+            const vol = clamp(0.044 + combo * 0.012, 0.04, 0.09);
+            this.tone({ frequency: 430 + combo * 40 + cleared * 7, duration: 0.18, type: "triangle", volume: vol, slideTo: 640 + combo * 44 });
+            this.tone({ frequency: 640 + combo * 20, duration: 0.15, type: "sine", volume: vol * 0.65, detune: 5 });
           }
-
           playLevelUp() {
-            this.playTone({ frequency: 523, duration: 0.16, type: "triangle", volume: 0.06, slideTo: 784 });
-            this.playTone({ frequency: 784, duration: 0.24, type: "sine", volume: 0.045, slideTo: 988 });
+            this.tone({ frequency: 523, duration: 0.16, type: "triangle", volume: 0.065, slideTo: 784 });
+            this.tone({ frequency: 784, duration: 0.26, type: "sine", volume: 0.05, slideTo: 1047 });
+            setTimeout(() => this.tone({ frequency: 1047, duration: 0.22, type: "triangle", volume: 0.045 }), 260);
           }
-
           playGameOver() {
-            this.playTone({ frequency: 392, duration: 0.18, type: "triangle", volume: 0.045, slideTo: 292 });
-            this.playTone({ frequency: 260, duration: 0.28, type: "sine", volume: 0.04, slideTo: 170 });
+            this.tone({ frequency: 400, duration: 0.2, type: "triangle", volume: 0.05, slideTo: 280 });
+            this.tone({ frequency: 260, duration: 0.3, type: "sine", volume: 0.04, slideTo: 150 });
           }
-
           playShuffle() {
-            this.playTone({ frequency: 300, duration: 0.1, type: "triangle", volume: 0.04, slideTo: 510 });
-            this.playTone({ frequency: 480, duration: 0.12, type: "sine", volume: 0.035, slideTo: 640 });
+            this.tone({ frequency: 320, duration: 0.12, type: "triangle", volume: 0.04, slideTo: 520 });
+            this.tone({ frequency: 520, duration: 0.14, type: "sine", volume: 0.035, slideTo: 660 });
           }
+          playHint() { this.tone({ frequency: 680, duration: 0.08, type: "sine", volume: 0.025, slideTo: 720 }); }
         }
 
+        // ──────────────── PARTICLES ────────────────
         class ParticleSystem {
-          constructor() {
-            this.items = [];
-          }
+          constructor() { this.items = []; this.rings = []; }
 
           burst(x, y, color, count, intensity = 1) {
-            for (let index = 0; index < count; index += 1) {
-              const angle = (Math.PI * 2 * index) / count + Math.random() * 0.4;
-              const speed = (75 + Math.random() * 150) * intensity;
+            for (let i = 0; i < count; i++) {
+              const a = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+              const spd = (60 + Math.random() * 160) * intensity;
               this.items.push({
-                x,
-                y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed - 12,
-                life: 0.4 + Math.random() * 0.28,
+                x, y,
+                vx: Math.cos(a) * spd,
+                vy: Math.sin(a) * spd - 10,
+                life: 0.35 + Math.random() * 0.3,
                 age: 0,
-                radius: 2 + Math.random() * 4,
-                color
+                radius: 1.5 + Math.random() * 3.5,
+                color,
+                sparkle: Math.random() < 0.35
               });
             }
           }
 
-          update(dt) {
-            this.items = this.items.filter((item) => {
-              item.age += dt;
-              if (item.age >= item.life) {
-                return false;
-              }
+          addRing(x, y, color, maxRadius = 60) {
+            this.rings.push({ x, y, radius: 4, maxRadius, color, age: 0, life: 0.45 });
+          }
 
-              item.x += item.vx * dt;
-              item.y += item.vy * dt;
-              item.vx *= 0.985;
-              item.vy += 320 * dt;
+          update(dt) {
+            this.items = this.items.filter(p => {
+              p.age += dt;
+              if (p.age >= p.life) return false;
+              p.x += p.vx * dt;
+              p.y += p.vy * dt;
+              p.vx *= 0.98;
+              p.vy += 280 * dt;
               return true;
+            });
+            this.rings = this.rings.filter(r => {
+              r.age += dt;
+              r.radius = lerp(r.radius, r.maxRadius, dt * 7);
+              return r.age < r.life;
             });
           }
 
           draw(ctx) {
-            this.items.forEach((item) => {
-              const alpha = 1 - item.age / item.life;
+            // Rings
+            this.rings.forEach(r => {
+              const alpha = 1 - r.age / r.life;
               ctx.save();
-              ctx.globalAlpha = alpha * 0.95;
-              ctx.fillStyle = item.color;
+              ctx.globalAlpha = alpha * 0.7;
+              ctx.strokeStyle = r.color;
+              ctx.lineWidth = 2 * alpha;
+              ctx.shadowBlur = 14 * alpha;
+              ctx.shadowColor = r.color;
               ctx.beginPath();
-              ctx.arc(item.x, item.y, item.radius * alpha, 0, Math.PI * 2);
-              ctx.fill();
+              ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            });
+            // Particles
+            this.items.forEach(p => {
+              const t = p.age / p.life;
+              const alpha = (1 - t) * 0.95;
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              if (p.sparkle) {
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = p.color;
+                const s = p.radius * (1 - t * 0.5);
+                ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+              } else {
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * (1 - t * 0.4), 0, Math.PI * 2);
+                ctx.fill();
+              }
               ctx.restore();
             });
           }
         }
 
+        // ──────────────── BOARD ────────────────
         class Match3Board {
-          constructor(columns, rows, types) {
-            this.columns = columns;
-            this.rows = rows;
-            this.types = types;
+          constructor(cols, rows, types) {
+            this.cols = cols; this.rows = rows; this.types = types;
             this.grid = [];
             this.selectedCell = null;
-            this.layout = {
-              boardX: 0,
-              boardY: 0,
-              boardSize: 0,
-              cellSize: 0
-            };
+            this.layout = { boardX: 0, boardY: 0, boardSize: 0, cellSize: 0 };
           }
 
           reset() {
-            const matrix = this.generatePlayableMatrix();
+            const m = this.genPlayable();
             this.grid = [];
-
-            for (let row = 0; row < this.rows; row += 1) {
-              const line = [];
-              for (let column = 0; column < this.columns; column += 1) {
-                line.push(this.makeTile(row, column, matrix[row][column]));
-              }
-              this.grid.push(line);
+            for (let r = 0; r < this.rows; r++) {
+              const row = [];
+              for (let c = 0; c < this.cols; c++) row.push(this.makeTile(r, c, m[r][c]));
+              this.grid.push(row);
             }
           }
 
-          makeTile(row, column, kind) {
-            return {
-              row,
-              column,
-              renderRow: row,
-              renderColumn: column,
-              kind,
-              bonus: null,
-              alpha: 1,
-              targetAlpha: 1,
-              scale: 1,
-              targetScale: 1,
-              removing: false
-            };
+          makeTile(row, col, kind) {
+            return { row, col, renderRow: row, renderCol: col, kind, bonus: null,
+              alpha: 1, targetAlpha: 1, scale: 1, targetScale: 1, removing: false,
+              hintPulse: 0 };
           }
 
-          randomKind() {
-            return Math.floor(Math.random() * this.types.length);
-          }
+          randKind() { return Math.floor(Math.random() * this.types.length); }
 
-          generatePlayableMatrix() {
-            let matrix = [];
-            let attempts = 0;
-
+          genPlayable() {
+            let m; let attempts = 0;
             do {
-              attempts += 1;
-              matrix = [];
-
-              for (let row = 0; row < this.rows; row += 1) {
-                const line = [];
-                for (let column = 0; column < this.columns; column += 1) {
-                  let candidate = this.randomKind();
-                  while (
-                    (column >= 2 && line[column - 1] === candidate && line[column - 2] === candidate) ||
-                    (row >= 2 &&
-                      matrix[row - 1][column] === candidate &&
-                      matrix[row - 2][column] === candidate)
-                  ) {
-                    candidate = this.randomKind();
-                  }
-                  line.push(candidate);
+              m = [];
+              for (let r = 0; r < this.rows; r++) {
+                const row = [];
+                for (let c = 0; c < this.cols; c++) {
+                  let k = this.randKind();
+                  while ((c >= 2 && row[c-1] === k && row[c-2] === k) ||
+                         (r >= 2 && m[r-1][c] === k && m[r-2][c] === k)) k = this.randKind();
+                  row.push(k);
                 }
-                matrix.push(line);
+                m.push(row);
               }
-            } while (!this.matrixHasPossibleMoves(matrix) && attempts < 120);
-
-            return matrix;
+              attempts++;
+            } while (!this.matrixHasMoves(m) && attempts < 120);
+            return m;
           }
 
-          matrixHasPossibleMoves(matrix) {
-            for (let row = 0; row < this.rows; row += 1) {
-              for (let column = 0; column < this.columns; column += 1) {
-                const directions = [
-                  { row: 0, column: 1 },
-                  { row: 1, column: 0 }
-                ];
-
-                for (const direction of directions) {
-                  const nextRow = row + direction.row;
-                  const nextColumn = column + direction.column;
-                  if (!this.inBounds(nextRow, nextColumn)) {
-                    continue;
-                  }
-
-                  const clone = matrix.map((line) => line.slice());
-                  [clone[row][column], clone[nextRow][nextColumn]] = [
-                    clone[nextRow][nextColumn],
-                    clone[row][column]
-                  ];
-
-                  if (this.matrixHasMatch(clone)) {
-                    return true;
-                  }
+          matrixHasMoves(m) {
+            for (let r = 0; r < this.rows; r++) {
+              for (let c = 0; c < this.cols; c++) {
+                for (const d of [{r:0,c:1},{r:1,c:0}]) {
+                  const nr = r + d.r, nc = c + d.c;
+                  if (!this.inBounds(nr, nc)) continue;
+                  const cl = m.map(l => l.slice());
+                  [cl[r][c], cl[nr][nc]] = [cl[nr][nc], cl[r][c]];
+                  if (this.matrixHasMatch(cl)) return true;
                 }
               }
             }
-
             return false;
           }
 
-          matrixHasMatch(matrix) {
-            for (let row = 0; row < this.rows; row += 1) {
-              let streak = 1;
-              for (let column = 1; column <= this.columns; column += 1) {
-                if (column < this.columns && matrix[row][column] === matrix[row][column - 1]) {
-                  streak += 1;
-                } else {
-                  if (streak >= 3) {
-                    return true;
-                  }
-                  streak = 1;
-                }
+          matrixHasMatch(m) {
+            for (let r = 0; r < this.rows; r++) {
+              let s = 1;
+              for (let c = 1; c <= this.cols; c++) {
+                if (c < this.cols && m[r][c] === m[r][c-1]) s++;
+                else { if (s >= 3) return true; s = 1; }
               }
             }
-
-            for (let column = 0; column < this.columns; column += 1) {
-              let streak = 1;
-              for (let row = 1; row <= this.rows; row += 1) {
-                if (row < this.rows && matrix[row][column] === matrix[row - 1][column]) {
-                  streak += 1;
-                } else {
-                  if (streak >= 3) {
-                    return true;
-                  }
-                  streak = 1;
-                }
+            for (let c = 0; c < this.cols; c++) {
+              let s = 1;
+              for (let r = 1; r <= this.rows; r++) {
+                if (r < this.rows && m[r][c] === m[r-1][c]) s++;
+                else { if (s >= 3) return true; s = 1; }
               }
             }
-
             return false;
           }
 
-          inBounds(row, column) {
-            return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
-          }
+          inBounds(r, c) { return r >= 0 && r < this.rows && c >= 0 && c < this.cols; }
+          areAdj(a, b) { return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1; }
+          getKindsMatrix() { return this.grid.map(row => row.map(t => t.kind)); }
+          hasMoves() { return this.matrixHasMoves(this.getKindsMatrix()); }
 
-          areAdjacent(first, second) {
-            return Math.abs(first.row - second.row) + Math.abs(first.column - second.column) === 1;
-          }
-
-          getKindsMatrix() {
-            return this.grid.map((line) => line.map((tile) => tile.kind));
-          }
-
-          hasPossibleMoves() {
-            return this.matrixHasPossibleMoves(this.getKindsMatrix());
+          findHintMove() {
+            const m = this.getKindsMatrix();
+            for (let r = 0; r < this.rows; r++) {
+              for (let c = 0; c < this.cols; c++) {
+                for (const d of [{r:0,c:1},{r:1,c:0}]) {
+                  const nr = r + d.r, nc = c + d.c;
+                  if (!this.inBounds(nr, nc)) continue;
+                  const cl = m.map(l => l.slice());
+                  [cl[r][c], cl[nr][nc]] = [cl[nr][nc], cl[r][c]];
+                  if (this.matrixHasMatch(cl)) return [{row:r,col:c},{row:nr,col:nc}];
+                }
+              }
+            }
+            return [];
           }
 
           shuffleKinds() {
-            const matrix = this.generatePlayableMatrix();
-
-            for (let row = 0; row < this.rows; row += 1) {
-              for (let column = 0; column < this.columns; column += 1) {
-                const tile = this.grid[row][column];
-                tile.kind = matrix[row][column];
-                tile.scale = 0.82;
-                tile.targetScale = 1;
-                tile.alpha = 0.25;
-                tile.targetAlpha = 1;
-                tile.removing = false;
-              }
-            }
+            const m = this.genPlayable();
+            this.forEach((tile, r, c) => {
+              tile.kind = m[r][c];
+              tile.scale = 0.8; tile.targetScale = 1;
+              tile.alpha = 0.2; tile.targetAlpha = 1;
+              tile.removing = false; tile.hintPulse = 0;
+            });
           }
 
-          updateAnimations(dt) {
-            const follow = clamp(dt * 16, 0.12, 0.42);
-            this.forEachTile((tile) => {
-              tile.renderRow = lerp(tile.renderRow, tile.row, follow);
-              tile.renderColumn = lerp(tile.renderColumn, tile.column, follow);
-              tile.scale = lerp(tile.scale, tile.targetScale, clamp(dt * 20, 0.15, 0.48));
-              tile.alpha = lerp(tile.alpha, tile.targetAlpha, clamp(dt * 20, 0.12, 0.45));
+          updateAnims(dt) {
+            const f = clamp(dt * 16, 0.1, 0.42);
+            this.forEach(t => {
+              t.renderRow = lerp(t.renderRow, t.row, f);
+              t.renderCol = lerp(t.renderCol, t.col, f);
+              t.scale = lerp(t.scale, t.targetScale, clamp(dt * 20, 0.15, 0.48));
+              t.alpha = lerp(t.alpha, t.targetAlpha, clamp(dt * 20, 0.12, 0.45));
+              if (t.hintPulse > 0) t.hintPulse = Math.max(0, t.hintPulse - dt * 2.5);
             });
           }
 
           isSettled() {
-            let settled = true;
-            this.forEachTile((tile) => {
-              if (
-                Math.abs(tile.renderRow - tile.row) > 0.015 ||
-                Math.abs(tile.renderColumn - tile.column) > 0.015 ||
-                Math.abs(tile.scale - tile.targetScale) > 0.02 ||
-                Math.abs(tile.alpha - tile.targetAlpha) > 0.02
-              ) {
-                settled = false;
-              }
+            let ok = true;
+            this.forEach(t => {
+              if (Math.abs(t.renderRow - t.row) > 0.015 || Math.abs(t.renderCol - t.col) > 0.015 ||
+                  Math.abs(t.scale - t.targetScale) > 0.02 || Math.abs(t.alpha - t.targetAlpha) > 0.02) ok = false;
             });
-            return settled;
+            return ok;
           }
 
-          forEachTile(callback) {
-            for (let row = 0; row < this.rows; row += 1) {
-              for (let column = 0; column < this.columns; column += 1) {
-                callback(this.grid[row][column], row, column);
-              }
-            }
+          forEach(fn) {
+            for (let r = 0; r < this.rows; r++)
+              for (let c = 0; c < this.cols; c++) fn(this.grid[r][c], r, c);
           }
 
-          getCellKey(cell) {
-            return `${cell.row}:${cell.column}`;
-          }
+          cellKey(cell) { return `${cell.row}:${cell.col}`; }
 
-          swapTiles(first, second) {
-            const firstTile = this.grid[first.row][first.column];
-            const secondTile = this.grid[second.row][second.column];
-
-            this.grid[first.row][first.column] = secondTile;
-            this.grid[second.row][second.column] = firstTile;
-
-            secondTile.row = first.row;
-            secondTile.column = first.column;
-            firstTile.row = second.row;
-            firstTile.column = second.column;
+          swapTiles(a, b) {
+            const ta = this.grid[a.row][a.col], tb = this.grid[b.row][b.col];
+            this.grid[a.row][a.col] = tb; this.grid[b.row][b.col] = ta;
+            tb.row = a.row; tb.col = a.col;
+            ta.row = b.row; ta.col = b.col;
           }
 
           findMatches() {
-            const map = new Map();
-            const lines = [];
-
-            const pushLine = (cells, orientation) => {
-              lines.push({ cells, length: cells.length, orientation });
-              cells.forEach((cell) => {
-                map.set(`${cell.row}:${cell.column}`, cell);
-              });
+            const map = new Map(); const lines = [];
+            const push = (cells, orient) => {
+              lines.push({ cells, length: cells.length, orientation: orient });
+              cells.forEach(cell => map.set(`${cell.row}:${cell.col}`, cell));
             };
-
-            for (let row = 0; row < this.rows; row += 1) {
-              let startColumn = 0;
-              while (startColumn < this.columns) {
-                let endColumn = startColumn + 1;
-                while (
-                  endColumn < this.columns &&
-                  this.grid[row][endColumn].kind === this.grid[row][startColumn].kind
-                ) {
-                  endColumn += 1;
-                }
-
-                if (endColumn - startColumn >= 3) {
-                  const cells = [];
-                  for (let column = startColumn; column < endColumn; column += 1) {
-                    cells.push({ row, column });
-                  }
-                  pushLine(cells, "row");
-                }
-
-                startColumn = endColumn;
+            for (let r = 0; r < this.rows; r++) {
+              let s = 0;
+              while (s < this.cols) {
+                let e = s + 1;
+                while (e < this.cols && this.grid[r][e].kind === this.grid[r][s].kind) e++;
+                if (e - s >= 3) push(Array.from({length: e-s}, (_, i) => ({row: r, col: s+i})), "row");
+                s = e;
               }
             }
-
-            for (let column = 0; column < this.columns; column += 1) {
-              let startRow = 0;
-              while (startRow < this.rows) {
-                let endRow = startRow + 1;
-                while (
-                  endRow < this.rows &&
-                  this.grid[endRow][column].kind === this.grid[startRow][column].kind
-                ) {
-                  endRow += 1;
-                }
-
-                if (endRow - startRow >= 3) {
-                  const cells = [];
-                  for (let row = startRow; row < endRow; row += 1) {
-                    cells.push({ row, column });
-                  }
-                  pushLine(cells, "column");
-                }
-
-                startRow = endRow;
+            for (let c = 0; c < this.cols; c++) {
+              let s = 0;
+              while (s < this.rows) {
+                let e = s + 1;
+                while (e < this.rows && this.grid[e][c].kind === this.grid[s][c].kind) e++;
+                if (e - s >= 3) push(Array.from({length: e-s}, (_, i) => ({row: s+i, col: c})), "column");
+                s = e;
               }
             }
-
-            return {
-              cells: Array.from(map.values()),
-              lines
-            };
+            return { cells: Array.from(map.values()), lines };
           }
 
-          getBonusAffectedCells(cell, bonusKind) {
-            const affected = [];
-
-            switch (bonusKind) {
-              case "row": {
-                for (let column = 0; column < this.columns; column += 1) {
-                  affected.push({ row: cell.row, column });
-                }
-                break;
-              }
-              case "column": {
-                for (let row = 0; row < this.rows; row += 1) {
-                  affected.push({ row, column: cell.column });
-                }
-                break;
-              }
-              default: {
-                for (let row = cell.row - 1; row <= cell.row + 1; row += 1) {
-                  for (let column = cell.column - 1; column <= cell.column + 1; column += 1) {
-                    if (this.inBounds(row, column)) {
-                      affected.push({ row, column });
-                    }
-                  }
-                }
-                break;
-              }
-            }
-
-            return affected;
+          getBonusAffected(cell, kind) {
+            const res = [];
+            if (kind === "row") { for (let c = 0; c < this.cols; c++) res.push({row: cell.row, col: c}); }
+            else if (kind === "column") { for (let r = 0; r < this.rows; r++) res.push({row: r, col: cell.col}); }
+            else { for (let r = cell.row-1; r <= cell.row+1; r++) for (let c = cell.col-1; c <= cell.col+1; c++) if (this.inBounds(r,c)) res.push({row:r,col:c}); }
+            return res;
           }
 
-          expandBonusMatches(matchResult) {
-            const cellsByKey = new Map();
-            const queue = [];
-            const triggeredBonuses = [];
-            const processedBonuses = new Set();
-
-            const enqueue = (cell) => {
-              const key = this.getCellKey(cell);
-              if (cellsByKey.has(key)) {
-                return;
-              }
-
-              const normalized = { row: cell.row, column: cell.column };
-              cellsByKey.set(key, normalized);
-              queue.push(normalized);
+          expandBonus(mr) {
+            const byKey = new Map(); const q = []; const triggered = []; const processed = new Set();
+            const enq = cell => {
+              const k = `${cell.row}:${cell.col}`;
+              if (byKey.has(k)) return;
+              const n = {row: cell.row, col: cell.col};
+              byKey.set(k, n); q.push(n);
             };
-
-            matchResult.cells.forEach(enqueue);
-
-            while (queue.length > 0) {
-              const cell = queue.shift();
-              const tile = this.grid[cell.row][cell.column];
-              if (!tile || !tile.bonus) {
-                continue;
-              }
-
-              const bonusKey = this.getCellKey(cell);
-              if (processedBonuses.has(bonusKey)) {
-                continue;
-              }
-
-              processedBonuses.add(bonusKey);
-              triggeredBonuses.push({ row: cell.row, column: cell.column, kind: tile.bonus });
-              this.getBonusAffectedCells(cell, tile.bonus).forEach(enqueue);
+            mr.cells.forEach(enq);
+            while (q.length) {
+              const cell = q.shift();
+              const tile = this.grid[cell.row][cell.col];
+              if (!tile?.bonus) continue;
+              const bk = `${cell.row}:${cell.col}`;
+              if (processed.has(bk)) continue;
+              processed.add(bk);
+              triggered.push({row: cell.row, col: cell.col, kind: tile.bonus});
+              this.getBonusAffected(cell, tile.bonus).forEach(enq);
             }
-
-            return {
-              cells: Array.from(cellsByKey.values()),
-              lines: matchResult.lines,
-              triggeredBonuses
-            };
+            return { cells: Array.from(byKey.values()), lines: mr.lines, triggeredBonuses: triggered };
           }
 
-          markMatches(matchResult, bonusSpawns = []) {
-            const spawnMap = new Map(
-              bonusSpawns.map((spawn) => [this.getCellKey(spawn), spawn.kind])
-            );
-
-            matchResult.cells.forEach((cell) => {
-              const tile = this.grid[cell.row][cell.column];
-              const spawnedBonus = spawnMap.get(this.getCellKey(cell));
-              if (spawnedBonus) {
-                tile.bonus = spawnedBonus;
-                tile.removing = false;
-                tile.targetAlpha = 1;
-                tile.targetScale = 1.18;
-                tile.alpha = Math.max(tile.alpha, 0.65);
-                tile.scale = Math.max(tile.scale, 0.55);
-                return;
+          markMatches(mr, spawns = []) {
+            const spawnMap = new Map(spawns.map(s => [`${s.row}:${s.col}`, s.kind]));
+            mr.cells.forEach(cell => {
+              const tile = this.grid[cell.row][cell.col];
+              const sb = spawnMap.get(`${cell.row}:${cell.col}`);
+              if (sb) {
+                tile.bonus = sb; tile.removing = false;
+                tile.targetAlpha = 1; tile.targetScale = 1.22;
+                tile.alpha = Math.max(tile.alpha, 0.6); tile.scale = Math.max(tile.scale, 0.55);
+              } else {
+                tile.removing = true; tile.bonus = null;
+                tile.targetAlpha = 0; tile.targetScale = 0.1;
               }
-
-              tile.removing = true;
-              tile.bonus = null;
-              tile.targetAlpha = 0;
-              tile.targetScale = 0.12;
             });
           }
 
           injectBonusTokens(count, mode = "level") {
             const candidates = [];
-            this.forEachTile((tile) => {
-              if (!tile.removing) {
-                candidates.push(tile);
-              }
-            });
-
+            this.forEach(t => { if (!t.removing) candidates.push(t); });
             const chosen = [];
-            const shuffled = shuffleArray(candidates);
-
-            for (const tile of shuffled) {
-              if (chosen.length >= count) {
-                break;
-              }
-
-              if (tile.bonus && Math.random() < 0.7) {
-                continue;
-              }
-
-              const sequence =
-                mode === "combo"
-                  ? ["row", "column", "burst"]
-                  : ["burst", "row", "column"];
-              const bonusKind = sequence[chosen.length % sequence.length];
-              tile.bonus = bonusKind;
+            for (const tile of shuffle(candidates)) {
+              if (chosen.length >= count) break;
+              if (tile.bonus && Math.random() < 0.7) continue;
+              const seq = mode === "combo" ? ["row","column","burst"] : ["burst","row","column"];
+              tile.bonus = seq[chosen.length % seq.length];
               tile.removing = false;
-              tile.alpha = Math.max(tile.alpha, 0.55);
-              tile.targetAlpha = 1;
-              tile.scale = Math.max(tile.scale, 0.72);
-              tile.targetScale = 1.2;
-              chosen.push({ row: tile.row, column: tile.column, kind: bonusKind });
+              tile.alpha = Math.max(tile.alpha, 0.55); tile.targetAlpha = 1;
+              tile.scale = Math.max(tile.scale, 0.72); tile.targetScale = 1.2;
+              chosen.push({row: tile.row, col: tile.col, kind: tile.bonus});
             }
-
             return chosen;
           }
 
-          collapseAndRefill() {
-            for (let column = 0; column < this.columns; column += 1) {
+          collapseRefill() {
+            for (let c = 0; c < this.cols; c++) {
               const survivors = [];
-
-              for (let row = this.rows - 1; row >= 0; row -= 1) {
-                const tile = this.grid[row][column];
-                if (!tile.removing) {
-                  survivors.push(tile);
-                }
-              }
-
-              let writeRow = this.rows - 1;
-
-              survivors.forEach((tile) => {
-                tile.row = writeRow;
-                tile.column = column;
-                tile.targetAlpha = 1;
-                tile.targetScale = 1;
-                tile.removing = false;
-                this.grid[writeRow][column] = tile;
-                writeRow -= 1;
-              });
-
-              while (writeRow >= 0) {
-                const tile = this.makeTile(writeRow, column, this.randomKind());
-                tile.renderRow = writeRow - (1.2 + Math.random() * 2.8);
-                tile.renderColumn = column;
-                tile.alpha = 0.9;
-                tile.scale = 0.88;
-                this.grid[writeRow][column] = tile;
-                writeRow -= 1;
+              for (let r = this.rows - 1; r >= 0; r--) { const t = this.grid[r][c]; if (!t.removing) survivors.push(t); }
+              let wr = this.rows - 1;
+              survivors.forEach(t => { t.row = wr; t.col = c; t.targetAlpha = 1; t.targetScale = 1; t.removing = false; this.grid[wr][c] = t; wr--; });
+              while (wr >= 0) {
+                const t = this.makeTile(wr, c, this.randKind());
+                t.renderRow = wr - (1.2 + Math.random() * 3); t.renderCol = c;
+                t.alpha = 0.8; t.scale = 0.88;
+                this.grid[wr][c] = t; wr--;
               }
             }
           }
 
-          setLayout(boardX, boardY, boardSize) {
-            this.layout.boardX = boardX;
-            this.layout.boardY = boardY;
-            this.layout.boardSize = boardSize;
-            this.layout.cellSize = boardSize / this.columns;
+          setLayout(bx, by, bs) {
+            this.layout.boardX = bx; this.layout.boardY = by;
+            this.layout.boardSize = bs; this.layout.cellSize = bs / this.cols;
           }
 
-          getCellCenter(row, column) {
-            return {
-              x: this.layout.boardX + (column + 0.5) * this.layout.cellSize,
-              y: this.layout.boardY + (row + 0.5) * this.layout.cellSize
-            };
+          getCellCenter(r, c) {
+            return { x: this.layout.boardX + (c + 0.5) * this.layout.cellSize,
+                     y: this.layout.boardY + (r + 0.5) * this.layout.cellSize };
           }
 
           cellFromPoint(x, y) {
             const { boardX, boardY, boardSize, cellSize } = this.layout;
-            if (
-              x < boardX ||
-              x > boardX + boardSize ||
-              y < boardY ||
-              y > boardY + boardSize
-            ) {
-              return null;
-            }
-
-            return {
-              row: clamp(Math.floor((y - boardY) / cellSize), 0, this.rows - 1),
-              column: clamp(Math.floor((x - boardX) / cellSize), 0, this.columns - 1)
-            };
+            if (x < boardX || x > boardX + boardSize || y < boardY || y > boardY + boardSize) return null;
+            return { row: clamp(Math.floor((y - boardY) / cellSize), 0, this.rows - 1),
+                     col: clamp(Math.floor((x - boardX) / cellSize), 0, this.cols - 1) };
           }
 
-          draw(ctx, pulseTime, flashAmount) {
+          draw(ctx, t, flash, hintCells, shake) {
             const { boardX, boardY, boardSize, cellSize } = this.layout;
-            if (!boardSize) {
-              return;
-            }
-
-            const corner = cellSize * 0.34;
+            if (!boardSize) return;
 
             ctx.save();
-            roundedRectPath(ctx, boardX - cellSize * 0.17, boardY - cellSize * 0.17, boardSize + cellSize * 0.34, boardSize + cellSize * 0.34, cellSize * 0.48);
-            ctx.fillStyle = "rgba(4, 10, 16, 0.78)";
-            ctx.fill();
-            ctx.restore();
+            if (shake.x || shake.y) ctx.translate(shake.x, shake.y);
 
-            for (let row = 0; row < this.rows; row += 1) {
-              for (let column = 0; column < this.columns; column += 1) {
-                const x = boardX + column * cellSize;
-                const y = boardY + row * cellSize;
-                const glow = 0.08 + ((row + column) % 2) * 0.02;
-                roundedRectPath(ctx, x + 2, y + 2, cellSize - 4, cellSize - 4, corner);
-                ctx.fillStyle = `rgba(165, 240, 230, ${glow})`;
+            const corner = cellSize * 0.32;
+
+            // Board backdrop
+            rrPath(ctx, boardX - cellSize*0.14, boardY - cellSize*0.14, boardSize + cellSize*0.28, boardSize + cellSize*0.28, cellSize * 0.44);
+            ctx.fillStyle = "rgba(2, 8, 16, 0.85)";
+            ctx.fill();
+
+            // Animated grid lines
+            for (let r = 0; r < this.rows; r++) {
+              for (let c = 0; c < this.cols; c++) {
+                const x = boardX + c * cellSize, y = boardY + r * cellSize;
+                const wave = Math.sin(t * 0.9 + r * 0.3 + c * 0.22) * 0.012 + 0.05;
+                rrPath(ctx, x + 2, y + 2, cellSize - 4, cellSize - 4, corner);
+                ctx.fillStyle = `rgba(100, 210, 200, ${wave})`;
                 ctx.fill();
               }
             }
 
+            // Hint cells
+            if (hintCells.length > 0) {
+              hintCells.forEach(hc => {
+                const pulse = 0.5 + Math.sin(t * 8) * 0.3;
+                const hx = boardX + hc.col * cellSize, hy = boardY + hc.row * cellSize;
+                rrPath(ctx, hx + 3, hy + 3, cellSize - 6, cellSize - 6, corner);
+                ctx.save();
+                ctx.strokeStyle = `rgba(68, 223, 255, ${0.55 + pulse * 0.3})`;
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 18;
+                ctx.shadowColor = "rgba(68,223,255,0.6)";
+                ctx.stroke();
+                ctx.restore();
+              });
+            }
+
+            // Selected cell
             if (this.selectedCell) {
-              const highlightX = boardX + this.selectedCell.column * cellSize;
-              const highlightY = boardY + this.selectedCell.row * cellSize;
-              const pulse = 0.5 + Math.sin(pulseTime * 7.5) * 0.18;
+              const sx = boardX + this.selectedCell.col * cellSize, sy = boardY + this.selectedCell.row * cellSize;
+              const pulse = 0.5 + Math.sin(t * 7.5) * 0.22;
               ctx.save();
-              roundedRectPath(ctx, highlightX + 3, highlightY + 3, cellSize - 6, cellSize - 6, corner);
-              ctx.strokeStyle = `rgba(255, 227, 149, ${0.65 + pulse * 0.3})`;
+              rrPath(ctx, sx + 3, sy + 3, cellSize - 6, cellSize - 6, corner);
+              ctx.strokeStyle = `rgba(255, 220, 100, ${0.7 + pulse * 0.25})`;
               ctx.lineWidth = 4;
-              ctx.shadowBlur = 20;
-              ctx.shadowColor = "rgba(255, 211, 111, 0.55)";
+              ctx.shadowBlur = 22;
+              ctx.shadowColor = "rgba(255,201,77,0.6)";
               ctx.stroke();
               ctx.restore();
             }
 
-            this.forEachTile((tile) => {
-              this.drawTile(ctx, tile, pulseTime, flashAmount);
-            });
+            // Tiles
+            this.forEach(tile => this.drawTile(ctx, tile, t, flash, hintCells));
+
+            ctx.restore();
           }
 
-          drawTile(ctx, tile, pulseTime, flashAmount) {
+          drawTile(ctx, tile, t, flash, hintCells) {
             const { boardX, boardY, cellSize } = this.layout;
-            const palette = this.types[tile.kind];
-            const centerX = boardX + (tile.renderColumn + 0.5) * cellSize;
-            const centerY = boardY + (tile.renderRow + 0.5) * cellSize;
-            const radius = cellSize * 0.34 * tile.scale * palette.sizeBias;
-            const hover = 1 + Math.sin(pulseTime * 1.8 + tile.column * 0.3 + tile.row * 0.25) * 0.012;
-            const glowStrength = 18 + flashAmount * 14 + (tile.bonus ? 12 : 0);
+            const pal = this.types[tile.kind];
+            const cx = boardX + (tile.renderCol + 0.5) * cellSize;
+            const cy = boardY + (tile.renderRow + 0.5) * cellSize;
+            const radius = cellSize * 0.33 * tile.scale * pal.sizeBias;
+            const breathe = 1 + Math.sin(t * 1.9 + tile.col * 0.3 + tile.row * 0.28) * 0.014;
+            const isHint = hintCells.some(h => h.row === tile.row && h.col === tile.col);
+            const hintBoost = isHint ? 0.5 + Math.sin(t * 8) * 0.3 : 0;
+            const glowStr = 22 + flash * 18 + (tile.bonus ? 16 : 0) + hintBoost * 14;
 
             ctx.save();
             ctx.globalAlpha = tile.alpha;
-            ctx.translate(centerX, centerY);
-            ctx.rotate(palette.rotation + Math.sin(pulseTime * 0.9 + tile.row * 0.2 + tile.column * 0.17) * 0.035);
-            ctx.scale(hover * palette.squashX, hover * palette.squashY);
+            ctx.translate(cx, cy);
+            ctx.rotate(pal.rotation + Math.sin(t * 0.85 + tile.row * 0.22 + tile.col * 0.18) * 0.04);
+            ctx.scale(breathe * pal.squashX, breathe * pal.squashY);
 
-            ctx.shadowBlur = glowStrength;
-            ctx.shadowColor = palette.base;
-
+            // Drop shadow
             ctx.save();
-            ctx.translate(0, cellSize * 0.08);
-            ctx.scale(1, 0.45);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-            ctx.beginPath();
-            ctx.arc(0, 0, radius * 1.15, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.translate(0, cellSize * 0.09);
+            ctx.scale(1, 0.42);
+            ctx.fillStyle = "rgba(0,0,0,0.28)";
+            ctx.beginPath(); ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
 
-            const gradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.15, 0, 0, radius * 1.3);
-            gradient.addColorStop(0, palette.shine);
-            gradient.addColorStop(0.28, palette.base);
-            gradient.addColorStop(1, palette.shadow);
-            ctx.fillStyle = gradient;
+            // Outer glow
+            ctx.shadowBlur = glowStr;
+            ctx.shadowColor = pal.base;
 
-            this.drawShape(ctx, palette, radius);
-            ctx.fill();
+            // Main shape
+            const grad = ctx.createRadialGradient(-radius * 0.28, -radius * 0.32, radius * 0.12, 0, 0, radius * 1.32);
+            grad.addColorStop(0, pal.shine);
+            grad.addColorStop(0.22, pal.base);
+            grad.addColorStop(0.72, pal.mid);
+            grad.addColorStop(1, pal.shadow);
+            ctx.fillStyle = grad;
+            this.drawShape(ctx, pal, radius); ctx.fill();
 
-            ctx.lineWidth = Math.max(2, radius * 0.1);
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.34)";
-            ctx.stroke();
+            // Rim
+            ctx.lineWidth = Math.max(1.5, radius * 0.09);
+            ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.stroke();
 
+            // Inner facet
             ctx.save();
-            ctx.globalAlpha = 0.32;
-            ctx.fillStyle = palette.accent;
-            ctx.rotate(-palette.rotation * 0.85);
-            ctx.scale(palette.facetScale, palette.facetScale);
-            this.drawShape(ctx, palette, radius);
-            ctx.fill();
+            ctx.globalAlpha = 0.28;
+            ctx.fillStyle = pal.accent;
+            ctx.rotate(-pal.rotation * 0.8);
+            ctx.scale(pal.facetScale, pal.facetScale);
+            this.drawShape(ctx, pal, radius); ctx.fill();
             ctx.restore();
 
+            // Edge highlight
             ctx.save();
-            ctx.globalAlpha = 0.7;
-            ctx.fillStyle = "rgba(255, 255, 255, 0.52)";
-            ctx.beginPath();
-            ctx.arc(-radius * 0.22, -radius * 0.28, radius * 0.18, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.globalAlpha = 0.18;
+            ctx.strokeStyle = pal.shine;
+            ctx.lineWidth = radius * 0.22;
+            ctx.shadowBlur = 0;
+            this.drawShape(ctx, pal, radius * 0.78); ctx.stroke();
             ctx.restore();
 
-            if (tile.bonus) {
-              this.drawBonusMark(ctx, tile, radius, pulseTime);
-            }
+            // Specular highlight
+            ctx.save();
+            ctx.globalAlpha = 0.72;
+            const spec = ctx.createRadialGradient(-radius*0.22, -radius*0.28, 0, -radius*0.22, -radius*0.28, radius*0.28);
+            spec.addColorStop(0, "rgba(255,255,255,0.82)");
+            spec.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.fillStyle = spec;
+            ctx.beginPath(); ctx.arc(-radius*0.22, -radius*0.28, radius*0.28, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
 
+            // Small secondary highlight
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.beginPath(); ctx.arc(radius*0.3, radius*0.28, radius*0.09, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+
+            if (tile.bonus) this.drawBonusMark(ctx, tile, radius, t);
             ctx.restore();
           }
 
-          drawBonusMark(ctx, tile, radius, pulseTime) {
-            const pulse = 0.7 + Math.sin(pulseTime * 5.4 + tile.row * 0.4 + tile.column * 0.31) * 0.16;
-
+          drawBonusMark(ctx, tile, radius, t) {
+            const pulse = 0.7 + Math.sin(t * 5.5 + tile.row * 0.4 + tile.col * 0.3) * 0.18;
             ctx.save();
-            ctx.shadowBlur = 18;
-            ctx.shadowColor = "rgba(255, 244, 196, 0.48)";
-            ctx.strokeStyle = `rgba(255, 246, 214, ${0.72 + pulse * 0.18})`;
-            ctx.fillStyle = `rgba(255, 246, 214, ${0.16 + pulse * 0.06})`;
-            ctx.lineWidth = Math.max(2, radius * 0.11);
-
-            ctx.beginPath();
-            ctx.arc(0, 0, radius * 0.82, 0, Math.PI * 2);
-            ctx.stroke();
-
-            switch (tile.bonus) {
-              case "row": {
-                roundedRectPath(ctx, -radius * 0.92, -radius * 0.18, radius * 1.84, radius * 0.36, radius * 0.16);
-                ctx.fill();
-                break;
-              }
-              case "column": {
-                roundedRectPath(ctx, -radius * 0.18, -radius * 0.92, radius * 0.36, radius * 1.84, radius * 0.16);
-                ctx.fill();
-                break;
-              }
-              default: {
-                starPath(ctx, 4, radius * 0.88, radius * 0.42, pulseTime * 1.6);
-                ctx.fill();
-                break;
-              }
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "rgba(255,244,196,0.55)";
+            ctx.strokeStyle = `rgba(255,248,220,${0.8 + pulse * 0.15})`;
+            ctx.lineWidth = Math.max(2, radius * 0.12);
+            ctx.beginPath(); ctx.arc(0, 0, radius * 0.84, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = `rgba(255,246,200,${0.18 + pulse * 0.07})`;
+            if (tile.bonus === "row") {
+              rrPath(ctx, -radius*0.9, -radius*0.2, radius*1.8, radius*0.4, radius*0.18); ctx.fill();
+              // arrows
+              ctx.fillStyle = `rgba(255,240,160,${0.6 + pulse * 0.2})`;
+              ctx.beginPath(); ctx.moveTo(-radius*0.7, 0); ctx.lineTo(-radius*0.4, -radius*0.2); ctx.lineTo(-radius*0.4, radius*0.2); ctx.closePath(); ctx.fill();
+              ctx.beginPath(); ctx.moveTo(radius*0.7, 0); ctx.lineTo(radius*0.4, -radius*0.2); ctx.lineTo(radius*0.4, radius*0.2); ctx.closePath(); ctx.fill();
+            } else if (tile.bonus === "column") {
+              rrPath(ctx, -radius*0.2, -radius*0.9, radius*0.4, radius*1.8, radius*0.18); ctx.fill();
+              ctx.fillStyle = `rgba(255,240,160,${0.6 + pulse * 0.2})`;
+              ctx.beginPath(); ctx.moveTo(0, -radius*0.7); ctx.lineTo(-radius*0.2, -radius*0.4); ctx.lineTo(radius*0.2, -radius*0.4); ctx.closePath(); ctx.fill();
+              ctx.beginPath(); ctx.moveTo(0, radius*0.7); ctx.lineTo(-radius*0.2, radius*0.4); ctx.lineTo(radius*0.2, radius*0.4); ctx.closePath(); ctx.fill();
+            } else {
+              starPath(ctx, 4, radius*0.9, radius*0.44, t * 1.8); ctx.fill();
             }
-
             ctx.restore();
           }
 
-          drawShape(ctx, palette, radius) {
-            switch (palette.shape) {
-              case "diamond": {
-                ctx.beginPath();
-                ctx.moveTo(0, -radius);
-                ctx.lineTo(radius * 0.8, 0);
-                ctx.lineTo(0, radius);
-                ctx.lineTo(-radius * 0.8, 0);
-                ctx.closePath();
-                break;
-              }
-              case "orb": {
-                ctx.beginPath();
-                ctx.arc(0, 0, radius * 0.96, 0, Math.PI * 2);
-                break;
-              }
-              case "rounded-square": {
-                roundedRectPath(ctx, -radius * 0.86, -radius * 0.86, radius * 1.72, radius * 1.72, radius * 0.42);
-                break;
-              }
-              case "triangle": {
-                polygonPath(ctx, 3, radius * 1.02);
-                break;
-              }
-              case "hexagon": {
-                polygonPath(ctx, 6, radius);
-                break;
-              }
-              case "droplet": {
-                ctx.beginPath();
-                ctx.moveTo(0, -radius);
-                ctx.bezierCurveTo(radius * 0.9, -radius * 0.55, radius * 0.88, radius * 0.42, 0, radius);
-                ctx.bezierCurveTo(-radius * 0.88, radius * 0.42, -radius * 0.9, -radius * 0.55, 0, -radius);
-                ctx.closePath();
-                break;
-              }
-              case "star": {
-                starPath(ctx, palette.points || 5, radius, radius * 0.48);
-                break;
-              }
-              case "kite": {
-                ctx.beginPath();
-                ctx.moveTo(0, -radius);
-                ctx.lineTo(radius * 0.76, -radius * 0.05);
-                ctx.lineTo(0, radius);
-                ctx.lineTo(-radius * 0.46, radius * 0.12);
-                ctx.closePath();
-                break;
-              }
-              default: {
-                polygonPath(ctx, 8, radius * 0.98, -Math.PI / 8);
-              }
+          drawShape(ctx, pal, radius) {
+            switch (pal.shape) {
+              case "diamond":
+                ctx.beginPath(); ctx.moveTo(0,-radius); ctx.lineTo(radius*0.78,0); ctx.lineTo(0,radius); ctx.lineTo(-radius*0.78,0); ctx.closePath(); break;
+              case "orb":
+                ctx.beginPath(); ctx.arc(0,0,radius*0.96,0,Math.PI*2); break;
+              case "rounded-square":
+                rrPath(ctx,-radius*0.84,-radius*0.84,radius*1.68,radius*1.68,radius*0.4); break;
+              case "triangle":
+                polyPath(ctx,3,radius*1.04); break;
+              case "hexagon":
+                polyPath(ctx,6,radius); break;
+              case "droplet":
+                ctx.beginPath(); ctx.moveTo(0,-radius);
+                ctx.bezierCurveTo(radius*0.88,-radius*0.52,radius*0.86,radius*0.4,0,radius);
+                ctx.bezierCurveTo(-radius*0.86,radius*0.4,-radius*0.88,-radius*0.52,0,-radius);
+                ctx.closePath(); break;
+              case "star":
+                starPath(ctx,pal.points||5,radius,radius*0.46); break;
+              case "kite":
+                ctx.beginPath(); ctx.moveTo(0,-radius); ctx.lineTo(radius*0.74,-radius*0.06); ctx.lineTo(0,radius); ctx.lineTo(-radius*0.44,radius*0.14); ctx.closePath(); break;
+              default:
+                polyPath(ctx,8,radius*0.96,-Math.PI/8);
             }
           }
         }
 
+        // ──────────────── STARS ────────────────
+        function makeStars(count) {
+          return Array.from({length: count}, () => ({
+            x: Math.random(), y: Math.random(),
+            r: 0.4 + Math.random() * 1.6,
+            base: 0.15 + Math.random() * 0.55,
+            twinkle: Math.random() * Math.PI * 2,
+            speed: 0.6 + Math.random() * 1.4,
+            warm: Math.random() < 0.3
+          }));
+        }
+
+        // ──────────────── CELEBRATIONS ────────────────
+        class CelebrationSystem {
+          constructor() { this.items = []; }
+
+          spawn(origin, { gain, rate, title, color }) {
+            const ox = origin.x + rnd(-12, 12), oy = origin.y + rnd(-8, 10);
+            this.items.push({ x: ox, y: oy, age: 0, life: 1.1,
+              driftX: rnd(-22, 22), driftY: rnd(68, 100),
+              rot: rnd(-0.07, 0.07),
+              gainText: `+${gain}`, comboText: `Combo ×${rate.toFixed(2)}`, title, color });
+          }
+
+          update(dt) { this.items = this.items.filter(i => { i.age += dt; return i.age < i.life; }); }
+
+          draw(ctx, t) {
+            this.items.forEach(item => {
+              const p = item.age / item.life;
+              const alpha = Math.sin(Math.PI * Math.min(1, p));
+              const rise = item.driftY * p;
+              const drift = item.driftX * p;
+              const scale = 0.78 + Math.sin(Math.PI * Math.min(1, p)) * 0.34;
+
+              ctx.save();
+              ctx.translate(item.x + drift + Math.sin(t * 7 + item.rot * 20) * 3.5, item.y - rise);
+              ctx.rotate(item.rot * (1 - p));
+              ctx.scale(scale, scale);
+              ctx.globalAlpha = alpha;
+
+              const fr = 48 + (1 - p) * 52;
+              const flare = ctx.createRadialGradient(0, 0, 0, 0, 0, fr);
+              flare.addColorStop(0, "rgba(255,248,216,0.3)");
+              flare.addColorStop(0.5, "rgba(255,213,111,0.14)");
+              flare.addColorStop(1, "rgba(0,0,0,0)");
+              ctx.fillStyle = flare;
+              ctx.beginPath(); ctx.arc(0, 0, fr, 0, Math.PI * 2); ctx.fill();
+
+              ctx.textAlign = "center"; ctx.textBaseline = "middle";
+              ctx.fillStyle = "rgba(255,246,214,0.88)";
+              ctx.font = "600 13px 'Rajdhani','Trebuchet MS',sans-serif";
+              ctx.shadowBlur = 12; ctx.shadowColor = item.color;
+              ctx.fillText(item.title, 0, -28);
+
+              ctx.fillStyle = item.color;
+              ctx.font = "700 32px 'Cinzel','Palatino Linotype',Georgia,serif";
+              ctx.shadowBlur = 24; ctx.shadowColor = item.color;
+              ctx.fillText(item.gainText, 0, 0);
+
+              ctx.fillStyle = "rgba(232,250,246,0.9)";
+              ctx.font = "600 16px 'Rajdhani','Trebuchet MS',sans-serif";
+              ctx.shadowBlur = 8;
+              ctx.fillText(item.comboText, 0, 28);
+              ctx.restore();
+            });
+          }
+        }
+
+        // ──────────────── GAME ────────────────
         class PulsePrismGame {
           constructor() {
             this.canvas = document.getElementById("gameCanvas");
@@ -1598,11 +1445,16 @@
             this.gemStyles = this.createGemStyles();
             this.board = new Match3Board(8, 8, this.gemStyles);
             this.particles = new ParticleSystem();
+            this.celebrations = new CelebrationSystem();
+            this.stars = makeStars(70);
+
             this.ui = {
               score: document.getElementById("scoreValue"),
               level: document.getElementById("levelValue"),
               goal: document.getElementById("goalValue"),
+              goalBar: document.getElementById("goalBar"),
               time: document.getElementById("timeValue"),
+              timeCard: document.getElementById("timeCard"),
               combo: document.getElementById("comboValue"),
               cleared: document.getElementById("clearedValue"),
               gain: document.getElementById("gainValue"),
@@ -1612,10 +1464,8 @@
               titleOverlay: document.getElementById("titleOverlay"),
               gameOverOverlay: document.getElementById("gameOverOverlay"),
               gameOverSummary: document.getElementById("gameOverSummary"),
-              soundButtons: [
-                document.getElementById("soundToggle"),
-                document.getElementById("titleSoundButton")
-              ],
+              comboIndicator: document.getElementById("comboIndicator"),
+              soundButtons: [document.getElementById("soundToggle"), document.getElementById("titleSoundButton")],
               startButton: document.getElementById("startButton"),
               playAgainButton: document.getElementById("playAgainButton"),
               restartButton: document.getElementById("restartButton")
@@ -1623,31 +1473,34 @@
 
             this.audio = new AudioEngine(this.ui.soundButtons);
             this.leaderboard = this.loadLeaderboard();
-            this.phase = "title";
-            this.phaseClock = 0;
-            this.score = 0;
-            this.level = 1;
-            this.goal = 1800;
+
+            // State
+            this.phase = "title"; this.phaseClock = 0;
+            this.score = 0; this.displayScore = 0;
+            this.level = 1; this.goal = 1800;
             this.timeLeft = 75;
-            this.bestCombo = 1;
-            this.totalCleared = 0;
-            this.lastGain = 0;
-            this.hasBegun = false;
-            this.pendingSwap = null;
+            this.bestCombo = 1; this.totalCleared = 0; this.lastGain = 0;
+            this.hasBegun = false; this.pendingSwap = null;
             this.comboChain = 0;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
-            this.stateLabel = "Pret";
-            this.levelFlash = 0;
-            this.swapHintFlash = 0;
-            this.centerCelebrations = [];
+            this.stateLabel = "Prêt";
+            this.levelFlash = 0; this.swapHintFlash = 0;
             this.lastMoveAnchor = null;
-            this.inputDrag = {
-              active: false,
-              pointerId: null,
-              startPoint: null,
-              startCell: null,
-              moved: false
-            };
+
+            // Screen shake
+            this.shake = { x: 0, y: 0, duration: 0, amount: 0 };
+
+            // Flash
+            this.flashR = 255; this.flashG = 200; this.flashB = 80; this.flashAmt = 0;
+
+            // Hint
+            this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+
+            // Combo indicator timer
+            this.comboIndicatorTimer = 0;
+
+            // Input
+            this.inputDrag = { active: false, pointerId: null, startPoint: null, startCell: null, moved: false };
             this.lastTimestamp = performance.now();
 
             this.handleResize = this.handleResize.bind(this);
@@ -1659,856 +1512,527 @@
             this.renderLeaderboard();
             this.updateUi();
             this.handleResize();
-            this.render();
             requestAnimationFrame(this.loop);
           }
 
-          currentComboRate() {
-            return 1 + Math.max(0, this.comboChain - 1) * 0.45;
-          }
-
-          getCelebrationOrigin() {
-            const { boardX, boardY, boardSize, cellSize } = this.board.layout;
-            if (!boardSize) {
-              return null;
-            }
-
-            if (this.lastMoveAnchor) {
-              return {
-                x: boardX + (this.lastMoveAnchor.column + 0.5) * cellSize,
-                y: boardY + (this.lastMoveAnchor.row + 0.5) * cellSize
-              };
-            }
-
-            return {
-              x: boardX + boardSize / 2,
-              y: boardY + boardSize / 2
-            };
-          }
-
-          spawnCenterCelebration({ gain, comboRate, title = "Impact", color = "#ffe8a3" }) {
-            const origin = this.getCelebrationOrigin();
-            if (!origin) {
-              return;
-            }
-
-            const originX = origin.x + randomBetween(-14, 14);
-            const originY = origin.y + randomBetween(-10, 12);
-
-            this.centerCelebrations.push({
-              x: originX,
-              y: originY,
-              age: 0,
-              life: 1.05,
-              driftX: randomBetween(-24, 24),
-              driftY: randomBetween(72, 108),
-              rotation: randomBetween(-0.08, 0.08),
-              gainText: `+${gain}`,
-              comboText: `Combo x${comboRate.toFixed(2)}`,
-              title,
-              color
-            });
-
-            for (let index = 0; index < 3; index += 1) {
-              const angle = (Math.PI * 2 * index) / 3 + randomBetween(-0.3, 0.3);
-              const burstX = originX + Math.cos(angle) * randomBetween(16, 42);
-              const burstY = originY + Math.sin(angle) * randomBetween(16, 42);
-              const tint = index % 2 === 0 ? color : "rgba(255, 248, 220, 0.95)";
-              this.particles.burst(burstX, burstY, tint, 12 + Math.round(comboRate * 3), 1 + comboRate * 0.16);
-            }
-          }
-
-          updateCenterCelebrations(dt) {
-            this.centerCelebrations = this.centerCelebrations.filter((item) => {
-              item.age += dt;
-              return item.age < item.life;
-            });
-          }
-
-          drawCenterCelebrations(timestamp) {
-            this.centerCelebrations.forEach((item) => {
-              const progress = item.age / item.life;
-              const alpha = Math.sin(Math.PI * Math.min(1, progress));
-              const rise = item.driftY * progress;
-              const drift = item.driftX * progress;
-              const scale = 0.82 + Math.sin(Math.PI * Math.min(1, progress)) * 0.32;
-
-              this.ctx.save();
-              this.ctx.translate(
-                item.x + drift + Math.sin(timestamp * 7 + item.rotation * 20) * 4,
-                item.y - rise
-              );
-              this.ctx.rotate(item.rotation * (1 - progress));
-              this.ctx.scale(scale, scale);
-              this.ctx.globalAlpha = alpha;
-
-              const flareRadius = 44 + (1 - progress) * 56;
-              const flare = this.ctx.createRadialGradient(0, 0, 0, 0, 0, flareRadius);
-              flare.addColorStop(0, "rgba(255, 247, 219, 0.34)");
-              flare.addColorStop(0.45, "rgba(255, 213, 111, 0.18)");
-              flare.addColorStop(1, "rgba(255, 213, 111, 0)");
-              this.ctx.fillStyle = flare;
-              this.ctx.beginPath();
-              this.ctx.arc(0, 0, flareRadius, 0, Math.PI * 2);
-              this.ctx.fill();
-
-              this.ctx.textAlign = "center";
-              this.ctx.textBaseline = "middle";
-              this.ctx.shadowBlur = 24;
-              this.ctx.shadowColor = item.color;
-
-              this.ctx.fillStyle = "rgba(255, 245, 214, 0.92)";
-              this.ctx.font = "700 14px 'Trebuchet MS', Verdana, sans-serif";
-              this.ctx.fillText(item.title, 0, -30);
-
-              this.ctx.fillStyle = item.color;
-              this.ctx.font = "700 34px 'Palatino Linotype', 'Book Antiqua', Georgia, serif";
-              this.ctx.fillText(item.gainText, 0, 0);
-
-              this.ctx.fillStyle = "rgba(235, 251, 247, 0.95)";
-              this.ctx.font = "700 18px 'Trebuchet MS', Verdana, sans-serif";
-              this.ctx.fillText(item.comboText, 0, 30);
-              this.ctx.restore();
-            });
-          }
-
           createGemStyles() {
-            const selectedShapes = shuffleArray(GEM_SHAPES).slice(0, 6);
+            const shapes = shuffle(GEM_SHAPES).slice(0, 6);
             const hueStart = Math.random() * 360;
-            const hueStep = 360 / selectedShapes.length;
-
-            return selectedShapes.map((shape, index) => {
-              const hue = (hueStart + hueStep * index + randomBetween(-18, 18) + 360) % 360;
-              const saturation = Math.round(randomBetween(76, 92));
-              const lightness = Math.round(randomBetween(54, 66));
+            return shapes.map((shape, i) => {
+              const hue = (hueStart + 60 * i + rnd(-15, 15) + 360) % 360;
+              const sat = Math.round(rnd(78, 92));
+              const light = Math.round(rnd(52, 66));
               return {
-                name: `${shape}-${index}`,
-                shape,
-                base: `hsl(${Math.round(hue)}, ${saturation}%, ${lightness}%)`,
-                shine: `hsl(${Math.round((hue - 6 + 360) % 360)}, 95%, ${Math.min(92, lightness + 24)}%)`,
-                shadow: `hsl(${Math.round((hue + 12) % 360)}, ${Math.max(52, saturation - 24)}%, ${Math.max(24, lightness - 28)}%)`,
-                accent: `hsla(${Math.round((hue + randomBetween(24, 58)) % 360)}, 92%, 86%, 0.28)`,
-                rotation: randomBetween(-0.55, 0.55),
-                squashX: randomBetween(0.9, 1.14),
-                squashY: randomBetween(0.9, 1.14),
-                sizeBias: randomBetween(0.92, 1.07),
-                facetScale: randomBetween(0.38, 0.58),
+                name: `${shape}-${i}`, shape,
+                base: `hsl(${Math.round(hue)},${sat}%,${light}%)`,
+                shine: `hsl(${Math.round((hue-5+360)%360)},95%,${Math.min(93,light+26)}%)`,
+                mid: `hsl(${Math.round(hue)},${sat}%,${Math.max(38,light-12)}%)`,
+                shadow: `hsl(${Math.round((hue+14)%360)},${Math.max(50,sat-26)}%,${Math.max(20,light-30)}%)`,
+                accent: `hsla(${Math.round((hue+rnd(26,60))%360)},92%,84%,0.3)`,
+                rotation: rnd(-0.5, 0.5), squashX: rnd(0.9, 1.14), squashY: rnd(0.9, 1.14),
+                sizeBias: rnd(0.92, 1.06), facetScale: rnd(0.36, 0.56),
                 points: shape === "star" ? (Math.random() < 0.5 ? 5 : 6) : 0
               };
             });
           }
 
-          refreshGemStyles() {
-            this.gemStyles = this.createGemStyles();
-            this.board.types = this.gemStyles;
-          }
+          refreshGemStyles() { this.gemStyles = this.createGemStyles(); this.board.types = this.gemStyles; }
 
           normalizeLeaderboard(entries) {
-            return entries
-              .map((entry) => ({
-                score: Math.max(0, Math.round(Number(entry.score) || 0)),
-                level: Math.max(1, Math.round(Number(entry.level) || 1)),
-                cleared: Math.max(0, Math.round(Number(entry.cleared) || 0)),
-                combo: Math.max(1, Math.round(Number(entry.combo) || 1)),
-                at: Number(entry.at) || Date.now()
-              }))
-              .filter((entry) => entry.score > 0)
-              .sort((left, right) => {
-                if (right.score !== left.score) {
-                  return right.score - left.score;
-                }
-                if (right.level !== left.level) {
-                  return right.level - left.level;
-                }
-                return left.at - right.at;
-              })
-              .slice(0, 3);
+            return entries.map(e => ({
+              score: Math.max(0, Math.round(Number(e.score)||0)),
+              level: Math.max(1, Math.round(Number(e.level)||1)),
+              cleared: Math.max(0, Math.round(Number(e.cleared)||0)),
+              combo: Math.max(1, Math.round(Number(e.combo)||1)),
+              at: Number(e.at)||Date.now()
+            })).filter(e => e.score > 0)
+              .sort((a,b) => b.score !== a.score ? b.score-a.score : b.level !== a.level ? b.level-a.level : a.at-b.at)
+              .slice(0,3);
           }
 
-          // Best scores are stored locally so the single-file build stays fully static.
           loadLeaderboard() {
             try {
-              const rawValue = window.localStorage.getItem(LEADERBOARD_KEY);
-              if (!rawValue) {
-                return [];
-              }
-
-              const parsed = JSON.parse(rawValue);
-              if (!Array.isArray(parsed)) {
-                return [];
-              }
-
-              return this.normalizeLeaderboard(parsed);
-            } catch (error) {
-              console.warn("Leaderboard load failed", error);
-              return [];
-            }
+              const raw = window.localStorage.getItem(LEADERBOARD_KEY);
+              if (!raw) return [];
+              const p = JSON.parse(raw);
+              return Array.isArray(p) ? this.normalizeLeaderboard(p) : [];
+            } catch(e) { return []; }
           }
 
           saveLeaderboard() {
-            try {
-              window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(this.leaderboard));
-            } catch (error) {
-              console.warn("Leaderboard save failed", error);
-            }
+            try { window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(this.leaderboard)); } catch(e) {}
           }
 
-          recordLeaderboardEntry() {
-            const beforeSignature = JSON.stringify(this.leaderboard);
-            const entry = {
-              score: Math.round(this.score),
-              level: this.level,
-              cleared: this.totalCleared,
-              combo: this.bestCombo,
-              at: Date.now()
-            };
-
+          recordEntry() {
+            const before = JSON.stringify(this.leaderboard);
+            const entry = { score: Math.round(this.score), level: this.level, cleared: this.totalCleared, combo: this.bestCombo, at: Date.now() };
             this.leaderboard = this.normalizeLeaderboard([...this.leaderboard, entry]);
-            this.saveLeaderboard();
-            this.renderLeaderboard();
-
-            const rank = this.leaderboard.findIndex(
-              (item) =>
-                item.score === entry.score &&
-                item.level === entry.level &&
-                item.cleared === entry.cleared &&
-                item.combo === entry.combo &&
-                item.at === entry.at
-            );
-
-            return {
-              rank: rank >= 0 ? rank + 1 : 0,
-              isNew: beforeSignature !== JSON.stringify(this.leaderboard)
-            };
+            this.saveLeaderboard(); this.renderLeaderboard();
+            const rank = this.leaderboard.findIndex(i => i.score===entry.score && i.level===entry.level && i.at===entry.at);
+            return { rank: rank >= 0 ? rank+1 : 0, isNew: before !== JSON.stringify(this.leaderboard) };
           }
 
           renderLeaderboard() {
             this.ui.leaderboardList.innerHTML = "";
-
-            for (let index = 0; index < 3; index += 1) {
-              const item = this.leaderboard[index];
-              const row = document.createElement("li");
-              row.className = "leaderboard-entry";
-
-              const rank = document.createElement("span");
-              rank.className = "leaderboard-rank";
-              rank.textContent = String(index + 1);
-
-              const meta = document.createElement("div");
-              meta.className = "leaderboard-meta";
-
-              const score = document.createElement("strong");
-              score.className = "leaderboard-score";
-
-              const detail = document.createElement("span");
-              detail.className = "leaderboard-detail";
-
+            for (let i = 0; i < 3; i++) {
+              const item = this.leaderboard[i];
+              const li = document.createElement("li"); li.className = "leaderboard-entry";
+              const rank = document.createElement("span"); rank.className = "leaderboard-rank"; rank.textContent = String(i+1);
+              const meta = document.createElement("div"); meta.className = "leaderboard-meta";
+              const sc = document.createElement("strong"); sc.className = "leaderboard-score";
+              const det = document.createElement("span"); det.className = "leaderboard-detail";
               if (item) {
-                score.textContent = item.score.toString();
-                detail.textContent =
-                  `Niv. ${item.level} • Combo x${item.combo} • ${item.cleared} prismes`;
-              } else {
-                score.textContent = "---";
-                detail.textContent = "Aucun score enregistre";
-              }
-
-              meta.append(score, detail);
-              row.append(rank, meta);
-              this.ui.leaderboardList.append(row);
+                sc.textContent = item.score.toString();
+                det.textContent = `Niv.${item.level} · Combo ×${item.combo} · ${item.cleared} prismes`;
+              } else { sc.textContent = "---"; det.textContent = "Aucun score enregistré"; }
+              meta.append(sc, det); li.append(rank, meta);
+              this.ui.leaderboardList.append(li);
             }
+          }
+
+          triggerShake(amount, duration) {
+            if (amount > this.shake.amount) { this.shake.amount = amount; this.shake.duration = duration; }
+          }
+
+          triggerFlash(r, g, b, amt) {
+            if (amt > this.flashAmt) { this.flashR=r; this.flashG=g; this.flashB=b; this.flashAmt=amt; }
+          }
+
+          showComboIndicator(chain) {
+            const el = this.ui.comboIndicator;
+            el.textContent = `🔥 Cascade ×${chain}`;
+            el.classList.add("show");
+            this.comboIndicatorTimer = 1.6;
           }
 
           bindEvents() {
             window.addEventListener("resize", this.handleResize);
-
-            this.ui.startButton.addEventListener("click", async () => {
-              await this.audio.unlock();
-              this.startNewGame();
-            });
-
-            this.ui.playAgainButton.addEventListener("click", async () => {
-              await this.audio.unlock();
-              this.startNewGame();
-            });
-
-            this.ui.restartButton.addEventListener("click", async () => {
-              await this.audio.unlock();
-              this.startNewGame();
-            });
-
-            this.ui.soundButtons.forEach((button) => {
-              button.addEventListener("click", async () => {
-                this.audio.toggle();
-                if (this.audio.enabled) {
-                  await this.audio.unlock();
-                  this.audio.playSwap();
-                }
-              });
-            });
-
-            this.canvas.addEventListener("pointerdown", (event) => this.onPointerDown(event));
-            this.canvas.addEventListener("pointermove", (event) => this.onPointerMove(event));
-            this.canvas.addEventListener("pointerup", (event) => this.onPointerUp(event));
-            this.canvas.addEventListener("pointercancel", () => this.resetPointerState());
+            this.ui.startButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
+            this.ui.playAgainButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
+            this.ui.restartButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
+            this.ui.soundButtons.forEach(b => b.addEventListener("click", async () => {
+              this.audio.toggle();
+              if (this.audio.enabled) { await this.audio.unlock(); this.audio.playSwap(); }
+            }));
+            this.canvas.addEventListener("pointerdown", e => this.onPointerDown(e));
+            this.canvas.addEventListener("pointermove", e => this.onPointerMove(e));
+            this.canvas.addEventListener("pointerup", e => this.onPointerUp(e));
+            this.canvas.addEventListener("pointercancel", () => this.resetPointer());
           }
 
           handleResize() {
             const rect = this.canvas.getBoundingClientRect();
             const ratio = window.devicePixelRatio || 1;
-
             this.canvas.width = Math.round(rect.width * ratio);
             this.canvas.height = Math.round(rect.height * ratio);
             this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-
             const size = Math.min(rect.width, rect.height);
-            const boardSize = size * 0.86;
-            const boardX = (rect.width - boardSize) / 2;
-            const boardY = (rect.height - boardSize) / 2;
-            this.board.setLayout(boardX, boardY, boardSize);
-            this.render();
+            const bs = size * 0.86;
+            this.board.setLayout((rect.width - bs) / 2, (rect.height - bs) / 2, bs);
+            this.render(performance.now() / 1000);
           }
 
           async startNewGame() {
             await this.audio.unlock();
-            this.refreshGemStyles();
-            this.board.reset();
-            this.board.selectedCell = null;
-            this.phase = "idle";
-            this.phaseClock = 0;
-            this.score = 0;
-            this.level = 1;
-            this.goal = 1800;
-            this.timeLeft = 75;
-            this.bestCombo = 1;
-            this.totalCleared = 0;
-            this.lastGain = 0;
-            this.pendingSwap = null;
-            this.comboChain = 0;
-            this.statusText = "Fais ton premier echange pour lancer la reaction.";
+            this.refreshGemStyles(); this.board.reset(); this.board.selectedCell = null;
+            this.phase = "idle"; this.phaseClock = 0;
+            this.score = 0; this.displayScore = 0;
+            this.level = 1; this.goal = 1800; this.timeLeft = 75;
+            this.bestCombo = 1; this.totalCleared = 0; this.lastGain = 0;
+            this.pendingSwap = null; this.comboChain = 0;
+            this.statusText = "Fais ton premier échange pour déclencher la réaction.";
             this.stateLabel = "En jeu";
-            this.levelFlash = 0;
-            this.swapHintFlash = 0;
-            this.centerCelebrations = [];
+            this.levelFlash = 0; this.swapHintFlash = 0;
             this.lastMoveAnchor = null;
+            this.shake = { x:0, y:0, duration:0, amount:0 };
+            this.flashAmt = 0;
+            this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            this.comboIndicatorTimer = 0;
+            this.ui.comboIndicator.classList.remove("show");
             this.hasBegun = true;
             this.ui.titleOverlay.classList.remove("visible");
             this.ui.gameOverOverlay.classList.remove("visible");
-            this.resetPointerState();
-            this.updateUi();
+            this.resetPointer(); this.updateUi();
           }
 
           endGame() {
-            const leaderboardResult = this.recordLeaderboardEntry();
-            this.phase = "gameover";
-            this.phaseClock = 0;
-            this.stateLabel = "Fin";
-            this.statusText = "Temps ecoule. Relance pour une nouvelle grille.";
-            this.board.selectedCell = null;
-            this.resetPointerState();
-            this.audio.playGameOver();
-
-            const leaderboardText =
-              leaderboardResult.isNew && leaderboardResult.rank > 0
-                ? ` Nouveau top ${leaderboardResult.rank}.`
-                : "";
-
+            const lr = this.recordEntry();
+            this.phase = "gameover"; this.phaseClock = 0;
+            this.stateLabel = "Fin"; this.statusText = "Temps écoulé. Relance pour une nouvelle grille.";
+            this.board.selectedCell = null; this.resetPointer(); this.audio.playGameOver();
+            this.triggerShake(10, 0.5);
+            this.triggerFlash(255, 80, 80, 0.9);
+            const lbText = lr.isNew && lr.rank > 0 ? ` Nouveau top ${lr.rank} !` : "";
             this.ui.gameOverSummary.textContent =
-              `Score final ${Math.round(this.score)}. Niveau ${this.level}. ` +
-              `Meilleur combo x${this.bestCombo}. Prismes casses ${this.totalCleared}.` +
-              leaderboardText;
+              `Score final ${Math.round(this.score)} · Niveau ${this.level} · Combo ×${this.bestCombo} · ${this.totalCleared} prismes.${lbText}`;
             this.ui.gameOverOverlay.classList.add("visible");
             this.updateUi();
           }
 
           updateUi() {
-            this.ui.score.textContent = Math.round(this.score).toString();
+            this.ui.score.textContent = Math.round(this.displayScore).toString();
             this.ui.level.textContent = this.level.toString();
             this.ui.goal.textContent = Math.round(this.goal).toString();
-            this.ui.time.textContent = Math.max(0, Math.ceil(this.timeLeft)).toString();
-            this.ui.combo.textContent = `x${this.bestCombo}`;
+            const prog = Math.min(1, this.score / this.goal);
+            this.ui.goalBar.style.width = `${prog * 100}%`;
+            const timeLeft = Math.max(0, Math.ceil(this.timeLeft));
+            this.ui.time.textContent = timeLeft.toString();
+            if (timeLeft <= 12 && this.hasBegun && this.phase !== "gameover") {
+              this.ui.timeCard.classList.add("danger");
+            } else {
+              this.ui.timeCard.classList.remove("danger");
+            }
+            this.ui.combo.textContent = `×${this.bestCombo}`;
             this.ui.cleared.textContent = this.totalCleared.toString();
             this.ui.gain.textContent = this.lastGain.toString();
             this.ui.state.textContent = this.stateLabel;
             this.ui.message.textContent = this.statusText;
           }
 
-          onPointerDown(event) {
-            if (!this.canReceiveInput()) {
-              return;
-            }
-
-            const point = this.canvasPointFromEvent(event);
-            const cell = this.board.cellFromPoint(point.x, point.y);
-            if (!cell) {
-              return;
-            }
-
-            this.inputDrag = {
-              active: true,
-              pointerId: event.pointerId,
-              startPoint: point,
-              startCell: cell,
-              moved: false
-            };
-
-            this.canvas.setPointerCapture(event.pointerId);
+          onPointerDown(e) {
+            if (!this.canInput()) return;
+            const pt = this.ptFromEvent(e);
+            const cell = this.board.cellFromPoint(pt.x, pt.y);
+            if (!cell) return;
+            this.inputDrag = { active: true, pointerId: e.pointerId, startPoint: pt, startCell: cell, moved: false };
+            this.canvas.setPointerCapture(e.pointerId);
           }
 
-          onPointerMove(event) {
-            if (!this.inputDrag.active || this.inputDrag.pointerId !== event.pointerId || !this.canReceiveInput()) {
-              return;
-            }
-
-            const point = this.canvasPointFromEvent(event);
-            const dx = point.x - this.inputDrag.startPoint.x;
-            const dy = point.y - this.inputDrag.startPoint.y;
-            const threshold = this.board.layout.cellSize * 0.26;
-
-            if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) {
-              return;
-            }
-
+          onPointerMove(e) {
+            if (!this.inputDrag.active || this.inputDrag.pointerId !== e.pointerId || !this.canInput()) return;
+            const pt = this.ptFromEvent(e);
+            const dx = pt.x - this.inputDrag.startPoint.x, dy = pt.y - this.inputDrag.startPoint.y;
+            const thresh = this.board.layout.cellSize * 0.25;
+            if (Math.abs(dx) < thresh && Math.abs(dy) < thresh) return;
             this.inputDrag.moved = true;
-
-            const direction =
-              Math.abs(dx) > Math.abs(dy)
-                ? { row: 0, column: dx > 0 ? 1 : -1 }
-                : { row: dy > 0 ? 1 : -1, column: 0 };
-
-            const target = {
-              row: this.inputDrag.startCell.row + direction.row,
-              column: this.inputDrag.startCell.column + direction.column
-            };
-
-            if (!this.board.inBounds(target.row, target.column)) {
-              return;
-            }
-
-            this.trySwap(this.inputDrag.startCell, target);
-            this.resetPointerState();
+            const dir = Math.abs(dx) > Math.abs(dy) ? {row:0,col:dx>0?1:-1} : {row:dy>0?1:-1,col:0};
+            const tgt = {row: this.inputDrag.startCell.row+dir.row, col: this.inputDrag.startCell.col+dir.col};
+            if (!this.board.inBounds(tgt.row, tgt.col)) return;
+            this.trySwap(this.inputDrag.startCell, tgt);
+            this.resetPointer();
           }
 
-          onPointerUp(event) {
-            if (!this.inputDrag.active || this.inputDrag.pointerId !== event.pointerId || !this.canReceiveInput()) {
-              this.resetPointerState();
-              return;
-            }
-
-            const point = this.canvasPointFromEvent(event);
-            const cell = this.board.cellFromPoint(point.x, point.y);
-
-            if (!this.inputDrag.moved && cell) {
-              this.handleTapSelection(cell);
-            }
-
-            this.resetPointerState();
+          onPointerUp(e) {
+            if (!this.inputDrag.active || this.inputDrag.pointerId !== e.pointerId || !this.canInput()) { this.resetPointer(); return; }
+            const pt = this.ptFromEvent(e);
+            const cell = this.board.cellFromPoint(pt.x, pt.y);
+            if (!this.inputDrag.moved && cell) this.handleTap(cell);
+            this.resetPointer();
           }
 
-          resetPointerState() {
-            this.inputDrag.active = false;
-            this.inputDrag.pointerId = null;
-            this.inputDrag.startPoint = null;
-            this.inputDrag.startCell = null;
-            this.inputDrag.moved = false;
-          }
+          resetPointer() { this.inputDrag = { active:false, pointerId:null, startPoint:null, startCell:null, moved:false }; }
 
-          canvasPointFromEvent(event) {
+          ptFromEvent(e) {
             const rect = this.canvas.getBoundingClientRect();
-            return {
-              x: event.clientX - rect.left,
-              y: event.clientY - rect.top
-            };
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
           }
 
-          handleTapSelection(cell) {
+          handleTap(cell) {
+            this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
             if (!this.board.selectedCell) {
               this.board.selectedCell = cell;
-              this.statusText = "Selectionne une case voisine pour echanger.";
-              this.stateLabel = "Selection";
-              this.updateUi();
-              return;
+              this.statusText = "Sélectionne une case voisine pour échanger."; this.stateLabel = "Sélection"; this.updateUi(); return;
             }
-
-            if (this.board.selectedCell.row === cell.row && this.board.selectedCell.column === cell.column) {
-              this.board.selectedCell = null;
-              this.statusText = "Selection annulee.";
-              this.stateLabel = "En jeu";
-              this.updateUi();
-              return;
+            if (this.board.selectedCell.row === cell.row && this.board.selectedCell.col === cell.col) {
+              this.board.selectedCell = null; this.statusText = "Sélection annulée."; this.stateLabel = "En jeu"; this.updateUi(); return;
             }
-
-            if (this.board.areAdjacent(this.board.selectedCell, cell)) {
-              this.trySwap(this.board.selectedCell, cell);
-              return;
-            }
-
-            this.board.selectedCell = cell;
-            this.statusText = "Cases non adjacentes. Choisis une voisine.";
-            this.stateLabel = "Selection";
-            this.updateUi();
+            if (this.board.areAdj(this.board.selectedCell, cell)) { this.trySwap(this.board.selectedCell, cell); return; }
+            this.board.selectedCell = cell; this.statusText = "Cases non adjacentes."; this.stateLabel = "Sélection"; this.updateUi();
           }
 
-          canReceiveInput() {
-            return this.hasBegun && this.phase === "idle" && !this.ui.gameOverOverlay.classList.contains("visible");
-          }
+          canInput() { return this.hasBegun && this.phase === "idle" && !this.ui.gameOverOverlay.classList.contains("visible"); }
 
-          trySwap(first, second) {
-            if (!this.canReceiveInput() || !this.board.areAdjacent(first, second)) {
-              return;
-            }
-
+          trySwap(a, b) {
+            if (!this.canInput() || !this.board.areAdj(a, b)) return;
             this.board.selectedCell = null;
-            this.lastMoveAnchor = {
-              row: (first.row + second.row) / 2,
-              column: (first.column + second.column) / 2
-            };
-            this.pendingSwap = {
-              first: { row: first.row, column: first.column },
-              second: { row: second.row, column: second.column }
-            };
-            this.board.swapTiles(first, second);
-            this.phase = "swap";
-            this.phaseClock = 0;
-            this.comboChain = 0;
-            this.stateLabel = "Swap";
-            this.statusText = "Verification des alignements...";
-            this.audio.playSwap();
-            this.updateUi();
+            this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            this.lastMoveAnchor = { row: (a.row+b.row)/2, col: (a.col+b.col)/2 };
+            this.pendingSwap = { first: {row:a.row,col:a.col}, second: {row:b.row,col:b.col} };
+            this.board.swapTiles(a, b);
+            this.phase = "swap"; this.phaseClock = 0; this.comboChain = 0;
+            this.stateLabel = "Swap"; this.statusText = "Vérification des alignements...";
+            this.audio.playSwap(); this.updateUi();
           }
 
-          createComboBonusSpawns(matchResult) {
-            if (this.comboChain < 2) {
-              return [];
-            }
+          comboRate() { return 1 + Math.max(0, this.comboChain - 1) * 0.45; }
 
-            const sortedLines = [...matchResult.lines].sort((left, right) => right.length - left.length);
-            const selectedLine = sortedLines[0];
-            if (!selectedLine) {
-              return [];
-            }
-
-            const candidates = selectedLine.cells.filter((cell) => {
-              const tile = this.board.grid[cell.row][cell.column];
-              return tile && !tile.bonus;
-            });
-
-            if (candidates.length === 0) {
-              return [];
-            }
-
-            const spawnCell = candidates[Math.floor(candidates.length / 2)];
-            let kind = selectedLine.orientation === "row" ? "row" : "column";
-
-            if (this.comboChain >= 3 || selectedLine.length >= 5 || matchResult.triggeredBonuses.length > 0) {
-              kind = "burst";
-            }
-
-            return [{ row: spawnCell.row, column: spawnCell.column, kind }];
+          celebOrigin() {
+            const { boardX, boardY, boardSize, cellSize } = this.board.layout;
+            if (!boardSize) return null;
+            if (this.lastMoveAnchor) return { x: boardX+(this.lastMoveAnchor.col+0.5)*cellSize, y: boardY+(this.lastMoveAnchor.row+0.5)*cellSize };
+            return { x: boardX+boardSize/2, y: boardY+boardSize/2 };
           }
 
-          queueMatchResolution(matchResult) {
-            this.comboChain += 1;
-            this.bestCombo = Math.max(this.bestCombo, this.comboChain);
-            const expandedMatch = this.board.expandBonusMatches(matchResult);
-            const comboBonusSpawns = this.createComboBonusSpawns(expandedMatch);
+          spawnCelebration(opts) {
+            const origin = this.celebOrigin();
+            if (!origin) return;
+            this.celebrations.spawn(origin, opts);
+            for (let i = 0; i < 3; i++) {
+              const a = (Math.PI*2*i)/3 + rnd(-0.3,0.3);
+              const bx = origin.x + Math.cos(a)*rnd(14,38), by = origin.y + Math.sin(a)*rnd(14,38);
+              this.particles.burst(bx, by, opts.color, 10 + Math.round(opts.rate*3), 1 + opts.rate*0.18);
+              this.particles.addRing(origin.x, origin.y, opts.color, 50 + opts.rate*12);
+            }
+          }
 
-            const lineBonus = expandedMatch.lines.reduce(
-              (total, line) => total + Math.max(0, line.length - 3) * 85,
-              0
-            );
-            const triggeredBonusScore = expandedMatch.triggeredBonuses.length * 180;
-            const createdBonusScore = comboBonusSpawns.length * 140;
-            const base = expandedMatch.cells.length * 120 + lineBonus + triggeredBonusScore + createdBonusScore;
-            const gained = Math.round(base * (1 + (this.comboChain - 1) * 0.45));
-            this.score += gained;
-            this.lastGain = gained;
-            this.totalCleared += expandedMatch.cells.length;
-            this.stateLabel = this.comboChain > 1 ? `Cascade x${this.comboChain}` : "Match";
-            const bonusSummary = [
-              expandedMatch.triggeredBonuses.length > 0
-                ? `${expandedMatch.triggeredBonuses.length} jeton${expandedMatch.triggeredBonuses.length > 1 ? "s" : ""} active${expandedMatch.triggeredBonuses.length > 1 ? "s" : ""}`
-                : "",
-              comboBonusSpawns.length > 0
-                ? `${comboBonusSpawns.length} nouveau${comboBonusSpawns.length > 1 ? "x" : ""} bonus`
-                : ""
-            ]
-              .filter(Boolean)
-              .join(" • ");
+          makeBonusSpawns(mr) {
+            if (this.comboChain < 2) return [];
+            const sorted = [...mr.lines].sort((a,b) => b.length - a.length);
+            const line = sorted[0]; if (!line) return [];
+            const cands = line.cells.filter(c => { const t = this.board.grid[c.row][c.col]; return t && !t.bonus; });
+            if (!cands.length) return [];
+            const sc = cands[Math.floor(cands.length/2)];
+            let kind = line.orientation === "row" ? "row" : "column";
+            if (this.comboChain >= 3 || line.length >= 5 || mr.triggeredBonuses.length > 0) kind = "burst";
+            return [{row:sc.row, col:sc.col, kind}];
+          }
 
+          resolveMatches(mr) {
+            this.comboChain++; this.bestCombo = Math.max(this.bestCombo, this.comboChain);
+            const exp = this.board.expandBonus(mr);
+            const spawns = this.makeBonusSpawns(exp);
+            const lineBonus = exp.lines.reduce((s,l) => s + Math.max(0,l.length-3)*88, 0);
+            const bonus = exp.triggeredBonuses.length * 185 + spawns.length * 145;
+            const base = exp.cells.length * 125 + lineBonus + bonus;
+            const gained = Math.round(base * (1 + (this.comboChain-1) * 0.45));
+            this.score += gained; this.lastGain = gained; this.totalCleared += exp.cells.length;
+
+            if (this.comboChain >= 3) this.triggerShake(4 + this.comboChain, 0.24);
+            else if (this.comboChain === 2) this.triggerShake(3, 0.16);
+            this.triggerFlash(78, 242, 184, 0.25 + this.comboChain * 0.06);
+
+            if (this.comboChain >= 2) this.showComboIndicator(this.comboChain);
+
+            this.stateLabel = this.comboChain > 1 ? `Cascade ×${this.comboChain}` : "Match";
+            const bonusSum = [
+              exp.triggeredBonuses.length > 0 ? `${exp.triggeredBonuses.length} jeton${exp.triggeredBonuses.length>1?"s":""} activé${exp.triggeredBonuses.length>1?"s":""}` : "",
+              spawns.length > 0 ? `${spawns.length} bonus créé${spawns.length>1?"s":""}` : ""
+            ].filter(Boolean).join(" · ");
             this.statusText = this.comboChain > 1
-              ? `Cascade x${this.comboChain} ! ${gained} points${bonusSummary ? ` • ${bonusSummary}` : ""}.`
-              : `${expandedMatch.cells.length} prismes brises, ${gained} points${bonusSummary ? ` • ${bonusSummary}` : ""}.`;
+              ? `Cascade ×${this.comboChain} ! +${gained} pts${bonusSum ? " · "+bonusSum : ""}`
+              : `${exp.cells.length} prismes brisés · +${gained} pts${bonusSum ? " · "+bonusSum : ""}`;
 
-            this.spawnCenterCelebration({
-              gain: gained,
-              comboRate: this.currentComboRate(),
-              title: this.comboChain > 1 ? `Cascade x${this.comboChain}` : "Gain",
-              color: this.board.types[(expandedMatch.cells[0].row + expandedMatch.cells[0].column) % this.board.types.length].shine
+            const pal = this.board.types[(exp.cells[0].row + exp.cells[0].col) % this.board.types.length];
+            this.spawnCelebration({ gain: gained, rate: this.comboRate(), title: this.comboChain > 1 ? `Cascade ×${this.comboChain}` : "Gain", color: pal.shine });
+
+            exp.cells.forEach(cell => {
+              const t = this.board.grid[cell.row][cell.col];
+              const c = this.board.getCellCenter(cell.row, cell.col);
+              this.particles.burst(c.x, c.y, this.board.types[t.kind].base, 6, 1 + this.comboChain*0.2);
             });
-
-            expandedMatch.cells.forEach((cell) => {
-              const tile = this.board.grid[cell.row][cell.column];
-              const center = this.board.getCellCenter(cell.row, cell.column);
-              this.particles.burst(center.x, center.y, this.board.types[tile.kind].base, 8, 1 + this.comboChain * 0.18);
+            spawns.forEach((sp,i) => {
+              const c = this.board.getCellCenter(sp.row, sp.col);
+              this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 14, 1.1);
             });
-
-            comboBonusSpawns.forEach((spawn, index) => {
-              const center = this.board.getCellCenter(spawn.row, spawn.column);
-              const palette = this.board.types[(spawn.row + spawn.column + index) % this.board.types.length];
-              this.particles.burst(center.x, center.y, palette.shine, 12, 1.05);
-            });
-
-            this.board.markMatches(expandedMatch, comboBonusSpawns);
-            this.phase = "clear";
-            this.phaseClock = 0;
-            this.audio.playMatch(this.comboChain, expandedMatch.cells.length + expandedMatch.triggeredBonuses.length * 2);
+            this.board.markMatches(exp, spawns);
+            this.phase = "clear"; this.phaseClock = 0;
+            this.audio.playMatch(this.comboChain, exp.cells.length + exp.triggeredBonuses.length * 2);
             this.updateUi();
           }
 
-          burstLevelBonus(levelsGained) {
-            const anchorCells = [
-              { row: 1, column: 1 },
-              { row: 1, column: this.board.columns - 2 },
-              { row: this.board.rows - 2, column: 1 },
-              { row: this.board.rows - 2, column: this.board.columns - 2 },
-              { row: Math.floor(this.board.rows / 2), column: Math.floor(this.board.columns / 2) }
-            ];
-
-            anchorCells.forEach((cell, index) => {
-              const center = this.board.getCellCenter(cell.row, cell.column);
-              const palette = this.board.types[(index + this.level) % this.board.types.length];
-              this.particles.burst(center.x, center.y, palette.base, 10 + levelsGained * 3, 1.2 + levelsGained * 0.1);
+          burstLevelBonus(levs) {
+            const anchors = [{row:1,col:1},{row:1,col:this.board.cols-2},{row:this.board.rows-2,col:1},{row:this.board.rows-2,col:this.board.cols-2},{row:Math.floor(this.board.rows/2),col:Math.floor(this.board.cols/2)}];
+            anchors.forEach((a,i) => {
+              const c = this.board.getCellCenter(a.row, a.col);
+              const p = this.board.types[(i+this.level)%this.board.types.length];
+              this.particles.burst(c.x, c.y, p.base, 12+levs*4, 1.3+levs*0.12);
+              this.particles.addRing(c.x, c.y, p.shine, 80);
             });
           }
 
-          advanceLevelIfNeeded() {
-            let levelsGained = 0;
-            let bonusScore = 0;
-            let timeBonus = 0;
-
+          advanceLevel() {
+            let levs = 0, bonusSc = 0, timeBon = 0;
             while (this.score >= this.goal) {
-              this.level += 1;
-              levelsGained += 1;
-              bonusScore += 280 + this.level * 140;
-              timeBonus += 16;
-              this.goal = Math.round(this.goal * 1.45 + 520);
+              this.level++; levs++;
+              bonusSc += 290 + this.level * 148; timeBon += 17;
+              this.goal = Math.round(this.goal * 1.46 + 540);
             }
-
-            if (levelsGained > 0) {
-              this.score += bonusScore;
-              this.lastGain = bonusScore;
-              this.timeLeft = Math.min(120, this.timeLeft + timeBonus);
-              this.levelFlash = 1.15;
-              this.spawnCenterCelebration({
-                gain: bonusScore,
-                comboRate: this.currentComboRate(),
-                title: `Niveau ${this.level}`,
-                color: "#ffe59a"
-              });
-              this.burstLevelBonus(levelsGained);
+            if (levs > 0) {
+              this.score += bonusSc; this.lastGain = bonusSc;
+              this.timeLeft = Math.min(120, this.timeLeft + timeBon);
+              this.levelFlash = 1.2;
+              this.triggerShake(7, 0.4);
+              this.triggerFlash(255, 210, 80, 0.65);
+              this.spawnCelebration({ gain: bonusSc, rate: this.comboRate(), title: `Niveau ${this.level}`, color: "#ffe880" });
+              this.burstLevelBonus(levs);
               this.audio.playLevelUp();
             }
-
-            return {
-              leveledUp: levelsGained > 0,
-              levelsGained,
-              bonusScore,
-              timeBonus
-            };
+            return { up: levs > 0, levs, bonusSc, timeBon };
           }
 
           afterCascade() {
-            const levelResult = this.advanceLevelIfNeeded();
-            const leveledUp = levelResult.leveledUp;
-            let levelBonusTokens = [];
-            const levelBonusText = leveledUp
-              ? `Objectif atteint. Niveau ${this.level}. Bonus +${levelResult.bonusScore} points et +${levelResult.timeBonus} sec.`
-              : "";
-
-            if (!this.board.hasPossibleMoves()) {
-              this.board.shuffleKinds();
-              this.phase = "shuffle";
-              this.phaseClock = 0;
-              this.stateLabel = "Melange";
-              this.statusText = leveledUp
-                ? `${levelBonusText} Plus de coups disponibles, melange du plateau.`
-                : "Plus de coups disponibles, melange du plateau.";
+            const lr = this.advanceLevel();
+            const lvlText = lr.up ? `Objectif atteint · Niveau ${this.level} · +${lr.bonusSc} pts · +${lr.timeBon}s` : "";
+            let lvlTokens = [];
+            if (!this.board.hasMoves()) {
+              this.board.shuffleKinds(); this.phase = "shuffle"; this.phaseClock = 0;
+              this.stateLabel = "Mélange";
+              this.statusText = lr.up ? `${lvlText} · Plus de coups, mélange.` : "Plus de coups disponibles, mélange.";
               this.audio.playShuffle();
             } else {
-              this.phase = "idle";
-              this.phaseClock = 0;
-              this.stateLabel = leveledUp ? "Niveau +" : "En jeu";
-              this.statusText = leveledUp
-                ? levelBonusText
-                : "A toi de jouer.";
+              this.phase = "idle"; this.phaseClock = 0;
+              this.stateLabel = lr.up ? "Niveau +" : "En jeu";
+              this.statusText = lr.up ? lvlText : "À toi de jouer.";
             }
-
-            if (leveledUp) {
-              levelBonusTokens = this.board.injectBonusTokens(Math.min(3, levelResult.levelsGained + 1), "level");
-              levelBonusTokens.forEach((spawn, index) => {
-                const center = this.board.getCellCenter(spawn.row, spawn.column);
-                const palette = this.board.types[(spawn.row + spawn.column + index) % this.board.types.length];
-                this.particles.burst(center.x, center.y, palette.shine, 14, 1.18);
+            if (lr.up) {
+              lvlTokens = this.board.injectBonusTokens(Math.min(3, lr.levs+1), "level");
+              lvlTokens.forEach((sp,i) => {
+                const c = this.board.getCellCenter(sp.row, sp.col);
+                this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 16, 1.2);
               });
-
-              if (levelBonusTokens.length > 0) {
-                this.statusText += ` ${levelBonusTokens.length} jeton${levelBonusTokens.length > 1 ? "s" : ""} bonus charge${levelBonusTokens.length > 1 ? "s" : ""}.`;
-              }
+              if (lvlTokens.length > 0) this.statusText += ` · ${lvlTokens.length} jeton${lvlTokens.length>1?"s":""} bonus chargé${lvlTokens.length>1?"s":""}.`;
             }
-
             this.updateUi();
           }
 
-          update(dt, timestamp) {
+          updateShake(dt) {
+            if (this.shake.duration > 0) {
+              this.shake.duration -= dt;
+              const intensity = (this.shake.duration / 0.4) * this.shake.amount;
+              this.shake.x = (Math.random()-0.5) * intensity;
+              this.shake.y = (Math.random()-0.5) * intensity;
+            } else { this.shake.x=0; this.shake.y=0; this.shake.amount=0; }
+          }
+
+          updateHints(dt) {
+            if (!this.canInput()) { this.hintTimer = 0; return; }
+            this.hintTimer += dt;
+            if (this.hintTimer > 5 && !this.hintShown) {
+              this.hintCells = this.board.findHintMove();
+              this.hintShown = true;
+              if (this.hintCells.length > 0) this.audio.playHint();
+            }
+          }
+
+          update(dt, ts) {
             this.phaseClock += dt;
-            this.levelFlash = Math.max(0, this.levelFlash - dt * 1.8);
+            this.levelFlash = Math.max(0, this.levelFlash - dt * 1.7);
             this.swapHintFlash = Math.max(0, this.swapHintFlash - dt * 3);
+            this.flashAmt *= Math.pow(0.12, dt);
+            if (this.flashAmt < 0.005) this.flashAmt = 0;
+
+            // Combo indicator
+            if (this.comboIndicatorTimer > 0) {
+              this.comboIndicatorTimer -= dt;
+              if (this.comboIndicatorTimer <= 0) this.ui.comboIndicator.classList.remove("show");
+            }
+
+            // Animated score display
+            this.displayScore = lerp(this.displayScore, this.score, clamp(dt * 8, 0.05, 0.35));
 
             if (this.hasBegun && this.phase !== "title" && this.phase !== "gameover") {
               this.timeLeft = Math.max(0, this.timeLeft - dt);
-              if (this.timeLeft <= 0) {
-                this.endGame();
-                return;
-              }
+              if (this.timeLeft <= 0) { this.endGame(); return; }
             }
 
-            this.board.updateAnimations(dt);
+            this.board.updateAnims(dt);
             this.particles.update(dt);
-            this.updateCenterCelebrations(dt);
+            this.celebrations.update(dt);
+            this.updateShake(dt);
+            this.updateHints(dt);
 
             switch (this.phase) {
-              case "swap": {
+              case "swap":
                 if (this.phaseClock >= 0.14 && this.board.isSettled()) {
-                  const matches = this.board.findMatches();
-                  if (matches.cells.length === 0) {
+                  const mr = this.board.findMatches();
+                  if (!mr.cells.length) {
                     this.board.swapTiles(this.pendingSwap.first, this.pendingSwap.second);
-                    this.phase = "revert";
-                    this.phaseClock = 0;
-                    this.stateLabel = "Annule";
-                    this.statusText = "Aucun match. Essaie un autre echange.";
-                    this.swapHintFlash = 1;
-                    this.audio.playInvalid();
+                    this.phase = "revert"; this.phaseClock = 0;
+                    this.stateLabel = "Annulé"; this.statusText = "Aucun match. Essaie un autre échange.";
+                    this.swapHintFlash = 1; this.audio.playInvalid();
+                    this.triggerFlash(255, 80, 80, 0.3);
                     this.updateUi();
-                  } else {
-                    this.queueMatchResolution(matches);
-                  }
+                  } else { this.resolveMatches(mr); }
                 }
                 break;
-              }
-
-              case "revert": {
+              case "revert":
                 if (this.phaseClock >= 0.14 && this.board.isSettled()) {
-                  this.phase = "idle";
-                  this.phaseClock = 0;
-                  this.stateLabel = "En jeu";
-                  this.statusText = "Cherche une meilleure ouverture.";
-                  this.updateUi();
+                  this.phase = "idle"; this.phaseClock = 0;
+                  this.stateLabel = "En jeu"; this.statusText = "Cherche une meilleure ouverture."; this.updateUi();
                 }
                 break;
-              }
-
-              case "clear": {
-                if (this.phaseClock >= 0.18) {
-                  this.board.collapseAndRefill();
-                  this.phase = "fall";
-                  this.phaseClock = 0;
-                }
+              case "clear":
+                if (this.phaseClock >= 0.18) { this.board.collapseRefill(); this.phase = "fall"; this.phaseClock = 0; }
                 break;
-              }
-
-              case "fall": {
+              case "fall":
                 if (this.phaseClock >= 0.18 && this.board.isSettled()) {
-                  const matches = this.board.findMatches();
-                  if (matches.cells.length > 0) {
-                    this.queueMatchResolution(matches);
-                  } else {
-                    this.afterCascade();
-                  }
+                  const mr = this.board.findMatches();
+                  if (mr.cells.length > 0) this.resolveMatches(mr); else this.afterCascade();
                 }
                 break;
-              }
-
-              case "shuffle": {
+              case "shuffle":
                 if (this.phaseClock >= 0.26 && this.board.isSettled()) {
-                  this.phase = "idle";
-                  this.phaseClock = 0;
-                  this.stateLabel = "En jeu";
-                  this.statusText = "Nouvelle disposition. Exploite-la vite.";
-                  this.updateUi();
+                  this.phase = "idle"; this.phaseClock = 0;
+                  this.stateLabel = "En jeu"; this.statusText = "Nouvelle disposition. Exploite-la."; this.updateUi();
                 }
                 break;
-              }
-
-              default:
-                break;
             }
 
-            if (Math.floor(timestamp * 10) % 2 === 0) {
-              this.updateUi();
-            }
+            if (Math.floor(ts * 10) % 2 === 0) this.updateUi();
           }
 
-          drawBackdrop() {
-            const rect = this.canvas.getBoundingClientRect();
-            const width = rect.width;
-            const height = rect.height;
-            const gradient = this.ctx.createLinearGradient(0, 0, width, height);
-
-            gradient.addColorStop(0, "rgba(19, 47, 58, 0.72)");
-            gradient.addColorStop(0.52, "rgba(6, 15, 24, 0.92)");
-            gradient.addColorStop(1, "rgba(16, 37, 50, 0.85)");
-
-            this.ctx.clearRect(0, 0, width, height);
-            this.ctx.fillStyle = gradient;
-            this.ctx.fillRect(0, 0, width, height);
-
-            this.ctx.save();
-            this.ctx.globalAlpha = 0.18;
-            for (let index = 0; index < 20; index += 1) {
-              const x = (width / 20) * index + 18;
-              const y = (height / 20) * ((index * 7) % 20) + 14;
-              this.ctx.beginPath();
-              this.ctx.arc(x, y, 1.4 + (index % 3), 0, Math.PI * 2);
-              this.ctx.fillStyle = index % 2 === 0 ? "#ffcf85" : "#9bece4";
-              this.ctx.fill();
-            }
-            this.ctx.restore();
-          }
-
-          drawHudEffects(timestamp) {
-            const rect = this.canvas.getBoundingClientRect();
-            const width = rect.width;
-            const pulse = 0.5 + Math.sin(timestamp * 1.4) * 0.5;
-
-            if (this.timeLeft <= 12 && this.phase !== "title" && this.phase !== "gameover") {
+          drawStarfield(ts, w, h) {
+            this.stars.forEach(s => {
+              const a = s.base * (0.65 + Math.sin(ts * s.speed + s.twinkle) * 0.28);
               this.ctx.save();
-              this.ctx.fillStyle = `rgba(255, 92, 92, ${0.12 + pulse * 0.08})`;
-              this.ctx.fillRect(0, 0, width, rect.height);
+              this.ctx.globalAlpha = a;
+              this.ctx.fillStyle = s.warm ? "#ffeaa0" : "#b0f0f0";
+              this.ctx.shadowBlur = s.r > 1.2 ? 8 : 0;
+              this.ctx.shadowColor = s.warm ? "#ffd970" : "#70e8e8";
+              this.ctx.beginPath(); this.ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2); this.ctx.fill();
               this.ctx.restore();
-            }
-
-            if (this.levelFlash > 0) {
-              this.ctx.save();
-              this.ctx.fillStyle = `rgba(255, 211, 111, ${this.levelFlash * 0.16})`;
-              this.ctx.fillRect(0, 0, width, rect.height);
-              this.ctx.restore();
-            }
+            });
           }
 
-          render() {
-            const timestamp = performance.now() / 1000;
-            this.drawBackdrop();
-            this.board.draw(this.ctx, timestamp, this.levelFlash);
+          render(ts) {
+            if (ts === undefined) ts = performance.now() / 1000;
+            const rect = this.canvas.getBoundingClientRect();
+            const w = rect.width, h = rect.height;
+
+            this.ctx.clearRect(0, 0, w, h);
+
+            // Background gradient
+            const bg = this.ctx.createLinearGradient(0, 0, w, h);
+            bg.addColorStop(0, "rgba(4,12,22,0.96)");
+            bg.addColorStop(0.5, "rgba(5,15,25,0.98)");
+            bg.addColorStop(1, "rgba(8,20,32,0.96)");
+            this.ctx.fillStyle = bg; this.ctx.fillRect(0, 0, w, h);
+
+            // Starfield
+            this.drawStarfield(ts, w, h);
+
+            // Board
+            this.board.draw(this.ctx, ts, this.levelFlash, this.hintCells, this.shake);
+
+            // Particles & celebrations
             this.particles.draw(this.ctx);
-            this.drawCenterCelebrations(timestamp);
-            this.drawHudEffects(timestamp);
+            this.celebrations.draw(this.ctx, ts);
+
+            // Screen flash
+            if (this.flashAmt > 0.01) {
+              this.ctx.fillStyle = `rgba(${this.flashR},${this.flashG},${this.flashB},${this.flashAmt * 0.32})`;
+              this.ctx.fillRect(0, 0, w, h);
+            }
+
+            // Timer warning overlay
+            if (this.timeLeft <= 12 && this.hasBegun && this.phase !== "gameover") {
+              const pulse = 0.5 + Math.sin(ts * 5) * 0.4;
+              this.ctx.fillStyle = `rgba(220,60,60,${0.07 + pulse * 0.06})`;
+              this.ctx.fillRect(0, 0, w, h);
+            }
+
+            // Level flash
+            if (this.levelFlash > 0) {
+              this.ctx.fillStyle = `rgba(255,210,80,${this.levelFlash * 0.14})`;
+              this.ctx.fillRect(0, 0, w, h);
+            }
           }
 
           loop(now) {
             const dt = clamp((now - this.lastTimestamp) / 1000, 0.001, 0.033);
             this.lastTimestamp = now;
             this.update(dt, now / 1000);
-            this.render();
+            this.render(now / 1000);
             requestAnimationFrame(this.loop);
           }
         }
