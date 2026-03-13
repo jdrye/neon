@@ -666,17 +666,30 @@
 
         const LEADERBOARD_KEY = "pulse-prism-top-scores-v1";
 
-        const GEM_TYPES = [
-          { name: "ember", base: "#ff8758", shine: "#ffd3ae", shadow: "#b94a1d" },
-          { name: "lagoon", base: "#49d2f0", shine: "#d9feff", shadow: "#167d9e" },
-          { name: "lime", base: "#89f26c", shine: "#ecffd6", shadow: "#3b8f2c" },
-          { name: "solar", base: "#ffd35a", shine: "#fff5c0", shadow: "#bd8f16" },
-          { name: "rose", base: "#ff74a8", shine: "#ffe0ef", shadow: "#af3b69" },
-          { name: "violet", base: "#a98bff", shine: "#f0e8ff", shadow: "#5941aa" }
+        const GEM_SHAPES = [
+          "diamond",
+          "orb",
+          "rounded-square",
+          "triangle",
+          "hexagon",
+          "droplet",
+          "star",
+          "kite",
+          "octagon"
         ];
 
         const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
         const lerp = (start, end, amount) => start + (end - start) * amount;
+        const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+        function shuffleArray(items) {
+          const clone = [...items];
+          for (let index = clone.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(Math.random() * (index + 1));
+            [clone[index], clone[swapIndex]] = [clone[swapIndex], clone[index]];
+          }
+          return clone;
+        }
 
         function roundedRectPath(ctx, x, y, width, height, radius) {
           const r = Math.min(radius, width / 2, height / 2);
@@ -686,6 +699,37 @@
           ctx.arcTo(x + width, y + height, x, y + height, r);
           ctx.arcTo(x, y + height, x, y, r);
           ctx.arcTo(x, y, x + width, y, r);
+          ctx.closePath();
+        }
+
+        function polygonPath(ctx, sides, radius, rotation = -Math.PI / 2) {
+          ctx.beginPath();
+          for (let index = 0; index < sides; index += 1) {
+            const angle = rotation + (Math.PI * 2 * index) / sides;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            if (index === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          ctx.closePath();
+        }
+
+        function starPath(ctx, points, outerRadius, innerRadius, rotation = -Math.PI / 2) {
+          ctx.beginPath();
+          for (let index = 0; index < points * 2; index += 1) {
+            const angle = rotation + (Math.PI * index) / points;
+            const radius = index % 2 === 0 ? outerRadius : innerRadius;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            if (index === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
           ctx.closePath();
         }
 
@@ -1264,14 +1308,15 @@
             const palette = this.types[tile.kind];
             const centerX = boardX + (tile.renderColumn + 0.5) * cellSize;
             const centerY = boardY + (tile.renderRow + 0.5) * cellSize;
-            const radius = cellSize * 0.34 * tile.scale;
+            const radius = cellSize * 0.34 * tile.scale * palette.sizeBias;
             const hover = 1 + Math.sin(pulseTime * 1.8 + tile.column * 0.3 + tile.row * 0.25) * 0.012;
             const glowStrength = 18 + flashAmount * 14;
 
             ctx.save();
             ctx.globalAlpha = tile.alpha;
             ctx.translate(centerX, centerY);
-            ctx.scale(hover, hover);
+            ctx.rotate(palette.rotation + Math.sin(pulseTime * 0.9 + tile.row * 0.2 + tile.column * 0.17) * 0.035);
+            ctx.scale(hover * palette.squashX, hover * palette.squashY);
 
             ctx.shadowBlur = glowStrength;
             ctx.shadowColor = palette.base;
@@ -1291,12 +1336,21 @@
             gradient.addColorStop(1, palette.shadow);
             ctx.fillStyle = gradient;
 
-            this.drawShape(ctx, tile.kind, radius);
+            this.drawShape(ctx, palette, radius);
             ctx.fill();
 
             ctx.lineWidth = Math.max(2, radius * 0.1);
             ctx.strokeStyle = "rgba(255, 255, 255, 0.34)";
             ctx.stroke();
+
+            ctx.save();
+            ctx.globalAlpha = 0.32;
+            ctx.fillStyle = palette.accent;
+            ctx.rotate(-palette.rotation * 0.85);
+            ctx.scale(palette.facetScale, palette.facetScale);
+            this.drawShape(ctx, palette, radius);
+            ctx.fill();
+            ctx.restore();
 
             ctx.save();
             ctx.globalAlpha = 0.7;
@@ -1309,52 +1363,57 @@
             ctx.restore();
           }
 
-          drawShape(ctx, kind, radius) {
-            ctx.beginPath();
-
-            switch (kind) {
-              case 0: {
+          drawShape(ctx, palette, radius) {
+            switch (palette.shape) {
+              case "diamond": {
+                ctx.beginPath();
                 ctx.moveTo(0, -radius);
-                ctx.lineTo(radius * 0.76, 0);
+                ctx.lineTo(radius * 0.8, 0);
                 ctx.lineTo(0, radius);
-                ctx.lineTo(-radius * 0.76, 0);
+                ctx.lineTo(-radius * 0.8, 0);
                 ctx.closePath();
                 break;
               }
-              case 1: {
+              case "orb": {
+                ctx.beginPath();
                 ctx.arc(0, 0, radius * 0.96, 0, Math.PI * 2);
                 break;
               }
-              case 2: {
+              case "rounded-square": {
                 roundedRectPath(ctx, -radius * 0.86, -radius * 0.86, radius * 1.72, radius * 1.72, radius * 0.42);
                 break;
               }
-              case 3: {
+              case "triangle": {
+                polygonPath(ctx, 3, radius * 1.02);
+                break;
+              }
+              case "hexagon": {
+                polygonPath(ctx, 6, radius);
+                break;
+              }
+              case "droplet": {
+                ctx.beginPath();
                 ctx.moveTo(0, -radius);
-                ctx.lineTo(radius * 0.94, radius * 0.62);
-                ctx.lineTo(-radius * 0.94, radius * 0.62);
+                ctx.bezierCurveTo(radius * 0.9, -radius * 0.55, radius * 0.88, radius * 0.42, 0, radius);
+                ctx.bezierCurveTo(-radius * 0.88, radius * 0.42, -radius * 0.9, -radius * 0.55, 0, -radius);
                 ctx.closePath();
                 break;
               }
-              case 4: {
-                for (let index = 0; index < 6; index += 1) {
-                  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / 6;
-                  const x = Math.cos(angle) * radius;
-                  const y = Math.sin(angle) * radius;
-                  if (index === 0) {
-                    ctx.moveTo(x, y);
-                  } else {
-                    ctx.lineTo(x, y);
-                  }
-                }
+              case "star": {
+                starPath(ctx, palette.points || 5, radius, radius * 0.48);
+                break;
+              }
+              case "kite": {
+                ctx.beginPath();
+                ctx.moveTo(0, -radius);
+                ctx.lineTo(radius * 0.76, -radius * 0.05);
+                ctx.lineTo(0, radius);
+                ctx.lineTo(-radius * 0.46, radius * 0.12);
                 ctx.closePath();
                 break;
               }
               default: {
-                ctx.moveTo(0, -radius);
-                ctx.bezierCurveTo(radius * 0.78, -radius * 0.72, radius * 0.98, 0, 0, radius);
-                ctx.bezierCurveTo(-radius * 0.98, 0, -radius * 0.78, -radius * 0.72, 0, -radius);
-                ctx.closePath();
+                polygonPath(ctx, 8, radius * 0.98, -Math.PI / 8);
               }
             }
           }
@@ -1364,7 +1423,8 @@
           constructor() {
             this.canvas = document.getElementById("gameCanvas");
             this.ctx = this.canvas.getContext("2d");
-            this.board = new Match3Board(8, 8, GEM_TYPES);
+            this.gemStyles = this.createGemStyles();
+            this.board = new Match3Board(8, 8, this.gemStyles);
             this.particles = new ParticleSystem();
             this.ui = {
               score: document.getElementById("scoreValue"),
@@ -1427,6 +1487,37 @@
             this.handleResize();
             this.render();
             requestAnimationFrame(this.loop);
+          }
+
+          createGemStyles() {
+            const selectedShapes = shuffleArray(GEM_SHAPES).slice(0, 6);
+            const hueStart = Math.random() * 360;
+            const hueStep = 360 / selectedShapes.length;
+
+            return selectedShapes.map((shape, index) => {
+              const hue = (hueStart + hueStep * index + randomBetween(-18, 18) + 360) % 360;
+              const saturation = Math.round(randomBetween(76, 92));
+              const lightness = Math.round(randomBetween(54, 66));
+              return {
+                name: `${shape}-${index}`,
+                shape,
+                base: `hsl(${Math.round(hue)}, ${saturation}%, ${lightness}%)`,
+                shine: `hsl(${Math.round((hue - 6 + 360) % 360)}, 95%, ${Math.min(92, lightness + 24)}%)`,
+                shadow: `hsl(${Math.round((hue + 12) % 360)}, ${Math.max(52, saturation - 24)}%, ${Math.max(24, lightness - 28)}%)`,
+                accent: `hsla(${Math.round((hue + randomBetween(24, 58)) % 360)}, 92%, 86%, 0.28)`,
+                rotation: randomBetween(-0.55, 0.55),
+                squashX: randomBetween(0.9, 1.14),
+                squashY: randomBetween(0.9, 1.14),
+                sizeBias: randomBetween(0.92, 1.07),
+                facetScale: randomBetween(0.38, 0.58),
+                points: shape === "star" ? (Math.random() < 0.5 ? 5 : 6) : 0
+              };
+            });
+          }
+
+          refreshGemStyles() {
+            this.gemStyles = this.createGemStyles();
+            this.board.types = this.gemStyles;
           }
 
           normalizeLeaderboard(entries) {
@@ -1596,6 +1687,7 @@
 
           async startNewGame() {
             await this.audio.unlock();
+            this.refreshGemStyles();
             this.board.reset();
             this.board.selectedCell = null;
             this.phase = "idle";
@@ -1817,7 +1909,7 @@
             matchResult.cells.forEach((cell) => {
               const tile = this.board.grid[cell.row][cell.column];
               const center = this.board.getCellCenter(cell.row, cell.column);
-              this.particles.burst(center.x, center.y, GEM_TYPES[tile.kind].base, 8, 1 + this.comboChain * 0.18);
+              this.particles.burst(center.x, center.y, this.board.types[tile.kind].base, 8, 1 + this.comboChain * 0.18);
             });
 
             this.board.markMatches(matchResult);
@@ -1838,7 +1930,7 @@
 
             anchorCells.forEach((cell, index) => {
               const center = this.board.getCellCenter(cell.row, cell.column);
-              const palette = GEM_TYPES[(index + this.level) % GEM_TYPES.length];
+              const palette = this.board.types[(index + this.level) % this.board.types.length];
               this.particles.burst(center.x, center.y, palette.base, 10 + levelsGained * 3, 1.2 + levelsGained * 0.1);
             });
           }
