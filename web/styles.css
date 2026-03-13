@@ -116,10 +116,12 @@ body {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(90, 200, 255, 0.3);
+  border: 1px solid rgba(90, 200, 255, 0.36);
   box-shadow:
-    inset 0 0 0 1px rgba(200, 245, 255, 0.07),
-    0 0 38px rgba(50, 160, 220, 0.16);
+    inset 0 0 0 1px rgba(200, 245, 255, 0.08),
+    0 0 56px rgba(50, 160, 220, 0.22),
+    0 0 120px rgba(40, 150, 220, 0.14);
+  animation: frame-neon-pulse 6s ease-in-out infinite;
 }
 
 /* Subtle screen-glass overlay */
@@ -461,6 +463,11 @@ kbd {
 @keyframes scan-drift {
   from { transform: translateY(0); }
   to   { transform: translateY(14px); }
+}
+
+@keyframes frame-neon-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(200, 245, 255, 0.08), 0 0 56px rgba(50, 160, 220, 0.22), 0 0 120px rgba(40, 150, 220, 0.14); }
+  50% { box-shadow: inset 0 0 0 1px rgba(210, 250, 255, 0.14), 0 0 72px rgba(72, 185, 245, 0.32), 0 0 140px rgba(80, 200, 255, 0.2); }
 }
 
 @keyframes combo-pulse {

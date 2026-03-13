@@ -85,6 +85,9 @@ Boucle de jeu:
 - Feedback de degats renforce (hit-stop court + vignette d'alerte)
 - Mouvements joueur lisses mais reactifs (inertie controlee)
 - Combo dynamique: enchainer les reliques augmente le multiplicateur de score
+- Combo x3+: les reliques et orbes proches sont legerement attires pour garder le flow
+- Nouveau moteur de simulation fixe (120 Hz): gameplay plus stable, deterministic et fluide
+- Post-traitement visuel renforce: bloom neon, vignette dynamique, scanlines CRT et brume atmospherique
 - Near-miss reward: frôler les projectiles sans se faire toucher rapporte des points bonus
 - Orbes Aegis: bouclier temporaire qui absorbe les impacts critiques
 - Orbe Chrono: ralentit temporairement ennemis, boss et projectiles
