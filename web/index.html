@@ -3,114 +3,52 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ruins Dash</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@400;500;700&display=swap" rel="stylesheet" />
+    <title>Neon Rift (DOM Edition)</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app">
       <section class="stageCard">
         <header class="stageHeader">
-          <div class="titleBlock">
-            <h1>RUINS<span>DASH</span></h1>
-            <p>Survie arcade — boss évolutif, combos et projectiles télégraphiés.</p>
+          <div>
+            <h1>NEON <span>RIFT</span></h1>
+            <p>Nouveau jeu sans Canvas, rendu 100% DOM/CSS, gameplay arcade nerveux.</p>
           </div>
           <button id="actionBtn" class="btn" type="button">Demarrer</button>
         </header>
 
-        <div class="canvasWrap">
-          <canvas id="game" width="960" height="540" aria-label="Zone de jeu"></canvas>
-          <div id="overlay" class="overlay hidden"></div>
-          <button id="dashBtn" class="dashBtn" type="button" aria-label="Activer le rush">
-            RUSH
-          </button>
+        <div id="arena" class="arena" aria-label="Zone de jeu">
+          <div id="overlay" class="overlay">Survis 60s. WASD/Fleches pour bouger, Espace pour dash.</div>
+          <button id="dashBtn" class="dashBtn" type="button" aria-label="Activer le rush">RUSH</button>
         </div>
       </section>
 
       <aside class="panel">
-        <div class="card statusCard">
+        <div class="card">
           <h2>Status</h2>
           <div class="statsGrid">
+            <div class="stat"><span>PV</span><strong id="livesVal">6</strong></div>
+            <div class="stat"><span>Bouclier</span><strong id="shieldVal">0</strong></div>
+            <div class="stat"><span>Temps</span><strong><span id="timeVal">0.0s</span> / <span id="goalVal">60s</span></strong></div>
+            <div class="stat"><span>Score</span><strong id="scoreVal">0</strong></div>
+            <div class="stat"><span>Reliques</span><strong id="relicVal">0</strong></div>
+            <div class="stat"><span>Combo</span><strong id="comboVal">x1.00</strong></div>
+            <div class="stat"><span>Ennemis</span><strong id="enemyVal">0</strong></div>
+            <div class="stat"><span>Rush</span><strong id="dashVal">Pret</strong></div>
+            <div class="stat"><span>Danger</span><strong id="dangerVal">I</strong></div>
             <div class="stat">
-              <span class="statLabel">PV</span>
-              <span id="livesVal" class="statVal lives">6</span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Bouclier</span>
-              <span id="shieldVal" class="statVal shield">0</span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Temps</span>
-              <span class="statVal"><span id="timeVal">0.0s</span> / <span id="goalVal">60s</span></span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Score</span>
-              <span id="scoreVal" class="statVal score">0</span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Reliques</span>
-              <span id="relicVal" class="statVal relic">0</span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Combo</span>
-              <span id="comboVal" class="statVal combo">x1.00</span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Ennemis</span>
-              <span id="enemyVal" class="statVal">0</span>
-            </div>
-            <div class="stat">
-              <span class="statLabel">Rush</span>
-              <span id="dashVal" class="statVal dash">Pret</span>
-            </div>
-            <div class="stat fullWidth">
-              <span class="statLabel">Intensite</span>
-              <span id="dangerVal" class="statVal danger">I</span>
-            </div>
-            <div class="stat fullWidth">
-              <span class="statLabel">Son</span>
-              <button id="audioBtn" class="statToggle" type="button" aria-pressed="true">
-                <span id="audioVal" class="statVal audio">ON</span>
-              </button>
+              <span>Son</span>
+              <button id="audioBtn" class="statToggle" type="button" aria-pressed="true"><strong id="audioVal">ON</strong></button>
             </div>
           </div>
-        </div>
-
-        <div class="card directorCard">
-          <h2>Directives</h2>
-          <div class="directiveHead">
-            <span id="contractTag" class="directiveTag" data-tone="idle">--</span>
-            <span id="contractTimer" class="directiveTimer">-</span>
-          </div>
-          <p id="contractText" class="directiveText">Directives optionnelles: objectifs courts, bonus immediats, plus de rythme.</p>
-          <div class="directiveBar" aria-hidden="true">
-            <span id="contractFill" class="directiveFill" data-tone="idle"></span>
-          </div>
-          <p id="eventText" class="eventText">Checkpoint 15.0s • Boss 30.0s</p>
         </div>
 
         <div class="card">
-          <h2>Controles</h2>
-          <ul class="controlList">
-            <li><kbd>WASD</kbd> ou <kbd>↑←↓→</kbd> &mdash; Deplacer</li>
-            <li><kbd>Espace</kbd> &mdash; Rush / dash defensif</li>
-            <li>Toutes les 15s &mdash; onde + regen PV</li>
-            <li>Mini-boss a 30s &mdash; 3 phases</li>
-            <li>Phase 3 &mdash; onde de choc du boss</li>
-            <li>Eventail / balayage / nova telegraphies</li>
-            <li>Apres salve &mdash; fenetre BOSS-OPEN (dash!)</li>
-            <li>Combo reliques &mdash; multiplicateur progressif</li>
-            <li>Aegis &mdash; absorbe impacts mortels</li>
-            <li>Chrono &mdash; ralentit ennemis et projectiles</li>
-            <li>SURGE &mdash; recharge le rush</li>
-            <li>1 PV &mdash; orbe de secours auto</li>
-            <li><kbd>M</kbd> &mdash; son on/off</li>
-            <li><kbd>V</kbd> &mdash; FX visuels on/off</li>
-            <li><kbd>P</kbd> &mdash; pause / reprise</li>
-            <li><kbd>R</kbd> &mdash; relancer</li>
-          </ul>
+          <h2>Directives</h2>
+          <div class="directiveHead"><span id="contractTag">--</span><span id="contractTimer">-</span></div>
+          <p id="contractText">Mode simple: survive, collecte, dash au bon timing.</p>
+          <div class="directiveBar"><span id="contractFill"></span></div>
+          <p id="eventText">No Canvas • No Python • Full DOM Engine</p>
         </div>
 
         <div class="card">

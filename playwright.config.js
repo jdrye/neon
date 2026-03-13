@@ -14,7 +14,7 @@ module.exports = defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "python3 server.py",
+    command: "node server.js",
     url: "http://127.0.0.1:8000/health",
     reuseExistingServer: true,
     timeout: 120_000,
