@@ -1839,11 +1839,6 @@
 
             if (leveledUp) {
               this.levelFlash = 1;
-              this.stateLabel = "Niveau +";
-              this.statusText = `Objectif atteint. Niveau ${this.level}, temps rallonge.`;
-              this.board.shuffleKinds();
-              this.phase = "shuffle";
-              this.phaseClock = 0;
               this.audio.playLevelUp();
             }
 
@@ -1851,23 +1846,24 @@
           }
 
           afterCascade() {
-            if (this.advanceLevelIfNeeded()) {
-              this.updateUi();
-              return;
-            }
+            const leveledUp = this.advanceLevelIfNeeded();
 
             if (!this.board.hasPossibleMoves()) {
               this.board.shuffleKinds();
               this.phase = "shuffle";
               this.phaseClock = 0;
               this.stateLabel = "Melange";
-              this.statusText = "Plus de coups disponibles, melange du plateau.";
+              this.statusText = leveledUp
+                ? `Objectif atteint. Niveau ${this.level}, temps rallonge. Plus de coups disponibles, melange du plateau.`
+                : "Plus de coups disponibles, melange du plateau.";
               this.audio.playShuffle();
             } else {
               this.phase = "idle";
               this.phaseClock = 0;
-              this.stateLabel = "En jeu";
-              this.statusText = "A toi de jouer.";
+              this.stateLabel = leveledUp ? "Niveau +" : "En jeu";
+              this.statusText = leveledUp
+                ? `Objectif atteint. Niveau ${this.level}, temps rallonge.`
+                : "A toi de jouer.";
             }
 
             this.updateUi();
