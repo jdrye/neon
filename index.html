@@ -300,9 +300,41 @@
         aspect-ratio: 1 / 1;
         border-radius: 26px;
         overflow: hidden;
-        background: rgba(4,10,18,0.85);
-        border: 1px solid rgba(120,220,210,0.18);
-        box-shadow: 0 0 0 1px rgba(120,220,210,0.06), inset 0 0 40px rgba(0,0,0,0.5);
+        background: radial-gradient(circle at 50% 35%, rgba(18,44,62,0.68) 0%, rgba(4,10,18,0.95) 65%, rgba(2,6,12,1) 100%);
+        border: 1px solid rgba(120,220,210,0.22);
+        box-shadow:
+          0 0 0 1px rgba(120,220,210,0.06),
+          0 0 42px rgba(68,223,255,0.1),
+          inset 0 0 40px rgba(0,0,0,0.5);
+      }
+
+      .board-frame::before,
+      .board-frame::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      .board-frame::before {
+        background:
+          radial-gradient(circle at 50% 45%, rgba(255,255,255,0) 48%, rgba(0,0,0,0.22) 100%),
+          linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 36%);
+        mix-blend-mode: screen;
+        opacity: 0.75;
+      }
+
+      .board-frame::after {
+        background:
+          linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.08) 36%, transparent 52%),
+          linear-gradient(180deg, rgba(68,223,255,0.04), transparent 16%, transparent 84%, rgba(255,201,77,0.04));
+        animation: board-sheen 5.4s ease-in-out infinite;
+      }
+
+      @keyframes board-sheen {
+        0%, 100% { transform: translateX(-8%) translateY(0); opacity: 0.55; }
+        50% { transform: translateX(8%) translateY(0); opacity: 0.9; }
       }
 
       #gameCanvas {
@@ -530,6 +562,36 @@
 
       .combo-indicator.show { opacity: 1; }
 
+      .combo-indicator {
+        box-shadow: 0 0 22px rgba(255,201,77,0.18);
+      }
+
+      .level-banner {
+        position: absolute;
+        left: 50%;
+        top: 20%;
+        transform: translate(-50%, -50%) scale(0.92);
+        padding: 12px 22px;
+        border-radius: 18px;
+        border: 1px solid rgba(255,226,138,0.4);
+        background: linear-gradient(135deg, rgba(12,24,36,0.9), rgba(32,20,4,0.84));
+        color: #fff3c2;
+        font-family: var(--display-font);
+        font-size: clamp(1.1rem, 2vw, 1.7rem);
+        letter-spacing: 0.08em;
+        box-shadow: 0 18px 46px rgba(0,0,0,0.42), 0 0 32px rgba(255,205,88,0.16);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 12;
+        transition: opacity 180ms ease, transform 220ms ease;
+        white-space: nowrap;
+      }
+
+      .level-banner.show {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
       /* ── RESPONSIVE ── */
       @media (max-width: 980px) {
         .layout { grid-template-columns: 1fr; }
@@ -625,6 +687,7 @@
           <div class="board-frame">
             <canvas id="gameCanvas" aria-label="Plateau du jeu Pulse Prism"></canvas>
             <div id="comboIndicator" class="combo-indicator" aria-live="polite"></div>
+            <div id="levelBanner" class="level-banner" aria-live="polite">Niveau supérieur</div>
 
             <div id="titleOverlay" class="board-overlay visible">
               <div class="overlay-card">
@@ -828,7 +891,7 @@
 
         // ──────────────── PARTICLES ────────────────
         class ParticleSystem {
-          constructor() { this.items = []; this.rings = []; }
+          constructor() { this.items = []; this.rings = []; this.beams = []; }
 
           burst(x, y, color, count, intensity = 1) {
             for (let i = 0; i < count; i++) {
@@ -851,6 +914,10 @@
             this.rings.push({ x, y, radius: 4, maxRadius, color, age: 0, life: 0.45 });
           }
 
+          addBeam(x1, y1, x2, y2, color, width = 12, life = 0.2) {
+            this.beams.push({ x1, y1, x2, y2, color, width, age: 0, life });
+          }
+
           update(dt) {
             this.items = this.items.filter(p => {
               p.age += dt;
@@ -866,9 +933,29 @@
               r.radius = lerp(r.radius, r.maxRadius, dt * 7);
               return r.age < r.life;
             });
+            this.beams = this.beams.filter(b => {
+              b.age += dt;
+              return b.age < b.life;
+            });
           }
 
           draw(ctx) {
+            this.beams.forEach(b => {
+              const p = b.age / b.life;
+              const alpha = 1 - p;
+              ctx.save();
+              ctx.globalAlpha = alpha * 0.95;
+              ctx.strokeStyle = b.color;
+              ctx.lineWidth = b.width * (1 - p * 0.45);
+              ctx.lineCap = "round";
+              ctx.shadowBlur = 22;
+              ctx.shadowColor = b.color;
+              ctx.beginPath();
+              ctx.moveTo(b.x1, b.y1);
+              ctx.lineTo(b.x2, b.y2);
+              ctx.stroke();
+              ctx.restore();
+            });
             // Rings
             this.rings.forEach(r => {
               const alpha = 1 - r.age / r.life;
@@ -1174,7 +1261,7 @@
                      col: clamp(Math.floor((x - boardX) / cellSize), 0, this.cols - 1) };
           }
 
-          draw(ctx, t, flash, hintCells, shake) {
+          draw(ctx, t, flash, hintCells, shake, fx = {}) {
             const { boardX, boardY, boardSize, cellSize } = this.layout;
             if (!boardSize) return;
 
@@ -1184,15 +1271,27 @@
             const corner = cellSize * 0.32;
 
             // Board backdrop
+            const borderGlow = Math.max(0, fx.invalidSwapPulse || 0);
             rrPath(ctx, boardX - cellSize*0.14, boardY - cellSize*0.14, boardSize + cellSize*0.28, boardSize + cellSize*0.28, cellSize * 0.44);
-            ctx.fillStyle = "rgba(2, 8, 16, 0.85)";
+            const boardGrad = ctx.createLinearGradient(boardX, boardY, boardX + boardSize, boardY + boardSize);
+            boardGrad.addColorStop(0, "rgba(4, 16, 26, 0.94)");
+            boardGrad.addColorStop(0.5, "rgba(4, 10, 18, 0.9)");
+            boardGrad.addColorStop(1, "rgba(2, 8, 16, 0.98)");
+            ctx.fillStyle = boardGrad;
             ctx.fill();
+            ctx.save();
+            ctx.strokeStyle = borderGlow > 0 ? `rgba(255,110,110,${0.28 + borderGlow * 0.44})` : "rgba(120,220,210,0.18)";
+            ctx.lineWidth = 2.4 + borderGlow * 1.8;
+            ctx.shadowBlur = borderGlow > 0 ? 24 : 12;
+            ctx.shadowColor = borderGlow > 0 ? "rgba(255,90,90,0.45)" : "rgba(68,223,255,0.12)";
+            ctx.stroke();
+            ctx.restore();
 
             // Animated grid lines
             for (let r = 0; r < this.rows; r++) {
               for (let c = 0; c < this.cols; c++) {
                 const x = boardX + c * cellSize, y = boardY + r * cellSize;
-                const wave = Math.sin(t * 0.9 + r * 0.3 + c * 0.22) * 0.012 + 0.05;
+                const wave = Math.sin(t * 0.9 + r * 0.3 + c * 0.22) * 0.018 + 0.055 + (fx.urgency || 0) * 0.012;
                 rrPath(ctx, x + 2, y + 2, cellSize - 4, cellSize - 4, corner);
                 ctx.fillStyle = `rgba(100, 210, 200, ${wave})`;
                 ctx.fill();
@@ -1232,6 +1331,12 @@
             // Tiles
             this.forEach(tile => this.drawTile(ctx, tile, t, flash, hintCells));
 
+            const vignette = ctx.createRadialGradient(boardX + boardSize * 0.5, boardY + boardSize * 0.5, boardSize * 0.2, boardX + boardSize * 0.5, boardY + boardSize * 0.5, boardSize * 0.8);
+            vignette.addColorStop(0, "rgba(0,0,0,0)");
+            vignette.addColorStop(1, `rgba(0,0,0,${0.18 + (fx.urgency || 0) * 0.08})`);
+            ctx.fillStyle = vignette;
+            ctx.fillRect(boardX - cellSize * 0.1, boardY - cellSize * 0.1, boardSize + cellSize * 0.2, boardSize + cellSize * 0.2);
+
             ctx.restore();
           }
 
@@ -1244,7 +1349,7 @@
             const breathe = 1 + Math.sin(t * 1.9 + tile.col * 0.3 + tile.row * 0.28) * 0.014;
             const isHint = hintCells.some(h => h.row === tile.row && h.col === tile.col);
             const hintBoost = isHint ? 0.5 + Math.sin(t * 8) * 0.3 : 0;
-            const glowStr = 22 + flash * 18 + (tile.bonus ? 16 : 0) + hintBoost * 14;
+            const glowStr = 24 + flash * 20 + (tile.bonus ? 28 : 0) + hintBoost * 16;
 
             ctx.save();
             ctx.globalAlpha = tile.alpha;
@@ -1465,6 +1570,7 @@
               gameOverOverlay: document.getElementById("gameOverOverlay"),
               gameOverSummary: document.getElementById("gameOverSummary"),
               comboIndicator: document.getElementById("comboIndicator"),
+              levelBanner: document.getElementById("levelBanner"),
               soundButtons: [document.getElementById("soundToggle"), document.getElementById("titleSoundButton")],
               startButton: document.getElementById("startButton"),
               playAgainButton: document.getElementById("playAgainButton"),
@@ -1498,6 +1604,8 @@
 
             // Combo indicator timer
             this.comboIndicatorTimer = 0;
+            this.levelBannerTimer = 0;
+            this.invalidSwapPulse = 0;
 
             // Input
             this.inputDrag = { active: false, pointerId: null, startPoint: null, startCell: null, moved: false };
@@ -1605,6 +1713,12 @@
             this.comboIndicatorTimer = 1.6;
           }
 
+          showLevelBanner(text) {
+            this.ui.levelBanner.textContent = text;
+            this.ui.levelBanner.classList.add("show");
+            this.levelBannerTimer = 1.5;
+          }
+
           bindEvents() {
             window.addEventListener("resize", this.handleResize);
             this.ui.startButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
@@ -1648,7 +1762,10 @@
             this.flashAmt = 0;
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
             this.comboIndicatorTimer = 0;
+            this.levelBannerTimer = 0;
+            this.invalidSwapPulse = 0;
             this.ui.comboIndicator.classList.remove("show");
+            this.ui.levelBanner.classList.remove("show");
             this.hasBegun = true;
             this.ui.titleOverlay.classList.remove("visible");
             this.ui.gameOverOverlay.classList.remove("visible");
@@ -1681,6 +1798,11 @@
               this.ui.timeCard.classList.add("danger");
             } else {
               this.ui.timeCard.classList.remove("danger");
+            }
+            if (timeLeft <= 8 && this.hasBegun && this.phase !== "gameover") {
+              this.ui.message.style.boxShadow = "inset 0 0 22px rgba(255,80,80,0.14), 0 0 16px rgba(255,90,90,0.08)";
+            } else {
+              this.ui.message.style.boxShadow = "";
             }
             this.ui.combo.textContent = `×${this.bestCombo}`;
             this.ui.cleared.textContent = this.totalCleared.toString();
@@ -1764,8 +1886,7 @@
           }
 
           spawnCelebration(opts) {
-            const origin = this.celebOrigin();
-            if (!origin) return;
+            const origin = this.celebOrigin(); if (!origin) return;
             this.celebrations.spawn(origin, opts);
             for (let i = 0; i < 3; i++) {
               const a = (Math.PI*2*i)/3 + rnd(-0.3,0.3);
@@ -1818,11 +1939,30 @@
             exp.cells.forEach(cell => {
               const t = this.board.grid[cell.row][cell.col];
               const c = this.board.getCellCenter(cell.row, cell.col);
-              this.particles.burst(c.x, c.y, this.board.types[t.kind].base, 6, 1 + this.comboChain*0.2);
+              this.particles.burst(c.x, c.y, this.board.types[t.kind].base, 10, 1.12 + this.comboChain*0.24);
+              this.particles.addRing(c.x, c.y, this.board.types[t.kind].shine, 34 + this.comboChain * 6);
+            });
+            exp.triggeredBonuses.forEach((bonus, i) => {
+              const center = this.board.getCellCenter(bonus.row, bonus.col);
+              const color = this.board.types[(bonus.row + bonus.col + i) % this.board.types.length].shine;
+              if (bonus.kind === "row") {
+                const left = this.board.getCellCenter(bonus.row, 0);
+                const right = this.board.getCellCenter(bonus.row, this.board.cols - 1);
+                this.particles.addBeam(left.x, center.y, right.x, center.y, color, 18, 0.22);
+              } else if (bonus.kind === "column") {
+                const top = this.board.getCellCenter(0, bonus.col);
+                const bottom = this.board.getCellCenter(this.board.rows - 1, bonus.col);
+                this.particles.addBeam(center.x, top.y, center.x, bottom.y, color, 18, 0.22);
+              } else {
+                this.particles.addRing(center.x, center.y, color, 110);
+                this.particles.addBeam(center.x - 70, center.y, center.x + 70, center.y, color, 14, 0.16);
+                this.particles.addBeam(center.x, center.y - 70, center.x, center.y + 70, color, 14, 0.16);
+              }
             });
             spawns.forEach((sp,i) => {
               const c = this.board.getCellCenter(sp.row, sp.col);
-              this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 14, 1.1);
+              this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 18, 1.18);
+              this.particles.addRing(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 54);
             });
             this.board.markMatches(exp, spawns);
             this.phase = "clear"; this.phaseClock = 0;
@@ -1856,6 +1996,7 @@
               this.spawnCelebration({ gain: bonusSc, rate: this.comboRate(), title: `Niveau ${this.level}`, color: "#ffe880" });
               this.burstLevelBonus(levs);
               this.audio.playLevelUp();
+              this.showLevelBanner(`Niveau ${this.level}`);
             }
             return { up: levs > 0, levs, bonusSc, timeBon };
           }
@@ -1908,6 +2049,7 @@
             this.phaseClock += dt;
             this.levelFlash = Math.max(0, this.levelFlash - dt * 1.7);
             this.swapHintFlash = Math.max(0, this.swapHintFlash - dt * 3);
+            this.invalidSwapPulse = Math.max(0, this.invalidSwapPulse - dt * 4.4);
             this.flashAmt *= Math.pow(0.12, dt);
             if (this.flashAmt < 0.005) this.flashAmt = 0;
 
@@ -1915,6 +2057,10 @@
             if (this.comboIndicatorTimer > 0) {
               this.comboIndicatorTimer -= dt;
               if (this.comboIndicatorTimer <= 0) this.ui.comboIndicator.classList.remove("show");
+            }
+            if (this.levelBannerTimer > 0) {
+              this.levelBannerTimer -= dt;
+              if (this.levelBannerTimer <= 0) this.ui.levelBanner.classList.remove("show");
             }
 
             // Animated score display
@@ -1939,8 +2085,9 @@
                     this.board.swapTiles(this.pendingSwap.first, this.pendingSwap.second);
                     this.phase = "revert"; this.phaseClock = 0;
                     this.stateLabel = "Annulé"; this.statusText = "Aucun match. Essaie un autre échange.";
-                    this.swapHintFlash = 1; this.audio.playInvalid();
-                    this.triggerFlash(255, 80, 80, 0.3);
+                    this.swapHintFlash = 1; this.invalidSwapPulse = 1; this.audio.playInvalid();
+                    this.triggerShake(3.8, 0.14);
+                    this.triggerFlash(255, 80, 80, 0.36);
                     this.updateUi();
                   } else { this.resolveMatches(mr); }
                 }
@@ -2002,7 +2149,10 @@
             this.drawStarfield(ts, w, h);
 
             // Board
-            this.board.draw(this.ctx, ts, this.levelFlash, this.hintCells, this.shake);
+            this.board.draw(this.ctx, ts, this.levelFlash, this.hintCells, this.shake, {
+              invalidSwapPulse: this.invalidSwapPulse,
+              urgency: this.hasBegun && this.phase !== "gameover" ? clamp((12 - this.timeLeft) / 12, 0, 1) : 0
+            });
 
             // Particles & celebrations
             this.particles.draw(this.ctx);
@@ -2019,6 +2169,13 @@
               const pulse = 0.5 + Math.sin(ts * 5) * 0.4;
               this.ctx.fillStyle = `rgba(220,60,60,${0.07 + pulse * 0.06})`;
               this.ctx.fillRect(0, 0, w, h);
+              if (this.timeLeft <= 8) {
+                const vignette = this.ctx.createRadialGradient(w * 0.5, h * 0.5, h * 0.16, w * 0.5, h * 0.5, w * 0.7);
+                vignette.addColorStop(0, "rgba(255,0,0,0)");
+                vignette.addColorStop(1, `rgba(255,40,40,${0.12 + pulse * 0.08})`);
+                this.ctx.fillStyle = vignette;
+                this.ctx.fillRect(0, 0, w, h);
+              }
             }
 
             // Level flash
