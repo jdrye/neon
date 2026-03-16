@@ -5,28 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Pulse Prism Match-3</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400;500;700;800&display=swap');
 
       :root {
-        --bg-1: #040d14;
-        --bg-2: #081822;
-        --bg-3: #0d2233;
-        --panel: rgba(4, 10, 18, 0.82);
-        --panel-strong: rgba(3, 8, 15, 0.94);
-        --line: rgba(120, 220, 210, 0.18);
-        --line-bright: rgba(120, 220, 210, 0.38);
-        --text: #e8faf6;
-        --muted: #7ec8c0;
-        --accent: #ffc94d;
-        --accent-2: #ff6e44;
-        --accent-3: #44dfff;
-        --glow: rgba(255, 201, 77, 0.45);
-        --ok: #4df2b8;
-        --danger: #ff7070;
-        --shadow: 0 24px 90px rgba(0,0,0,0.55);
-        --panel-glow: 0 0 0 1px rgba(120,220,210,0.12), 0 20px 60px rgba(0,0,0,0.48);
-        --display-font: 'Cinzel', 'Palatino Linotype', Georgia, serif;
-        --ui-font: 'Rajdhani', 'Trebuchet MS', sans-serif;
+        --bg-1: #05010f;
+        --bg-2: #120327;
+        --bg-3: #1b0c36;
+        --panel: rgba(12, 6, 34, 0.8);
+        --panel-strong: rgba(8, 2, 24, 0.92);
+        --line: rgba(120, 90, 255, 0.3);
+        --line-bright: rgba(0, 255, 245, 0.55);
+        --text: #eef4ff;
+        --muted: #a8bcff;
+        --accent: #ff3fd2;
+        --accent-2: #ff9e3d;
+        --accent-3: #35f3ff;
+        --glow: rgba(255, 64, 214, 0.45);
+        --ok: #52ffb0;
+        --danger: #ff5f7d;
+        --shadow: 0 24px 90px rgba(0,0,0,0.65);
+        --panel-glow: 0 0 0 1px rgba(117,77,255,0.25), 0 0 28px rgba(53,243,255,0.12), 0 20px 60px rgba(0,0,0,0.55);
+        --display-font: 'Audiowide', 'Orbitron', sans-serif;
+        --ui-font: 'Orbitron', 'Segoe UI', sans-serif;
       }
 
       * { box-sizing: border-box; }
@@ -47,14 +47,31 @@
         position: fixed;
         inset: 0;
         background:
-          radial-gradient(ellipse at 15% 20%, rgba(255,130,60,0.13) 0%, transparent 40%),
-          radial-gradient(ellipse at 80% 10%, rgba(68,223,255,0.12) 0%, transparent 38%),
-          radial-gradient(ellipse at 50% 90%, rgba(120,80,255,0.09) 0%, transparent 45%),
-          radial-gradient(ellipse at 90% 75%, rgba(68,242,184,0.08) 0%, transparent 35%),
-          linear-gradient(165deg, var(--bg-1) 0%, #060f1a 40%, #0a1e2e 70%, var(--bg-3) 100%);
+          radial-gradient(ellipse at 15% 20%, rgba(255,64,214,0.22) 0%, transparent 42%),
+          radial-gradient(ellipse at 80% 10%, rgba(53,243,255,0.18) 0%, transparent 38%),
+          radial-gradient(ellipse at 50% 90%, rgba(120,80,255,0.2) 0%, transparent 45%),
+          radial-gradient(ellipse at 90% 75%, rgba(255,157,60,0.14) 0%, transparent 35%),
+          linear-gradient(165deg, var(--bg-1) 0%, #09031b 45%, #12072b 75%, var(--bg-3) 100%);
         pointer-events: none;
         z-index: 0;
-        animation: nebula-drift 18s ease-in-out infinite alternate;
+        animation: nebula-drift 16s ease-in-out infinite alternate;
+      }
+
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background: repeating-linear-gradient(
+          180deg,
+          rgba(255,255,255,0.03) 0,
+          rgba(255,255,255,0.03) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+        mix-blend-mode: soft-light;
+        opacity: 0.28;
       }
 
       @keyframes nebula-drift {
@@ -93,8 +110,8 @@
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent 0%, rgba(68,223,255,0.5) 30%, rgba(255,201,77,0.6) 70%, transparent 100%);
-        animation: shimmer-bar 4s linear infinite;
+        background: linear-gradient(90deg, transparent 0%, rgba(53,243,255,0.75) 30%, rgba(255,63,210,0.78) 70%, transparent 100%);
+        animation: shimmer-bar 3.4s linear infinite;
       }
 
       @keyframes shimmer-bar {
@@ -116,17 +133,18 @@
       h1 {
         margin: 0;
         font-family: var(--display-font);
-        font-size: clamp(1.9rem, 3.8vw, 3.2rem);
+        font-size: clamp(2rem, 3.8vw, 3.35rem);
         line-height: 0.95;
-        letter-spacing: 0.06em;
-        background: linear-gradient(135deg, #ffe08a 0%, #ffc94d 40%, #ff9040 70%, #ff6e44 100%);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #8d7dff 0%, #35f3ff 35%, #ff3fd2 70%, #ff9e3d 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        filter: drop-shadow(0 0 18px rgba(255,180,60,0.4));
+        filter: drop-shadow(0 0 10px rgba(53,243,255,0.7)) drop-shadow(0 0 24px rgba(255,63,210,0.38));
       }
 
-      .tagline { margin: 0; color: var(--muted); font-size: 0.9rem; letter-spacing: 0.04em; }
+      .tagline { margin: 0; color: var(--muted); font-size: 0.9rem; letter-spacing: 0.08em; text-shadow: 0 0 10px rgba(53,243,255,0.38); }
 
       .control-row {
         display: flex;
@@ -150,17 +168,19 @@
 
       .pill-button {
         padding: 0.72rem 1.1rem;
-        background: rgba(255,255,255,0.07);
+        background: linear-gradient(135deg, rgba(53,243,255,0.1), rgba(255,63,210,0.1));
         color: var(--text);
-        border: 1px solid rgba(255,255,255,0.13);
-        font-size: 0.88rem;
+        border: 1px solid rgba(106,177,255,0.42);
+        font-size: 0.84rem;
+        text-transform: uppercase;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 0 16px rgba(53,243,255,0.12);
       }
 
       .pill-button:hover, .pill-button:focus-visible {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(68,223,255,0.3);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(53,243,255,0.55), 0 0 20px rgba(255,63,210,0.24);
         outline: none;
-        border-color: rgba(68,223,255,0.35);
+        border-color: rgba(53,243,255,0.62);
       }
 
       .pill-button[aria-pressed="true"] {
@@ -171,17 +191,18 @@
 
       .primary-button {
         padding: 0.9rem 1.5rem;
-        font-size: 0.96rem;
-        background: linear-gradient(135deg, #ffd25e 0%, #ffb030 45%, #ff6e30 100%);
-        color: #1a0e00;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        box-shadow: 0 0 24px rgba(255,170,50,0.3);
+        font-size: 0.95rem;
+        background: linear-gradient(135deg, #35f3ff 0%, #7e90ff 42%, #ff3fd2 100%);
+        color: #0a0b1a;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        box-shadow: 0 0 24px rgba(95,120,255,0.35), 0 0 36px rgba(255,63,210,0.22);
       }
 
       .primary-button:hover, .primary-button:focus-visible {
         transform: translateY(-2px);
-        box-shadow: 0 6px 28px rgba(255,150,30,0.45);
+        box-shadow: 0 6px 28px rgba(53,243,255,0.45), 0 0 36px rgba(255,63,210,0.35);
         outline: none;
       }
 
@@ -196,7 +217,7 @@
       .panel {
         border-radius: 26px;
         border: 1px solid var(--line);
-        background: var(--panel);
+        background: linear-gradient(150deg, rgba(66,30,128,0.16) 0%, rgba(12,6,34,0.62) 36%, rgba(9,20,38,0.72) 100%), var(--panel);
         box-shadow: var(--panel-glow);
         backdrop-filter: blur(20px);
         position: relative;
@@ -1527,17 +1548,17 @@
 
               ctx.textAlign = "center"; ctx.textBaseline = "middle";
               ctx.fillStyle = "rgba(255,246,214,0.88)";
-              ctx.font = "600 13px 'Rajdhani','Trebuchet MS',sans-serif";
+              ctx.font = "600 13px 'Orbitron','Segoe UI',sans-serif";
               ctx.shadowBlur = 12; ctx.shadowColor = item.color;
               ctx.fillText(item.title, 0, -28);
 
               ctx.fillStyle = item.color;
-              ctx.font = "700 32px 'Cinzel','Palatino Linotype',Georgia,serif";
+              ctx.font = "700 32px 'Audiowide','Orbitron',sans-serif";
               ctx.shadowBlur = 24; ctx.shadowColor = item.color;
               ctx.fillText(item.gainText, 0, 0);
 
               ctx.fillStyle = "rgba(232,250,246,0.9)";
-              ctx.font = "600 16px 'Rajdhani','Trebuchet MS',sans-serif";
+              ctx.font = "600 16px 'Orbitron','Segoe UI',sans-serif";
               ctx.shadowBlur = 8;
               ctx.fillText(item.comboText, 0, 28);
               ctx.restore();
@@ -2259,10 +2280,10 @@
               this.ctx.textAlign = "center";
               this.ctx.textBaseline = "middle";
               this.ctx.fillStyle = "#ffe7a4";
-              this.ctx.font = "700 42px 'Cinzel','Palatino Linotype',Georgia,serif";
+              this.ctx.font = "700 42px 'Audiowide','Orbitron',sans-serif";
               this.ctx.fillText("PAUSE", w / 2, h / 2 - 10);
               this.ctx.fillStyle = "rgba(232,250,246,0.9)";
-              this.ctx.font = "600 17px 'Rajdhani','Trebuchet MS',sans-serif";
+              this.ctx.font = "600 17px 'Orbitron','Segoe UI',sans-serif";
               this.ctx.fillText("Espace pour reprendre", w / 2, h / 2 + 28);
             }
           }
