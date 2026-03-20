@@ -5,28 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Pulse Prism Match-3</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400;500;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Fredoka:wght@400;500;600;700&family=Orbitron:wght@500;700;800&display=swap');
 
       :root {
-        --bg-1: #05010f;
-        --bg-2: #120327;
-        --bg-3: #1b0c36;
-        --panel: rgba(12, 6, 34, 0.8);
-        --panel-strong: rgba(8, 2, 24, 0.92);
-        --line: rgba(120, 90, 255, 0.3);
-        --line-bright: rgba(0, 255, 245, 0.55);
-        --text: #eef4ff;
-        --muted: #a8bcff;
-        --accent: #ff3fd2;
-        --accent-2: #ff9e3d;
-        --accent-3: #35f3ff;
-        --glow: rgba(255, 64, 214, 0.45);
-        --ok: #52ffb0;
-        --danger: #ff5f7d;
-        --shadow: 0 24px 90px rgba(0,0,0,0.65);
-        --panel-glow: 0 0 0 1px rgba(117,77,255,0.25), 0 0 28px rgba(53,243,255,0.12), 0 20px 60px rgba(0,0,0,0.55);
+        --bg-1: #160722;
+        --bg-2: #3f0f4b;
+        --bg-3: #2d164e;
+        --panel: rgba(46, 19, 74, 0.76);
+        --panel-strong: rgba(35, 12, 58, 0.9);
+        --line: rgba(255, 183, 243, 0.35);
+        --line-bright: rgba(121, 255, 249, 0.7);
+        --text: #fff5ff;
+        --muted: #ffd3f7;
+        --accent: #ff53c4;
+        --accent-2: #ffb648;
+        --accent-3: #6ff7ff;
+        --glow: rgba(255, 96, 210, 0.45);
+        --ok: #88ffbb;
+        --danger: #ff6b8c;
+        --shadow: 0 28px 100px rgba(25,5,37,0.58);
+        --panel-glow: 0 0 0 1px rgba(255,255,255,0.1), 0 0 34px rgba(255,101,212,0.18), 0 18px 54px rgba(50,10,70,0.42);
         --display-font: 'Audiowide', 'Orbitron', sans-serif;
-        --ui-font: 'Orbitron', 'Segoe UI', sans-serif;
+        --ui-font: 'Fredoka', 'Trebuchet MS', sans-serif;
       }
 
       * { box-sizing: border-box; }
@@ -47,14 +47,15 @@
         position: fixed;
         inset: 0;
         background:
-          radial-gradient(ellipse at 15% 20%, rgba(255,64,214,0.22) 0%, transparent 42%),
-          radial-gradient(ellipse at 80% 10%, rgba(53,243,255,0.18) 0%, transparent 38%),
-          radial-gradient(ellipse at 50% 90%, rgba(120,80,255,0.2) 0%, transparent 45%),
-          radial-gradient(ellipse at 90% 75%, rgba(255,157,60,0.14) 0%, transparent 35%),
-          linear-gradient(165deg, var(--bg-1) 0%, #09031b 45%, #12072b 75%, var(--bg-3) 100%);
+          radial-gradient(circle at 12% 16%, rgba(255,118,212,0.35) 0%, transparent 34%),
+          radial-gradient(circle at 84% 14%, rgba(111,247,255,0.3) 0%, transparent 30%),
+          radial-gradient(circle at 22% 84%, rgba(255,201,103,0.26) 0%, transparent 32%),
+          radial-gradient(circle at 76% 76%, rgba(182,120,255,0.24) 0%, transparent 32%),
+          radial-gradient(circle at 50% 48%, rgba(255,255,255,0.08) 0%, transparent 40%),
+          linear-gradient(145deg, #250733 0%, #46125d 33%, #321353 66%, #1b0929 100%);
         pointer-events: none;
         z-index: 0;
-        animation: nebula-drift 16s ease-in-out infinite alternate;
+        animation: nebula-drift 18s ease-in-out infinite alternate;
       }
 
       body::after {
@@ -63,15 +64,20 @@
         inset: 0;
         pointer-events: none;
         z-index: 0;
-        background: repeating-linear-gradient(
-          180deg,
-          rgba(255,255,255,0.03) 0,
-          rgba(255,255,255,0.03) 1px,
-          transparent 1px,
-          transparent 3px
-        );
-        mix-blend-mode: soft-light;
-        opacity: 0.28;
+        background:
+          repeating-linear-gradient(
+            125deg,
+            rgba(255,255,255,0.08) 0,
+            rgba(255,255,255,0.08) 12px,
+            transparent 12px,
+            transparent 38px
+          ),
+          radial-gradient(circle at 20% 24%, rgba(255,255,255,0.16) 0 3px, transparent 4px),
+          radial-gradient(circle at 62% 36%, rgba(255,210,115,0.2) 0 3px, transparent 4px),
+          radial-gradient(circle at 72% 78%, rgba(111,247,255,0.16) 0 3px, transparent 4px);
+        background-size: auto, 160px 160px, 200px 200px, 180px 180px;
+        mix-blend-mode: screen;
+        opacity: 0.16;
       }
 
       @keyframes nebula-drift {
@@ -98,7 +104,10 @@
         padding: 16px 22px;
         border-radius: 22px;
         border: 1px solid var(--line);
-        background: var(--panel);
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05)),
+          linear-gradient(135deg, rgba(255,104,214,0.18), rgba(111,247,255,0.14) 56%, rgba(255,201,103,0.16)),
+          var(--panel);
         box-shadow: var(--panel-glow);
         backdrop-filter: blur(24px);
         position: relative;
@@ -110,7 +119,7 @@
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent 0%, rgba(53,243,255,0.75) 30%, rgba(255,63,210,0.78) 70%, transparent 100%);
+        background: linear-gradient(90deg, transparent 0%, rgba(111,247,255,0.75) 25%, rgba(255,106,214,0.82) 56%, rgba(255,201,103,0.78) 82%, transparent 100%);
         animation: shimmer-bar 3.4s linear infinite;
       }
 
@@ -126,7 +135,7 @@
         text-transform: uppercase;
         font-size: 0.7rem;
         font-weight: 600;
-        color: var(--accent-3);
+        color: #a6fff8;
         font-family: var(--ui-font);
       }
 
@@ -137,14 +146,14 @@
         line-height: 0.95;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        background: linear-gradient(135deg, #8d7dff 0%, #35f3ff 35%, #ff3fd2 70%, #ff9e3d 100%);
+        background: linear-gradient(135deg, #fff7fb 0%, #ffe07a 18%, #6ff7ff 42%, #ff53c4 68%, #ff9d4d 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        filter: drop-shadow(0 0 10px rgba(53,243,255,0.7)) drop-shadow(0 0 24px rgba(255,63,210,0.38));
+        filter: drop-shadow(0 0 10px rgba(111,247,255,0.6)) drop-shadow(0 0 24px rgba(255,83,196,0.4));
       }
 
-      .tagline { margin: 0; color: var(--muted); font-size: 0.9rem; letter-spacing: 0.08em; text-shadow: 0 0 10px rgba(53,243,255,0.38); }
+      .tagline { margin: 0; color: var(--muted); font-size: 0.95rem; letter-spacing: 0.04em; text-shadow: 0 0 12px rgba(255,104,214,0.28); }
 
       .control-row {
         display: flex;
@@ -168,19 +177,21 @@
 
       .pill-button {
         padding: 0.72rem 1.1rem;
-        background: linear-gradient(135deg, rgba(53,243,255,0.1), rgba(255,63,210,0.1));
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
+          linear-gradient(135deg, rgba(111,247,255,0.18), rgba(255,83,196,0.16) 50%, rgba(255,201,103,0.16));
         color: var(--text);
-        border: 1px solid rgba(106,177,255,0.42);
+        border: 1px solid rgba(255,223,247,0.24);
         font-size: 0.84rem;
         text-transform: uppercase;
-        box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 0 16px rgba(53,243,255,0.12);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 8px 18px rgba(77,16,101,0.18);
       }
 
       .pill-button:hover, .pill-button:focus-visible {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(53,243,255,0.55), 0 0 20px rgba(255,63,210,0.24);
+        box-shadow: 0 10px 28px rgba(49,9,64,0.36), 0 0 0 1px rgba(111,247,255,0.44), 0 0 22px rgba(255,83,196,0.26);
         outline: none;
-        border-color: rgba(53,243,255,0.62);
+        border-color: rgba(255,236,251,0.5);
       }
 
       .pill-button:disabled, .primary-button:disabled {
@@ -192,25 +203,27 @@
       }
 
       .pill-button[aria-pressed="true"] {
-        background: rgba(68,223,255,0.14);
-        color: #c8f8ff;
-        border-color: rgba(68,223,255,0.36);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)),
+          linear-gradient(135deg, rgba(255,83,196,0.2), rgba(111,247,255,0.16));
+        color: #fff7fd;
+        border-color: rgba(255,245,252,0.42);
       }
 
       .primary-button {
         padding: 0.9rem 1.5rem;
         font-size: 0.95rem;
-        background: linear-gradient(135deg, #35f3ff 0%, #7e90ff 42%, #ff3fd2 100%);
-        color: #0a0b1a;
+        background: linear-gradient(135deg, #ffe374 0%, #6ff7ff 34%, #ff53c4 68%, #ff9d4d 100%);
+        color: #381238;
         font-weight: 800;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        box-shadow: 0 0 24px rgba(95,120,255,0.35), 0 0 36px rgba(255,63,210,0.22);
+        box-shadow: 0 12px 28px rgba(70,9,89,0.28), 0 0 36px rgba(255,83,196,0.22);
       }
 
       .primary-button:hover, .primary-button:focus-visible {
         transform: translateY(-2px);
-        box-shadow: 0 6px 28px rgba(53,243,255,0.45), 0 0 36px rgba(255,63,210,0.35);
+        box-shadow: 0 6px 28px rgba(111,247,255,0.4), 0 0 36px rgba(255,83,196,0.35);
         outline: none;
       }
 
@@ -225,7 +238,10 @@
       .panel {
         border-radius: 26px;
         border: 1px solid var(--line);
-        background: linear-gradient(150deg, rgba(66,30,128,0.16) 0%, rgba(12,6,34,0.62) 36%, rgba(9,20,38,0.72) 100%), var(--panel);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03)),
+          linear-gradient(150deg, rgba(255,98,206,0.14) 0%, rgba(78,29,116,0.54) 36%, rgba(22,19,71,0.72) 100%),
+          var(--panel);
         box-shadow: var(--panel-glow);
         backdrop-filter: blur(20px);
         position: relative;
@@ -237,7 +253,7 @@
         position: absolute;
         top: 0; left: 12px; right: 12px;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(120,220,210,0.3), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
         pointer-events: none;
       }
 
@@ -257,7 +273,7 @@
         min-height: 72px;
         border-radius: 18px;
         border: 1px solid rgba(255,255,255,0.07);
-        background: rgba(255,255,255,0.04);
+        background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
         position: relative;
         overflow: hidden;
         transition: border-color 0.3s;
@@ -348,12 +364,12 @@
         aspect-ratio: 1 / 1;
         border-radius: 26px;
         overflow: hidden;
-        background: radial-gradient(circle at 50% 35%, rgba(18,44,62,0.68) 0%, rgba(4,10,18,0.95) 65%, rgba(2,6,12,1) 100%);
-        border: 1px solid rgba(120,220,210,0.22);
+        background: radial-gradient(circle at 50% 35%, rgba(255,215,119,0.2) 0%, rgba(88,26,120,0.18) 26%, rgba(24,10,48,0.96) 72%, rgba(15,7,31,1) 100%);
+        border: 1px solid rgba(255,224,248,0.18);
         box-shadow:
-          0 0 0 1px rgba(120,220,210,0.06),
-          0 0 42px rgba(68,223,255,0.1),
-          inset 0 0 40px rgba(0,0,0,0.5);
+          0 0 0 1px rgba(255,255,255,0.06),
+          0 0 42px rgba(255,83,196,0.16),
+          inset 0 0 40px rgba(0,0,0,0.46);
       }
 
       .board-frame::before,
@@ -376,7 +392,7 @@
       .board-frame::after {
         background:
           linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.08) 36%, transparent 52%),
-          linear-gradient(180deg, rgba(68,223,255,0.04), transparent 16%, transparent 84%, rgba(255,201,77,0.04));
+          linear-gradient(180deg, rgba(111,247,255,0.06), transparent 16%, transparent 84%, rgba(255,201,103,0.08));
         animation: board-sheen 5.4s ease-in-out infinite;
       }
 
@@ -402,7 +418,7 @@
         align-items: center;
         justify-content: center;
         padding: 20px;
-        background: rgba(2, 6, 12, 0.72);
+        background: rgba(32, 10, 46, 0.7);
         opacity: 0;
         pointer-events: none;
         transition: opacity 220ms ease;
@@ -415,9 +431,9 @@
         width: min(100%, 500px);
         padding: clamp(20px, 4vw, 34px);
         border-radius: 26px;
-        border: 1px solid rgba(120,220,210,0.22);
-        background: linear-gradient(165deg, rgba(8,20,34,0.97) 0%, rgba(4,12,22,0.98) 100%);
-        box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(68,223,255,0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,239,252,0.2);
+        background: linear-gradient(165deg, rgba(67,18,89,0.96) 0%, rgba(27,10,52,0.98) 58%, rgba(20,11,44,0.98) 100%);
+        box-shadow: 0 0 60px rgba(23,0,31,0.6), 0 0 0 1px rgba(255,83,196,0.12), inset 0 1px 0 rgba(255,255,255,0.14);
         position: relative;
         overflow: hidden;
       }
@@ -427,7 +443,7 @@
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(68,223,255,0.5), rgba(255,201,77,0.5), transparent);
+        background: linear-gradient(90deg, transparent, rgba(111,247,255,0.5), rgba(255,83,196,0.5), rgba(255,201,103,0.5), transparent);
       }
 
       .overlay-card h2 {
@@ -435,19 +451,19 @@
         font-family: var(--display-font);
         font-size: clamp(1.8rem, 3.5vw, 2.8rem);
         line-height: 0.96;
-        background: linear-gradient(135deg, #fff 0%, #ffe08a 50%, #ffa040 100%);
+        background: linear-gradient(135deg, #fffdf8 0%, #ffe47b 24%, #6ff7ff 58%, #ff53c4 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         letter-spacing: 0.04em;
       }
 
-      .overlay-card p { margin: 0 0 12px; color: var(--muted); line-height: 1.58; font-size: 0.94rem; }
+      .overlay-card p { margin: 0 0 12px; color: #ffe1f8; line-height: 1.58; font-size: 0.94rem; }
 
       .instruction-list, .bullet-list {
         margin: 0 0 16px;
         padding-left: 1rem;
-        color: #c8ede8;
+        color: #ffeefe;
         line-height: 1.55;
         font-size: 0.9rem;
       }
@@ -511,9 +527,9 @@
         margin-top: 10px;
         padding: 12px 14px;
         border-radius: 14px;
-        background: rgba(255,201,77,0.07);
-        border: 1px solid rgba(255,201,77,0.15);
-        color: #fff3cc;
+        background: linear-gradient(135deg, rgba(255,226,118,0.12), rgba(255,94,206,0.1));
+        border: 1px solid rgba(255,241,199,0.18);
+        color: #fff8ee;
         min-height: 48px;
         display: flex;
         align-items: center;
@@ -525,8 +541,8 @@
         margin-top: 12px;
         padding: 12px 14px;
         border-radius: 16px;
-        border: 1px solid rgba(255,166,82,0.18);
-        background: linear-gradient(135deg, rgba(255,166,82,0.08), rgba(255,90,130,0.08));
+        border: 1px solid rgba(255,225,154,0.22);
+        background: linear-gradient(135deg, rgba(255,201,103,0.14), rgba(255,83,196,0.1));
       }
 
       .flow-header {
@@ -540,13 +556,13 @@
         font-size: 0.72rem;
         letter-spacing: 0.22em;
         text-transform: uppercase;
-        color: #ffd99a;
+        color: #fff1b3;
       }
 
       .flow-header span {
         font-family: var(--display-font);
         font-size: 1rem;
-        color: #fff0c9;
+        color: #fff9d8;
       }
 
       .flow-progress {
@@ -561,14 +577,104 @@
         width: 0%;
         height: 100%;
         border-radius: 999px;
-        background: linear-gradient(90deg, #ffcf63, #ff8c4a, #ff4fa8);
-        box-shadow: 0 0 16px rgba(255,160,76,0.28);
+        background: linear-gradient(90deg, #ffe374, #ff9d4d, #ff53c4);
+        box-shadow: 0 0 16px rgba(255,145,97,0.28);
         transition: width 0.2s ease;
       }
 
       .flow-copy {
         margin-top: 8px;
-        color: #ffe7bd;
+        color: #fff0de;
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
+      .rush-panel {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(176,255,247,0.22);
+        background: linear-gradient(135deg, rgba(111,247,255,0.14), rgba(255,83,196,0.12) 52%, rgba(255,224,124,0.12));
+      }
+
+      .rush-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .rush-header strong {
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #b4fffa;
+      }
+
+      .rush-header span {
+        font-family: var(--display-font);
+        font-size: 1rem;
+        color: #fff5ff;
+      }
+
+      .rush-progress {
+        margin-top: 10px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        overflow: hidden;
+      }
+
+      .rush-progress-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #6ff7ff, #ff53c4, #ffe374);
+        box-shadow: 0 0 18px rgba(111,247,255,0.26);
+        transition: width 0.2s ease;
+      }
+
+      .rush-copy {
+        margin-top: 8px;
+        color: #eefcff;
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
+      .lab-card {
+        margin-top: 12px;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,240,252,0.18);
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+          linear-gradient(135deg, rgba(255,83,196,0.12), rgba(111,247,255,0.12));
+      }
+
+      .lab-card h4 {
+        margin: 0 0 10px;
+        font-size: 0.75rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #fff0c4;
+      }
+
+      .lab-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .mini-button {
+        width: 100%;
+        justify-content: center;
+        padding: 0.66rem 0.9rem;
+        font-size: 0.76rem;
+      }
+
+      .lab-copy {
+        margin-top: 10px;
+        color: #fff2f5;
         font-size: 0.8rem;
         line-height: 1.45;
       }
@@ -578,9 +684,9 @@
         padding: 14px;
         border-radius: 16px;
         background:
-          linear-gradient(135deg, rgba(53,243,255,0.08), rgba(141,125,255,0.1) 46%, rgba(255,63,210,0.08)),
+          linear-gradient(135deg, rgba(111,247,255,0.12), rgba(164,126,255,0.12) 46%, rgba(255,83,196,0.12)),
           rgba(255,255,255,0.03);
-        border: 1px solid rgba(111, 201, 255, 0.18);
+        border: 1px solid rgba(255, 239, 252, 0.18);
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
       }
 
@@ -625,7 +731,7 @@
 
       .mission-reward {
         margin-top: 10px;
-        color: #d8f7ff;
+        color: #fff0ff;
         font-size: 0.8rem;
         letter-spacing: 0.02em;
       }
@@ -635,9 +741,9 @@
         padding: 14px;
         border-radius: 16px;
         background:
-          linear-gradient(135deg, rgba(255,208,99,0.08), rgba(255,129,74,0.08) 45%, rgba(255,79,168,0.08)),
+          linear-gradient(135deg, rgba(255,228,122,0.12), rgba(255,157,77,0.1) 45%, rgba(255,83,196,0.12)),
           rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,190,108,0.18);
+        border: 1px solid rgba(255,236,173,0.18);
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
       }
 
@@ -646,19 +752,19 @@
         font-size: 0.75rem;
         letter-spacing: 0.22em;
         text-transform: uppercase;
-        color: #ffd499;
+        color: #fff1b6;
       }
 
       .directive-title {
         margin: 0;
-        color: #fff1cf;
+        color: #fff6de;
         font-size: 0.96rem;
         line-height: 1.4;
       }
 
       .directive-detail {
         margin: 6px 0 0;
-        color: #ffdcb9;
+        color: #ffe6d0;
         font-size: 0.82rem;
         line-height: 1.45;
       }
@@ -666,7 +772,7 @@
       .directive-card.focus-card {
         border-color: rgba(111, 234, 255, 0.18);
         background:
-          linear-gradient(135deg, rgba(68,223,255,0.08), rgba(88,160,255,0.08) 45%, rgba(141,125,255,0.08)),
+          linear-gradient(135deg, rgba(111,247,255,0.12), rgba(88,160,255,0.1) 45%, rgba(255,83,196,0.08)),
           rgba(255,255,255,0.03);
       }
 
@@ -675,7 +781,7 @@
       .directive-card.protocol-card {
         border-color: rgba(255,130,108,0.18);
         background:
-          linear-gradient(135deg, rgba(255,164,102,0.08), rgba(255,88,88,0.08) 45%, rgba(255,79,168,0.08)),
+          linear-gradient(135deg, rgba(255,164,102,0.12), rgba(255,88,88,0.1) 45%, rgba(255,83,196,0.1)),
           rgba(255,255,255,0.03);
       }
 
@@ -720,7 +826,7 @@
       }
 
       .achievement-entry.unlocked {
-        background: linear-gradient(135deg, rgba(255,206,111,0.12), rgba(255,116,82,0.08));
+        background: linear-gradient(135deg, rgba(255,225,122,0.14), rgba(255,116,182,0.12));
         border-color: rgba(255,204,109,0.28);
       }
 
@@ -757,7 +863,7 @@
 
       .leaderboard-entry:first-child {
         border-color: rgba(255,201,77,0.22);
-        background: rgba(255,201,77,0.06);
+        background: rgba(255,228,122,0.08);
       }
 
       .leaderboard-rank {
@@ -767,7 +873,7 @@
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: rgba(255,201,77,0.1);
+        background: rgba(255,228,122,0.14);
         color: #ffe8a0;
         font-weight: 700;
         font-size: 0.82rem;
@@ -776,7 +882,7 @@
       }
 
       .leaderboard-entry:first-child .leaderboard-rank {
-        background: linear-gradient(135deg, rgba(255,201,77,0.25), rgba(255,130,30,0.2));
+        background: linear-gradient(135deg, rgba(255,228,122,0.24), rgba(255,83,196,0.18));
         border-color: rgba(255,201,77,0.45);
         color: var(--accent);
       }
@@ -797,7 +903,7 @@
       .footer-note {
         margin-top: 12px;
         text-align: center;
-        color: rgba(126,200,192,0.45);
+        color: rgba(255,224,246,0.68);
         font-size: 0.78rem;
         letter-spacing: 0.05em;
       }
@@ -813,11 +919,11 @@
         gap: 6px;
         padding: 5px 14px;
         border-radius: 999px;
-        background: rgba(4,10,18,0.8);
-        border: 1px solid rgba(255,201,77,0.3);
+        background: rgba(52,12,65,0.82);
+        border: 1px solid rgba(255,228,122,0.32);
         font-family: var(--display-font);
         font-size: 0.95rem;
-        color: var(--accent);
+        color: #fff3b4;
         letter-spacing: 0.05em;
         opacity: 0;
         transition: opacity 0.2s;
@@ -830,7 +936,7 @@
       .combo-indicator.show { opacity: 1; }
 
       .combo-indicator {
-        box-shadow: 0 0 22px rgba(255,201,77,0.18);
+        box-shadow: 0 0 22px rgba(255,83,196,0.18);
       }
 
       .level-banner {
@@ -840,13 +946,13 @@
         transform: translate(-50%, -50%) scale(0.92);
         padding: 12px 22px;
         border-radius: 18px;
-        border: 1px solid rgba(255,226,138,0.4);
-        background: linear-gradient(135deg, rgba(12,24,36,0.9), rgba(32,20,4,0.84));
-        color: #fff3c2;
+        border: 1px solid rgba(255,236,173,0.42);
+        background: linear-gradient(135deg, rgba(83,20,100,0.92), rgba(255,126,70,0.36));
+        color: #fff8db;
         font-family: var(--display-font);
         font-size: clamp(1.1rem, 2vw, 1.7rem);
         letter-spacing: 0.08em;
-        box-shadow: 0 18px 46px rgba(0,0,0,0.42), 0 0 32px rgba(255,205,88,0.16);
+        box-shadow: 0 18px 46px rgba(37,0,47,0.36), 0 0 32px rgba(255,205,88,0.2);
         opacity: 0;
         pointer-events: none;
         z-index: 12;
@@ -887,9 +993,9 @@
     <main class="app-shell">
       <header class="top-bar">
         <div class="brand-lockup">
-          <span class="eyebrow">Match-3 Canvas · Solo</span>
+          <span class="eyebrow">Match-3 Canvas · Neon Candy Solo</span>
           <h1>Pulse Prism</h1>
-          <p class="tagline">Aligne, casse, enchaîne. Un seul fichier HTML.</p>
+          <p class="tagline">Aligne des bonbons néon, allume les boosts, garde le rythme.</p>
         </div>
         <div class="control-row">
           <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
@@ -981,12 +1087,13 @@
             <div id="titleOverlay" class="board-overlay visible">
               <div class="overlay-card">
                 <p class="eyebrow">Match-3 canvas</p>
-                <h2>Allume la grille.</h2>
-                <p>Échange deux prismes voisins pour aligner au moins trois formes identiques et déclencher des réactions en chaîne.</p>
+                <h2>Fais craquer la grille.</h2>
+                <p>Échange deux bonbons-prismes voisins pour aligner au moins trois formes identiques et déclencher des réactions en chaîne.</p>
                 <ul class="instruction-list">
                   <li>Glisse un prisme ou touche deux cases adjacentes.</li>
                   <li>Les cascades et les bonus rapportent plus — enchaîne.</li>
                   <li>Charge la Pulse pour vaporiser tous les prismes d'une même famille.</li>
+                  <li>Remplis Candy Rush pour saturer la grille de sucre et de bonus.</li>
                   <li>Atteins l'objectif pour passer au niveau suivant et gagner du temps.</li>
                 </ul>
                 <div class="overlay-actions">
@@ -999,7 +1106,7 @@
             <div id="gameOverOverlay" class="board-overlay">
               <div class="overlay-card">
                 <p class="eyebrow">Fin de partie</p>
-                <h2>Le flux se dissipe.</h2>
+                <h2>La pluie sucrée retombe.</h2>
                 <p id="gameOverSummary">Tu as tenu la grille jusqu'au dernier battement.</p>
                 <ul class="bullet-list">
                   <li>Un bon timing sur les cascades change tout.</li>
@@ -1014,7 +1121,7 @@
             </div>
           </div>
 
-          <p class="footer-note">Un seul fichier HTML · Aucun serveur · Aucune dépendance externe</p>
+          <p class="footer-note">Jeu autonome en un HTML · smoke tests via npm test</p>
         </section>
 
         <aside class="side-panel">
@@ -1028,6 +1135,7 @@
               <li>Auto-mélange si aucun coup possible.</li>
               <li>Après 5s d'inactivité : le scanner suggère le meilleur coup.</li>
               <li>Quand la Pulse atteint 100%, vise une forme pour purger tout son type.</li>
+              <li>Les cascades et les gros coups remplissent Candy Rush et ajoutent des bonus pendant l'euphorie.</li>
             </ul>
           </section>
 
@@ -1061,6 +1169,26 @@
                 <div id="flowBar" class="flow-progress-fill"></div>
               </div>
               <div id="flowCopy" class="flow-copy">Aligne vite tes ouvertures pour déclencher une fenêtre de score amplifié.</div>
+            </div>
+            <div class="rush-panel">
+              <div class="rush-header">
+                <strong>Candy Rush</strong>
+                <span id="rushValue">0%</span>
+              </div>
+              <div class="rush-progress" aria-hidden="true">
+                <div id="rushBar" class="rush-progress-fill"></div>
+              </div>
+              <div id="rushCopy" class="rush-copy">Les longues cascades sucrent la jauge. À pleine charge, la grille part en euphorie.</div>
+            </div>
+            <div class="lab-card">
+              <h4>Lab rapide</h4>
+              <div class="lab-actions">
+                <button id="labMoveButton" class="pill-button mini-button" type="button">▶ Coup fort</button>
+                <button id="labPulseButton" class="pill-button mini-button" type="button">⚡ Pulse</button>
+                <button id="labRushButton" class="pill-button mini-button" type="button">🍬 Rush</button>
+                <button id="labTimeButton" class="pill-button mini-button" type="button">⏱ +30s</button>
+              </div>
+              <div id="labDetail" class="lab-copy">Boîte à outils locale pour éprouver les systèmes sans repartir de zéro.</div>
             </div>
             <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
             <div class="mission-card">
@@ -1665,16 +1793,16 @@
             const borderGlow = Math.max(0, fx.invalidSwapPulse || 0);
             rrPath(ctx, boardX - cellSize*0.14, boardY - cellSize*0.14, boardSize + cellSize*0.28, boardSize + cellSize*0.28, cellSize * 0.44);
             const boardGrad = ctx.createLinearGradient(boardX, boardY, boardX + boardSize, boardY + boardSize);
-            boardGrad.addColorStop(0, "rgba(4, 16, 26, 0.94)");
-            boardGrad.addColorStop(0.5, "rgba(4, 10, 18, 0.9)");
-            boardGrad.addColorStop(1, "rgba(2, 8, 16, 0.98)");
+            boardGrad.addColorStop(0, "rgba(89, 23, 105, 0.94)");
+            boardGrad.addColorStop(0.48, "rgba(38, 11, 72, 0.92)");
+            boardGrad.addColorStop(1, "rgba(20, 8, 40, 0.98)");
             ctx.fillStyle = boardGrad;
             ctx.fill();
             ctx.save();
-            ctx.strokeStyle = borderGlow > 0 ? `rgba(255,110,110,${0.28 + borderGlow * 0.44})` : "rgba(120,220,210,0.18)";
+            ctx.strokeStyle = borderGlow > 0 ? `rgba(255,110,110,${0.28 + borderGlow * 0.44})` : "rgba(255,228,246,0.24)";
             ctx.lineWidth = 2.4 + borderGlow * 1.8;
             ctx.shadowBlur = borderGlow > 0 ? 24 : 12;
-            ctx.shadowColor = borderGlow > 0 ? "rgba(255,90,90,0.45)" : "rgba(68,223,255,0.12)";
+            ctx.shadowColor = borderGlow > 0 ? "rgba(255,90,90,0.45)" : "rgba(255,83,196,0.2)";
             ctx.stroke();
             ctx.restore();
 
@@ -1684,7 +1812,7 @@
                 const x = boardX + c * cellSize, y = boardY + r * cellSize;
                 const wave = Math.sin(t * 0.9 + r * 0.3 + c * 0.22) * 0.018 + 0.055 + (fx.urgency || 0) * 0.012;
                 rrPath(ctx, x + 2, y + 2, cellSize - 4, cellSize - 4, corner);
-                ctx.fillStyle = `rgba(100, 210, 200, ${wave})`;
+                ctx.fillStyle = `rgba(255, 214, 244, ${wave})`;
                 ctx.fill();
               }
             }
@@ -1696,10 +1824,10 @@
                 const hx = boardX + hc.col * cellSize, hy = boardY + hc.row * cellSize;
                 rrPath(ctx, hx + 3, hy + 3, cellSize - 6, cellSize - 6, corner);
                 ctx.save();
-                ctx.strokeStyle = `rgba(68, 223, 255, ${0.55 + pulse * 0.3})`;
+                ctx.strokeStyle = `rgba(111, 247, 255, ${0.55 + pulse * 0.3})`;
                 ctx.lineWidth = 3;
                 ctx.shadowBlur = 18;
-                ctx.shadowColor = "rgba(68,223,255,0.6)";
+                ctx.shadowColor = "rgba(111,247,255,0.6)";
                 ctx.stroke();
                 ctx.restore();
               });
@@ -1711,10 +1839,10 @@
               const pulse = 0.5 + Math.sin(t * 7.5) * 0.22;
               ctx.save();
               rrPath(ctx, sx + 3, sy + 3, cellSize - 6, cellSize - 6, corner);
-              ctx.strokeStyle = `rgba(255, 220, 100, ${0.7 + pulse * 0.25})`;
+              ctx.strokeStyle = `rgba(255, 228, 122, ${0.7 + pulse * 0.25})`;
               ctx.lineWidth = 4;
               ctx.shadowBlur = 22;
-              ctx.shadowColor = "rgba(255,201,77,0.6)";
+              ctx.shadowColor = "rgba(255,228,122,0.6)";
               ctx.stroke();
               ctx.restore();
             }
@@ -1867,13 +1995,14 @@
 
         // ──────────────── STARS ────────────────
         function makeStars(count) {
+          const dust = ["#ffe97d", "#ff7ecf", "#7af9ff", "#b78bff", "#9effc0"];
           return Array.from({length: count}, () => ({
             x: Math.random(), y: Math.random(),
-            r: 0.4 + Math.random() * 1.6,
-            base: 0.15 + Math.random() * 0.55,
+            r: 0.6 + Math.random() * 1.8,
+            base: 0.2 + Math.random() * 0.5,
             twinkle: Math.random() * Math.PI * 2,
             speed: 0.6 + Math.random() * 1.4,
-            warm: Math.random() < 0.3
+            color: dust[Math.floor(Math.random() * dust.length)]
           }));
         }
 
@@ -1959,6 +2088,10 @@
               flowValue: document.getElementById("flowValue"),
               flowBar: document.getElementById("flowBar"),
               flowCopy: document.getElementById("flowCopy"),
+              rushValue: document.getElementById("rushValue"),
+              rushBar: document.getElementById("rushBar"),
+              rushCopy: document.getElementById("rushCopy"),
+              labDetail: document.getElementById("labDetail"),
               state: document.getElementById("stateValue"),
               message: document.getElementById("statusMessage"),
               missionTitle: document.getElementById("missionTitle"),
@@ -1985,6 +2118,10 @@
               restartButton: document.getElementById("restartButton"),
               hintButton: document.getElementById("hintButton"),
               rerollButton: document.getElementById("rerollButton"),
+              labMoveButton: document.getElementById("labMoveButton"),
+              labPulseButton: document.getElementById("labPulseButton"),
+              labRushButton: document.getElementById("labRushButton"),
+              labTimeButton: document.getElementById("labTimeButton"),
               pulseButton: document.getElementById("pulseButton"),
               pauseButton: document.getElementById("pauseButton")
             };
@@ -2005,6 +2142,8 @@
             this.pulseMode = false;
             this.flowCharge = 0;
             this.flowActive = 0;
+            this.candyRushCharge = 0;
+            this.candyRushActive = 0;
             this.lastActionTime = 0;
             this.hoverCell = null;
             this.activeMission = null;
@@ -2054,20 +2193,34 @@
 
           createGemStyles() {
             const shapes = shuffle(GEM_SHAPES).slice(0, 6);
-            const hueStart = Math.random() * 360;
+            const candyBases = shuffle([
+              { hue: 324, sat: 96, light: 66, accentHue: 194 },
+              { hue: 189, sat: 98, light: 66, accentHue: 292 },
+              { hue: 42, sat: 98, light: 66, accentHue: 329 },
+              { hue: 272, sat: 86, light: 67, accentHue: 48 },
+              { hue: 14, sat: 96, light: 67, accentHue: 186 },
+              { hue: 154, sat: 84, light: 64, accentHue: 321 },
+              { hue: 212, sat: 96, light: 68, accentHue: 45 },
+              { hue: 98, sat: 84, light: 64, accentHue: 203 }
+            ]).slice(0, 6);
             return shapes.map((shape, i) => {
-              const hue = (hueStart + 60 * i + rnd(-15, 15) + 360) % 360;
-              const sat = Math.round(rnd(78, 92));
-              const light = Math.round(rnd(52, 66));
+              const palette = candyBases[i];
+              const hue = palette.hue;
+              const sat = palette.sat;
+              const light = palette.light;
               return {
-                name: `${shape}-${i}`, shape,
-                base: `hsl(${Math.round(hue)},${sat}%,${light}%)`,
-                shine: `hsl(${Math.round((hue-5+360)%360)},95%,${Math.min(93,light+26)}%)`,
-                mid: `hsl(${Math.round(hue)},${sat}%,${Math.max(38,light-12)}%)`,
-                shadow: `hsl(${Math.round((hue+14)%360)},${Math.max(50,sat-26)}%,${Math.max(20,light-30)}%)`,
-                accent: `hsla(${Math.round((hue+rnd(26,60))%360)},92%,84%,0.3)`,
-                rotation: rnd(-0.5, 0.5), squashX: rnd(0.9, 1.14), squashY: rnd(0.9, 1.14),
-                sizeBias: rnd(0.92, 1.06), facetScale: rnd(0.36, 0.56),
+                name: `${shape}-${i}`,
+                shape,
+                base: `hsl(${hue},${sat}%,${light}%)`,
+                shine: `hsl(${(hue - 8 + 360) % 360},98%,${Math.min(92, light + 24)}%)`,
+                mid: `hsl(${hue},${Math.max(74, sat - 8)}%,${Math.max(44, light - 12)}%)`,
+                shadow: `hsl(${(hue + 16) % 360},${Math.max(48, sat - 32)}%,${Math.max(24, light - 34)}%)`,
+                accent: `hsla(${palette.accentHue},96%,86%,0.34)`,
+                rotation: rnd(-0.45, 0.45),
+                squashX: rnd(0.92, 1.12),
+                squashY: rnd(0.92, 1.12),
+                sizeBias: rnd(0.94, 1.05),
+                facetScale: rnd(0.38, 0.58),
                 points: shape === "star" ? (Math.random() < 0.5 ? 5 : 6) : 0
               };
             });
@@ -2145,9 +2298,39 @@
             }
           }
 
+          candyRushDuration() { return this.currentDirective?.id === "resonance" ? 11 : 9; }
+
+          addCandyRushCharge(amount, { allowActivate = true } = {}) {
+            if (!Number.isFinite(amount) || amount === 0) return;
+            if (this.candyRushActive > 0) {
+              const bonusTime = clamp(amount / 38, 0, 0.9);
+              this.candyRushActive = Math.min(this.candyRushDuration(), this.candyRushActive + bonusTime);
+              this.candyRushCharge = (this.candyRushActive / this.candyRushDuration()) * 100;
+              return;
+            }
+            const before = this.candyRushCharge;
+            this.candyRushCharge = clamp(this.candyRushCharge + amount, 0, 100);
+            if (allowActivate && before < 100 && this.candyRushCharge >= 100) this.activateCandyRush();
+          }
+
+          activateCandyRush() {
+            this.candyRushActive = this.candyRushDuration();
+            this.candyRushCharge = 100;
+            this.triggerShake(6.4, 0.2);
+            this.triggerFlash(255, 104, 214, 0.26);
+            this.showLevelBanner("Candy Rush");
+            this.audio.playPulseReady();
+            if (this.hasBegun && this.phase === "idle" && !this.paused) {
+              this.stateLabel = "Candy Rush";
+              this.statusText = "Candy Rush active. Les bonus pleuvent plus vite et chaque match vaut plus.";
+            }
+          }
+
           scoreMultiplier() {
-            if (this.flowActive <= 0) return 1;
-            return this.currentDirective?.id === "resonance" ? 1.55 : 1.35;
+            let mult = 1;
+            if (this.flowActive > 0) mult *= this.currentDirective?.id === "resonance" ? 1.55 : 1.35;
+            if (this.candyRushActive > 0) mult *= 1.28;
+            return mult;
           }
 
           multiplierLabel(mult = this.scoreMultiplier()) { return `×${mult.toFixed(2)}`; }
@@ -2176,6 +2359,19 @@
             const gain = (quick ? 34 : 22) + boost;
             this.flowCharge = clamp(this.flowCharge + gain, 0, 100);
             if (this.flowCharge >= 100) this.activateFlow();
+          }
+
+          applyCandyRushMatchEffects(exp, spawns) {
+            if (this.candyRushActive <= 0) return { scoreDelta: 0, timeDelta: 0, pulseDelta: 0, summary: "" };
+            const scoreDelta = exp.cells.length * 26 + spawns.length * 90 + exp.triggeredBonuses.length * 55;
+            const timeDelta = Math.min(2.4, exp.cells.length * 0.08 + spawns.length * 0.28);
+            const pulseDelta = 6 + exp.triggeredBonuses.length * 3 + spawns.length * 4;
+            return {
+              scoreDelta,
+              timeDelta,
+              pulseDelta,
+              summary: `Candy Rush: pluie sucrée · +${scoreDelta} pts${timeDelta > 0 ? ` · +${timeDelta.toFixed(1)}s` : ""}`
+            };
           }
 
           createDirective(excludeId = null) {
@@ -2285,6 +2481,50 @@
             this.triggerFlash(120, 186, 255, 0.22);
             this.audio.playShuffle();
             this.updateUi();
+          }
+
+          playSuggestedMove() {
+            if (!this.canInput()) return false;
+            const analysis = this.board.findHintMove(this.focusKind);
+            if (!analysis) return false;
+            this.trySwap(analysis.cells[0], analysis.cells[1]);
+            return true;
+          }
+
+          useLabTool(kind) {
+            if (!this.hasBegun || this.phase === "gameover") return false;
+            if (kind === "move") {
+              const moved = this.playSuggestedMove();
+              if (moved) {
+                this.statusText = "Lab: meilleur coup injecté dans la grille.";
+                this.stateLabel = "Lab";
+                this.updateUi();
+              }
+              return moved;
+            }
+            if (this.paused) return false;
+            switch (kind) {
+              case "pulse":
+                this.addPulseCharge(100, { allowReadyEffect: true });
+                this.stateLabel = "Lab";
+                this.statusText = "Lab: Pulse chargée instantanément.";
+                break;
+              case "rush":
+                this.activateCandyRush();
+                this.stateLabel = "Lab";
+                this.statusText = "Lab: Candy Rush forcée pour test rapide.";
+                break;
+              case "time":
+                this.timeLeft = Math.min(120, this.timeLeft + 30);
+                this.stateLabel = "Lab";
+                this.statusText = "Lab: +30s injectées dans le chrono.";
+                this.triggerFlash(255, 228, 122, 0.16);
+                break;
+              default:
+                return false;
+            }
+            this.updateUi();
+            return true;
           }
 
           togglePulseMode() {
@@ -2467,6 +2707,7 @@
             }
             if (this.profile.achievements["combo-5"]) {
               this.flowCharge = Math.max(this.flowCharge, 22);
+              this.candyRushCharge = Math.max(this.candyRushCharge, 18);
               perks.push("Overdrive +22%");
             }
             if (this.profile.achievements["level-6"]) {
@@ -2475,12 +2716,14 @@
             }
             if (this.profile.achievements["pulse-3"]) {
               this.board.injectBonusTokens(1, "level");
+              this.candyRushCharge = Math.max(this.candyRushCharge, 24);
               perks.push("1 jeton bonus");
             }
             if (this.profile.achievements["level-6"]) {
               this.tacticalRerolls += 1;
               perks.push("+1 reroll tactique");
             }
+            if (this.candyRushCharge > 0) perks.push(`Candy Rush +${Math.round(this.candyRushCharge)}%`);
             return perks;
           }
 
@@ -2568,6 +2811,10 @@
             }));
             this.ui.hintButton.addEventListener("click", () => this.showManualHint());
             this.ui.rerollButton.addEventListener("click", () => this.performTacticalReroll());
+            this.ui.labMoveButton.addEventListener("click", () => this.useLabTool("move"));
+            this.ui.labPulseButton.addEventListener("click", () => this.useLabTool("pulse"));
+            this.ui.labRushButton.addEventListener("click", () => this.useLabTool("rush"));
+            this.ui.labTimeButton.addEventListener("click", () => this.useLabTool("time"));
             this.ui.pulseButton.addEventListener("click", () => this.togglePulseMode());
             this.ui.pauseButton.addEventListener("click", () => this.togglePause());
             this.canvas.addEventListener("pointerdown", e => this.onPointerDown(e));
@@ -2600,6 +2847,7 @@
             this.pendingSwap = null; this.comboChain = 0;
             this.pulseCharge = 0; this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0; this.lastActionTime = 0;
+            this.candyRushCharge = 0; this.candyRushActive = 0;
             this.hoverCell = null;
             this.protocolReady = true;
             this.emergencyActive = 0;
@@ -2636,6 +2884,7 @@
             this.stateLabel = "Fin"; this.statusText = "Temps écoulé. Relance pour une nouvelle grille.";
             this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0;
+            this.candyRushCharge = 0; this.candyRushActive = 0;
             this.hoverCell = null;
             this.protocolReady = false;
             this.emergencyActive = 0;
@@ -2682,21 +2931,34 @@
             this.ui.pulse.textContent = this.pulseMode ? "CIBLE" : (this.isPulseReady() ? "PRÊTE" : `${Math.round(this.pulseCharge)}%`);
             this.ui.pulseBar.style.width = `${this.pulseCharge}%`;
             this.ui.flowBar.style.width = `${clamp(this.flowCharge, 0, 100)}%`;
-            this.ui.flowValue.textContent = this.flowActive > 0 ? this.multiplierLabel() : "×1.00";
+            this.ui.flowValue.textContent = this.flowActive > 0 ? this.multiplierLabel(this.currentDirective?.id === "resonance" ? 1.55 : 1.35) : "×1.00";
             this.ui.flowCopy.textContent = this.flowActive > 0
               ? `Overdrive actif pendant ${Math.max(1, Math.ceil(this.flowActive))}s. Chaque gain suit ${this.multiplierLabel()}.`
               : `Charge ${Math.round(this.flowCharge)}%. Enchaîne des ouvertures rapides pour allumer l'Overdrive.`;
+            this.ui.rushBar.style.width = `${clamp(this.candyRushCharge, 0, 100)}%`;
+            this.ui.rushValue.textContent = this.candyRushActive > 0 ? `${Math.max(1, Math.ceil(this.candyRushActive))}s` : `${Math.round(this.candyRushCharge)}%`;
+            this.ui.rushCopy.textContent = this.candyRushActive > 0
+              ? `Candy Rush active. La grille recrache plus de bonus et pousse le multiplicateur à ${this.multiplierLabel()}.`
+              : `Charge ${Math.round(this.candyRushCharge)}%. Les longues cascades, les Pulses et les focus remplissent la jauge.`;
             this.ui.state.textContent = this.stateLabel;
             this.ui.message.textContent = this.statusText;
             this.ui.pauseButton.textContent = this.paused ? "▶ Reprendre" : "⏸ Pause";
             this.ui.pauseButton.setAttribute("aria-pressed", String(this.paused));
             const pulseAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.isPulseReady();
             const rerollAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.tacticalRerolls > 0;
+            const labAvailable = this.hasBegun && this.phase !== "gameover";
             this.ui.pulseButton.disabled = !(pulseAvailable || this.pulseMode);
             this.ui.pulseButton.setAttribute("aria-pressed", String(this.pulseMode));
             this.ui.pulseButton.textContent = this.pulseMode ? "⚡ Vise la grille" : (this.isPulseReady() ? "⚡ Pulse prête" : `⚡ Pulse ${Math.round(this.pulseCharge)}%`);
             this.ui.rerollButton.disabled = !rerollAvailable;
             this.ui.rerollButton.textContent = `🌀 Reroll ${this.tacticalRerolls}`;
+            this.ui.labMoveButton.disabled = !(labAvailable && !this.paused && this.phase === "idle");
+            this.ui.labPulseButton.disabled = !(labAvailable && !this.paused && this.phase === "idle");
+            this.ui.labRushButton.disabled = !(labAvailable && !this.paused && this.phase === "idle");
+            this.ui.labTimeButton.disabled = !labAvailable;
+            this.ui.labDetail.textContent = labAvailable
+              ? "Boîte à outils locale pour éprouver les systèmes sans repartir de zéro."
+              : "Démarre une partie pour activer les outils de labo.";
             if (this.activeMission) {
               this.ui.missionTitle.textContent = this.activeMission.title;
               this.ui.missionDetail.textContent = `${this.activeMission.detail} · ${this.activeMission.progress}/${this.activeMission.target}`;
@@ -2909,6 +3171,7 @@
             this.lastGain += focusFx.scoreDelta;
             this.timeLeft = Math.min(120, this.timeLeft + focusFx.timeDelta);
             this.addPulseCharge(focusFx.pulseDelta, { allowReadyEffect: false });
+            this.addCandyRushCharge(20 + expanded.cells.length * 1.6 + focusFx.hits * 5);
             this.profile.pulses++;
             if (this.profile.pulses >= 3) this.unlockAchievement("pulse-3");
             this.saveProfile();
@@ -2942,8 +3205,9 @@
             this.phase = "clear";
             this.phaseClock = 0;
             this.stateLabel = "Pulse";
-            const flowText = multiplier > 1 ? ` · Overdrive ${this.multiplierLabel(multiplier)}` : (this.flowActive > 0 ? " · Overdrive lancé" : "");
-            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${focusFx.summary ? " · " + focusFx.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}`;
+            const flowText = multiplier > 1 ? ` · Multiplicateur ${this.multiplierLabel(multiplier)}` : (this.flowActive > 0 ? " · Overdrive lancé" : "");
+            const rushText = this.candyRushActive > 0 ? " · Candy Rush active" : "";
+            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${rushText}${focusFx.summary ? " · " + focusFx.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}`;
             this.triggerShake(6.5, 0.24);
             this.triggerFlash(100, 236, 255, 0.52);
             this.audio.playPulseFire();
@@ -2985,15 +3249,49 @@
           }
 
           makeBonusSpawns(mr) {
-            if (this.comboChain < 2) return [];
-            const sorted = [...mr.lines].sort((a,b) => b.length - a.length);
-            const line = sorted[0]; if (!line) return [];
-            const cands = line.cells.filter(c => { const t = this.board.grid[c.row][c.col]; return t && !t.bonus; });
-            if (!cands.length) return [];
-            const sc = cands[Math.floor(cands.length/2)];
-            let kind = line.orientation === "row" ? "row" : "column";
-            if (this.comboChain >= 3 || line.length >= 5 || mr.triggeredBonuses.length > 0) kind = "burst";
-            return [{row:sc.row, col:sc.col, kind}];
+            const spawns = [];
+            const used = new Set();
+            const pushSpawn = (cell, kind) => {
+              const key = `${cell.row}:${cell.col}`;
+              if (used.has(key)) return false;
+              used.add(key);
+              spawns.push({ row: cell.row, col: cell.col, kind });
+              return true;
+            };
+
+            if (this.comboChain >= 2) {
+              const sorted = [...mr.lines].sort((a, b) => b.length - a.length);
+              const line = sorted[0];
+              if (line) {
+                const cands = line.cells.filter(c => {
+                  const t = this.board.grid[c.row][c.col];
+                  return t && !t.bonus;
+                });
+                if (cands.length) {
+                  const sc = cands[Math.floor(cands.length / 2)];
+                  let kind = line.orientation === "row" ? "row" : "column";
+                  if (this.comboChain >= 3 || line.length >= 5 || mr.triggeredBonuses.length > 0) kind = "burst";
+                  pushSpawn(sc, kind);
+                }
+              }
+            }
+
+            if (this.candyRushActive > 0) {
+              const candidates = mr.cells.filter(c => {
+                const key = `${c.row}:${c.col}`;
+                const tile = this.board.grid[c.row][c.col];
+                return tile && !tile.bonus && !used.has(key);
+              });
+              if (candidates.length) {
+                const extra = candidates[Math.floor(Math.random() * candidates.length)];
+                const extraKind = this.comboChain >= 3 || mr.lines.some(line => line.length >= 5)
+                  ? "burst"
+                  : Math.random() < 0.5 ? "row" : "column";
+                pushSpawn(extra, extraKind);
+              }
+            }
+
+            return spawns;
           }
 
           resolveMatches(mr) {
@@ -3014,11 +3312,17 @@
             if (this.comboChain >= 5) this.unlockAchievement("combo-5");
             if (this.comboChain === 1) this.registerFlowAction(exp.cells.length >= 5 ? 12 : 0);
             this.addPulseCharge(exp.cells.length * 3 + exp.triggeredBonuses.length * 10 + spawns.length * 12 + Math.max(0, this.comboChain - 1) * 5);
+            this.addCandyRushCharge(exp.cells.length * 2.4 + exp.triggeredBonuses.length * 9 + spawns.length * 14 + Math.max(0, this.comboChain - 1) * 8);
             const directiveFx = this.applyDirectiveMatchEffects(exp, spawns, multiplier);
             this.score += directiveFx.scoreDelta;
             this.lastGain += directiveFx.scoreDelta;
             this.timeLeft = Math.min(120, this.timeLeft + directiveFx.timeDelta);
             this.addPulseCharge(directiveFx.pulseDelta, { allowReadyEffect: false });
+            const rushFx = this.applyCandyRushMatchEffects(exp, spawns);
+            this.score += rushFx.scoreDelta;
+            this.lastGain += rushFx.scoreDelta;
+            this.timeLeft = Math.min(120, this.timeLeft + rushFx.timeDelta);
+            this.addPulseCharge(rushFx.pulseDelta, { allowReadyEffect: false });
             if (directiveFx.flowDelta > 0 && this.flowActive > 0) {
               const cap = this.flowCap();
               this.flowActive = Math.min(cap, this.flowActive + directiveFx.flowDelta);
@@ -3042,12 +3346,13 @@
               exp.triggeredBonuses.length > 0 ? `${exp.triggeredBonuses.length} jeton${exp.triggeredBonuses.length>1?"s":""} activé${exp.triggeredBonuses.length>1?"s":""}` : "",
               spawns.length > 0 ? `${spawns.length} bonus créé${spawns.length>1?"s":""}` : "",
               focusFx.summary,
-              directiveFx.summary
+              directiveFx.summary,
+              rushFx.summary
             ].filter(Boolean).join(" · ");
             this.statusText = this.comboChain > 1
               ? `Cascade ×${this.comboChain} ! +${this.lastGain} pts${bonusSum ? " · "+bonusSum : ""}`
               : `${exp.cells.length} prismes brisés · +${this.lastGain} pts${bonusSum ? " · "+bonusSum : ""}`;
-            if (multiplier > 1) this.statusText += ` · Overdrive ${this.multiplierLabel(multiplier)}`;
+            if (multiplier > 1) this.statusText += ` · Multiplicateur ${this.multiplierLabel(multiplier)}`;
             else if (this.flowActive > 0) this.statusText += " · Overdrive lancé";
             if (missionRes.summary) this.statusText += ` · ${missionRes.summary}`;
 
@@ -3109,6 +3414,7 @@
               this.score += bonusSc; this.lastGain = bonusSc;
               this.timeLeft = Math.min(120, this.timeLeft + timeBon);
               this.addPulseCharge(12 + levs * 8);
+              this.addCandyRushCharge(18 + levs * 6);
               this.protocolReady = true;
               this.emergencyActive = 0;
               this.levelFlash = 1.2;
@@ -3197,6 +3503,17 @@
             } else if (this.hasBegun) {
               this.flowCharge = Math.max(0, this.flowCharge - dt * 6.5);
             }
+            const hadRush = this.candyRushActive > 0;
+            if (this.candyRushActive > 0) {
+              const duration = this.candyRushDuration();
+              this.candyRushActive = Math.max(0, this.candyRushActive - dt);
+              this.candyRushCharge = (this.candyRushActive / duration) * 100;
+              if (hadRush && this.candyRushActive === 0 && this.hasBegun && this.phase === "idle") {
+                this.statusText = "Candy Rush terminée. Recharge la grille avec une nouvelle cascade.";
+              }
+            } else if (this.hasBegun) {
+              this.candyRushCharge = Math.max(0, this.candyRushCharge - dt * 1.2);
+            }
             this.flashAmt *= Math.pow(0.12, dt);
             if (this.flashAmt < 0.005) this.flashAmt = 0;
 
@@ -3272,9 +3589,9 @@
               const a = s.base * (0.65 + Math.sin(ts * s.speed + s.twinkle) * 0.28);
               this.ctx.save();
               this.ctx.globalAlpha = a;
-              this.ctx.fillStyle = s.warm ? "#ffeaa0" : "#b0f0f0";
-              this.ctx.shadowBlur = s.r > 1.2 ? 8 : 0;
-              this.ctx.shadowColor = s.warm ? "#ffd970" : "#70e8e8";
+              this.ctx.fillStyle = s.color;
+              this.ctx.shadowBlur = s.r > 1.2 ? 10 : 0;
+              this.ctx.shadowColor = s.color;
               this.ctx.beginPath(); this.ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2); this.ctx.fill();
               this.ctx.restore();
             });
@@ -3289,9 +3606,9 @@
 
             // Background gradient
             const bg = this.ctx.createLinearGradient(0, 0, w, h);
-            bg.addColorStop(0, "rgba(4,12,22,0.96)");
-            bg.addColorStop(0.5, "rgba(5,15,25,0.98)");
-            bg.addColorStop(1, "rgba(8,20,32,0.96)");
+            bg.addColorStop(0, "rgba(87,23,107,0.96)");
+            bg.addColorStop(0.52, "rgba(47,13,84,0.98)");
+            bg.addColorStop(1, "rgba(24,10,46,0.96)");
             this.ctx.fillStyle = bg; this.ctx.fillRect(0, 0, w, h);
 
             // Starfield
@@ -3309,12 +3626,12 @@
               if (focus) {
                 this.ctx.save();
                 rrPath(this.ctx, boardX + 10, boardY + 10, 170, 34, 16);
-                this.ctx.fillStyle = "rgba(4,14,24,0.72)";
+                this.ctx.fillStyle = "rgba(54,14,72,0.76)";
                 this.ctx.fill();
                 this.ctx.strokeStyle = focus.base;
                 this.ctx.lineWidth = 1.5;
                 this.ctx.stroke();
-                this.ctx.fillStyle = "#dffcff";
+                this.ctx.fillStyle = "#fff8ff";
                 this.ctx.font = "700 12px 'Orbitron','Segoe UI',sans-serif";
                 this.ctx.textAlign = "left";
                 this.ctx.textBaseline = "middle";
@@ -3327,11 +3644,11 @@
               const first = this.board.getCellCenter(this.hintCells[0].row, this.hintCells[0].col);
               const second = this.board.getCellCenter(this.hintCells[1].row, this.hintCells[1].col);
               this.ctx.save();
-              this.ctx.strokeStyle = "rgba(68,223,255,0.42)";
+              this.ctx.strokeStyle = "rgba(111,247,255,0.42)";
               this.ctx.lineWidth = 4;
               this.ctx.setLineDash([10, 8]);
               this.ctx.shadowBlur = 18;
-              this.ctx.shadowColor = "rgba(68,223,255,0.34)";
+              this.ctx.shadowColor = "rgba(111,247,255,0.34)";
               this.ctx.beginPath();
               this.ctx.moveTo(first.x, first.y);
               this.ctx.lineTo(second.x, second.y);
@@ -3347,7 +3664,7 @@
                 this.ctx.save();
                 targets.forEach(target => {
                   rrPath(this.ctx, boardX + target.col * cellSize + 4, boardY + target.row * cellSize + 4, cellSize - 8, cellSize - 8, cellSize * 0.24);
-                  this.ctx.strokeStyle = "rgba(140,247,255,0.34)";
+                  this.ctx.strokeStyle = "rgba(255,224,248,0.42)";
                   this.ctx.lineWidth = 2;
                   this.ctx.stroke();
                 });
@@ -3357,10 +3674,10 @@
                 this.ctx.save();
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillStyle = "rgba(220,251,255,0.95)";
+                this.ctx.fillStyle = "rgba(255,247,255,0.96)";
                 this.ctx.font = "700 15px 'Orbitron','Segoe UI',sans-serif";
                 this.ctx.shadowBlur = 18;
-                this.ctx.shadowColor = "rgba(68,223,255,0.38)";
+                this.ctx.shadowColor = "rgba(255,83,196,0.34)";
                 this.ctx.fillText(`${targets.length} cibles`, center.x, center.y - cellSize * 0.72);
                 this.ctx.restore();
               }
@@ -3396,19 +3713,21 @@
               this.ctx.fillRect(0, 0, w, h);
             }
 
-            if (this.flowActive > 0 || this.pulseMode || this.emergencyActive > 0) {
+            if (this.flowActive > 0 || this.pulseMode || this.emergencyActive > 0 || this.candyRushActive > 0) {
               if (boardSize > 0) {
-                const pulse = 0.5 + Math.sin(ts * (this.flowActive > 0 ? 7.5 : this.emergencyActive > 0 ? 10 : 9)) * 0.24;
+                const pulse = 0.5 + Math.sin(ts * (this.flowActive > 0 ? 7.5 : this.emergencyActive > 0 ? 10 : this.candyRushActive > 0 ? 8.8 : 9)) * 0.24;
                 this.ctx.save();
                 rrPath(this.ctx, boardX - cellSize * 0.12, boardY - cellSize * 0.12, boardSize + cellSize * 0.24, boardSize + cellSize * 0.24, cellSize * 0.44);
                 this.ctx.strokeStyle = this.flowActive > 0
                   ? `rgba(255,180,88,${0.28 + pulse * 0.34})`
                   : this.emergencyActive > 0
                     ? `rgba(255,116,92,${0.34 + pulse * 0.34})`
-                    : `rgba(68,223,255,${0.34 + pulse * 0.34})`;
+                    : this.candyRushActive > 0
+                      ? `rgba(255,83,196,${0.32 + pulse * 0.36})`
+                      : `rgba(68,223,255,${0.34 + pulse * 0.34})`;
                 this.ctx.lineWidth = this.flowActive > 0 ? 4 : 3.5;
                 this.ctx.shadowBlur = 22;
-                this.ctx.shadowColor = this.flowActive > 0 ? "rgba(255,154,60,0.44)" : this.emergencyActive > 0 ? "rgba(255,98,82,0.45)" : "rgba(68,223,255,0.45)";
+                this.ctx.shadowColor = this.flowActive > 0 ? "rgba(255,154,60,0.44)" : this.emergencyActive > 0 ? "rgba(255,98,82,0.45)" : this.candyRushActive > 0 ? "rgba(255,83,196,0.45)" : "rgba(68,223,255,0.45)";
                 this.ctx.stroke();
                 this.ctx.restore();
 
@@ -3420,7 +3739,7 @@
                   this.ctx.font = "700 20px 'Orbitron','Segoe UI',sans-serif";
                   this.ctx.shadowBlur = 18;
                   this.ctx.shadowColor = "rgba(68,223,255,0.45)";
-                  this.ctx.fillText("PULSE ARMEE", w / 2, boardY + 22);
+                  this.ctx.fillText("PULSE ARMEE", w / 2, boardY + (this.candyRushActive > 0 ? 50 : 22));
                   this.ctx.restore();
                 }
                 if (this.emergencyActive > 0) {
@@ -3432,6 +3751,17 @@
                   this.ctx.shadowBlur = 16;
                   this.ctx.shadowColor = "rgba(255,108,92,0.4)";
                   this.ctx.fillText("STABILISATION", w / 2, boardY + boardSize - 18);
+                  this.ctx.restore();
+                }
+                if (this.candyRushActive > 0) {
+                  this.ctx.save();
+                  this.ctx.textAlign = "center";
+                  this.ctx.textBaseline = "middle";
+                  this.ctx.fillStyle = "rgba(255,236,248,0.94)";
+                  this.ctx.font = "700 18px 'Orbitron','Segoe UI',sans-serif";
+                  this.ctx.shadowBlur = 18;
+                  this.ctx.shadowColor = "rgba(255,83,196,0.48)";
+                  this.ctx.fillText("CANDY RUSH", w / 2, boardY + 24);
                   this.ctx.restore();
                 }
               }
@@ -3465,7 +3795,124 @@
           }
         }
 
-        new PulsePrismGame();
+        const game = new PulsePrismGame();
+
+        const waitFor = (predicate, timeout = 5000) => new Promise((resolve, reject) => {
+          const start = performance.now();
+          const tick = () => {
+            if (predicate()) { resolve(true); return; }
+            if (performance.now() - start > timeout) {
+              reject(new Error(`Timeout while waiting for game state. Current phase: ${game.phase}`));
+              return;
+            }
+            requestAnimationFrame(tick);
+          };
+          tick();
+        });
+
+        const snapshot = () => ({
+          hasBegun: game.hasBegun,
+          phase: game.phase,
+          score: Math.round(game.score),
+          level: game.level,
+          goal: Math.round(game.goal),
+          timeLeft: Math.round(game.timeLeft * 100) / 100,
+          pulseCharge: Math.round(game.pulseCharge),
+          flowCharge: Math.round(game.flowCharge),
+          flowActive: Math.round(game.flowActive * 100) / 100,
+          candyRushCharge: Math.round(game.candyRushCharge),
+          candyRushActive: Math.round(game.candyRushActive * 100) / 100,
+          totalCleared: game.totalCleared,
+          tacticalRerolls: game.tacticalRerolls,
+          focusKind: game.focusKind,
+          stateLabel: game.stateLabel,
+          statusText: game.statusText,
+          hintCells: game.hintCells.map(cell => ({ ...cell })),
+          profile: {
+            games: game.profile.games,
+            totalScore: game.profile.totalScore,
+            missions: game.profile.missions,
+            pulses: game.profile.pulses,
+            bestLevel: game.profile.bestLevel,
+            bestCombo: game.profile.bestCombo
+          }
+        });
+
+        window.__pulsePrism = game;
+        window.__pulsePrismTest = {
+          getSnapshot() {
+            return snapshot();
+          },
+          async start() {
+            await game.startNewGame();
+            await this.waitForIdle();
+            return snapshot();
+          },
+          findBestMove() {
+            const analysis = game.board.findHintMove(game.focusKind);
+            return analysis ? {
+              score: analysis.score,
+              summary: { ...analysis.summary },
+              focusHits: analysis.focusHits,
+              cells: analysis.cells.map(cell => ({ ...cell }))
+            } : null;
+          },
+          showHint() {
+            game.showManualHint();
+            return this.findBestMove();
+          },
+          async waitForIdle(timeout = 5000) {
+            await waitFor(() => game.phase === "idle" && game.board.isSettled(), timeout);
+            return snapshot();
+          },
+          async performBestMove(timeout = 5000) {
+            const analysis = game.board.findHintMove(game.focusKind);
+            if (!analysis) return false;
+            game.trySwap(analysis.cells[0], analysis.cells[1]);
+            await this.waitForIdle(timeout);
+            return true;
+          },
+          performReroll() {
+            const before = game.tacticalRerolls;
+            game.performTacticalReroll();
+            return game.tacticalRerolls !== before;
+          },
+          setState(partial = {}) {
+            if ("pulseCharge" in partial) game.pulseCharge = clamp(Number(partial.pulseCharge) || 0, 0, 100);
+            if ("tacticalRerolls" in partial) game.tacticalRerolls = Math.max(0, Math.round(Number(partial.tacticalRerolls) || 0));
+            if ("flowCharge" in partial) game.flowCharge = clamp(Number(partial.flowCharge) || 0, 0, 100);
+            if ("flowActive" in partial) {
+              game.flowActive = Math.max(0, Number(partial.flowActive) || 0);
+              if (game.flowActive > 0) game.flowCharge = (game.flowActive / game.flowCap()) * 100;
+            }
+            if ("candyRushActive" in partial) {
+              game.candyRushActive = Math.max(0, Number(partial.candyRushActive) || 0);
+              game.candyRushCharge = game.candyRushActive > 0
+                ? (game.candyRushActive / game.candyRushDuration()) * 100
+                : game.candyRushCharge;
+            }
+            if ("candyRushCharge" in partial) {
+              const value = clamp(Number(partial.candyRushCharge) || 0, 0, 100);
+              if (value >= 100) game.activateCandyRush();
+              else {
+                if (!("candyRushActive" in partial)) game.candyRushActive = 0;
+                game.candyRushCharge = value;
+              }
+            }
+            game.updateUi();
+            return snapshot();
+          },
+          async firePulseOnFocus(timeout = 5000) {
+            if (!game.hasBegun) await game.startNewGame();
+            if (!game.isPulseReady()) game.pulseCharge = 100;
+            const analysis = game.board.findHintMove(game.focusKind);
+            const target = analysis ? analysis.cells[0] : { row: 0, col: 0 };
+            game.pulseMode = true;
+            game.firePulse(target);
+            await this.waitForIdle(timeout);
+            return true;
+          }
+        };
       })();
     </script>
   </body>
