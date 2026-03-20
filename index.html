@@ -1949,60 +1949,178 @@
             ctx.beginPath(); ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
 
+            if (pal.candyKind === "wrapped") this.drawWrappedCandyTails(ctx, pal, radius);
+
             // Outer glow
             ctx.shadowBlur = glowStr;
             ctx.shadowColor = pal.base;
 
-            // Main shape
+            // Main candy body
             const grad = ctx.createRadialGradient(-radius * 0.28, -radius * 0.32, radius * 0.12, 0, 0, radius * 1.32);
             grad.addColorStop(0, pal.shine);
-            grad.addColorStop(0.22, pal.base);
-            grad.addColorStop(0.72, pal.mid);
+            grad.addColorStop(0.28, pal.base);
+            grad.addColorStop(0.76, pal.mid);
             grad.addColorStop(1, pal.shadow);
             ctx.fillStyle = grad;
             this.drawShape(ctx, pal, radius); ctx.fill();
 
             // Rim
             ctx.lineWidth = Math.max(1.5, radius * 0.09);
-            ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255,0.24)"; ctx.stroke();
 
-            // Inner facet
+            // Candy pattern
             ctx.save();
-            ctx.globalAlpha = 0.28;
-            ctx.fillStyle = pal.accent;
-            ctx.rotate(-pal.rotation * 0.8);
-            ctx.scale(pal.facetScale, pal.facetScale);
-            this.drawShape(ctx, pal, radius); ctx.fill();
+            this.drawShape(ctx, pal, radius);
+            ctx.clip();
+            this.drawCandyPattern(ctx, pal, radius, t);
             ctx.restore();
 
-            // Edge highlight
+            // Gloss glaze
             ctx.save();
-            ctx.globalAlpha = 0.18;
-            ctx.strokeStyle = pal.shine;
-            ctx.lineWidth = radius * 0.22;
-            ctx.shadowBlur = 0;
-            this.drawShape(ctx, pal, radius * 0.78); ctx.stroke();
-            ctx.restore();
-
-            // Specular highlight
-            ctx.save();
-            ctx.globalAlpha = 0.72;
-            const spec = ctx.createRadialGradient(-radius*0.22, -radius*0.28, 0, -radius*0.22, -radius*0.28, radius*0.28);
-            spec.addColorStop(0, "rgba(255,255,255,0.82)");
-            spec.addColorStop(1, "rgba(255,255,255,0)");
-            ctx.fillStyle = spec;
-            ctx.beginPath(); ctx.arc(-radius*0.22, -radius*0.28, radius*0.28, 0, Math.PI*2); ctx.fill();
-            ctx.restore();
-
-            // Small secondary highlight
-            ctx.save();
-            ctx.globalAlpha = 0.3;
-            ctx.fillStyle = "rgba(255,255,255,0.6)";
-            ctx.beginPath(); ctx.arc(radius*0.3, radius*0.28, radius*0.09, 0, Math.PI*2); ctx.fill();
+            this.drawShape(ctx, pal, radius);
+            ctx.clip();
+            this.drawCandyGloss(ctx, pal, radius);
             ctx.restore();
 
             if (tile.bonus) this.drawBonusMark(ctx, tile, radius, t, glowScale);
             ctx.restore();
+          }
+
+          drawWrappedCandyTails(ctx, pal, radius) {
+            const tailFill = pal.tail || pal.mid;
+            const tailStripe = pal.tailStripe || pal.shine;
+            [-1, 1].forEach(dir => {
+              ctx.save();
+              ctx.fillStyle = tailFill;
+              ctx.beginPath();
+              ctx.moveTo(dir * radius * 0.68, -radius * 0.38);
+              ctx.lineTo(dir * radius * 1.32, -radius * 0.72);
+              ctx.lineTo(dir * radius * 1.54, 0);
+              ctx.lineTo(dir * radius * 1.32, radius * 0.72);
+              ctx.lineTo(dir * radius * 0.68, radius * 0.38);
+              ctx.closePath();
+              ctx.fill();
+              ctx.globalAlpha = 0.55;
+              ctx.strokeStyle = tailStripe;
+              ctx.lineWidth = radius * 0.1;
+              for (let offset = -1; offset <= 1; offset++) {
+                ctx.beginPath();
+                ctx.moveTo(dir * radius * 0.84, (offset - 0.55) * radius * 0.36);
+                ctx.lineTo(dir * radius * 1.34, (offset + 0.15) * radius * 0.36);
+                ctx.stroke();
+              }
+              ctx.restore();
+            });
+          }
+
+          drawCandyPattern(ctx, pal, radius, t) {
+            ctx.shadowBlur = 0;
+            switch (pal.pattern) {
+              case "stripes": {
+                ctx.rotate(pal.patternAngle || -Math.PI / 4);
+                ctx.fillStyle = pal.patternColor;
+                const step = radius * 0.46;
+                const width = radius * 0.22;
+                for (let i = -3; i <= 3; i++) {
+                  ctx.fillRect(-radius * 1.7, i * step, radius * 3.4, width);
+                }
+                break;
+              }
+              case "swirl": {
+                ctx.strokeStyle = pal.patternColor;
+                ctx.lineWidth = radius * 0.16;
+                ctx.lineCap = "round";
+                ctx.beginPath();
+                for (let i = 0; i <= 36; i++) {
+                  const p = i / 36;
+                  const angle = p * Math.PI * 4.2 + t * 0.12;
+                  const spiralRadius = radius * 0.14 + p * radius * 0.62;
+                  const x = Math.cos(angle) * spiralRadius;
+                  const y = Math.sin(angle) * spiralRadius;
+                  i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                break;
+              }
+              case "band": {
+                ctx.fillStyle = pal.patternColor;
+                rrPath(ctx, -radius * 0.98, -radius * 0.3, radius * 1.96, radius * 0.6, radius * 0.22);
+                ctx.fill();
+                ctx.globalAlpha = 0.56;
+                ctx.strokeStyle = "rgba(255,255,255,0.4)";
+                ctx.lineWidth = radius * 0.08;
+                for (let i = -1; i <= 1; i++) {
+                  ctx.beginPath();
+                  ctx.moveTo(-radius * 0.84, i * radius * 0.16 - radius * 0.04);
+                  ctx.lineTo(radius * 0.84, i * radius * 0.16 - radius * 0.04);
+                  ctx.stroke();
+                }
+                break;
+              }
+              case "sparkles": {
+                ctx.fillStyle = pal.patternColor;
+                const dots = [
+                  [-0.34, -0.2, 0.14],
+                  [0.18, -0.28, 0.12],
+                  [0.34, 0.08, 0.11],
+                  [-0.12, 0.26, 0.1],
+                  [-0.38, 0.18, 0.08]
+                ];
+                dots.forEach(([x, y, scale]) => {
+                  ctx.beginPath();
+                  ctx.arc(x * radius, y * radius, radius * scale, 0, Math.PI * 2);
+                  ctx.fill();
+                });
+                break;
+              }
+              case "ring": {
+                ctx.strokeStyle = pal.patternColor;
+                ctx.lineWidth = radius * 0.14;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.56, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 0.72;
+                ctx.lineWidth = radius * 0.08;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.28, 0, Math.PI * 2);
+                ctx.stroke();
+                break;
+              }
+              case "pinwheel": {
+                const arms = 5;
+                for (let i = 0; i < arms; i++) {
+                  const a0 = -Math.PI / 2 + (Math.PI * 2 * i) / arms;
+                  const a1 = a0 + Math.PI / arms;
+                  ctx.fillStyle = i % 2 === 0 ? pal.patternColor : pal.accentFill;
+                  ctx.beginPath();
+                  ctx.moveTo(0, 0);
+                  ctx.arc(0, 0, radius * 0.84, a0, a1);
+                  ctx.closePath();
+                  ctx.fill();
+                }
+                break;
+              }
+              default:
+                break;
+            }
+          }
+
+          drawCandyGloss(ctx, pal, radius) {
+            const glaze = ctx.createRadialGradient(-radius * 0.28, -radius * 0.34, 0, -radius * 0.28, -radius * 0.34, radius * 0.86);
+            glaze.addColorStop(0, "rgba(255,255,255,0.72)");
+            glaze.addColorStop(0.32, "rgba(255,255,255,0.18)");
+            glaze.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.fillStyle = glaze;
+            ctx.fillRect(-radius * 1.2, -radius * 1.2, radius * 2.4, radius * 2.4);
+
+            ctx.globalAlpha = 0.28;
+            ctx.fillStyle = "rgba(255,255,255,0.66)";
+            ctx.beginPath();
+            ctx.ellipse(-radius * 0.22, -radius * 0.32, radius * 0.36, radius * 0.22, -0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(radius * 0.3, radius * 0.24, radius * 0.09, 0, Math.PI * 2);
+            ctx.fill();
           }
 
           drawBonusMark(ctx, tile, radius, t, glowScale = 1) {
@@ -2035,6 +2153,13 @@
             switch (pal.shape) {
               case "diamond":
                 ctx.beginPath(); ctx.moveTo(0,-radius); ctx.lineTo(radius*0.78,0); ctx.lineTo(0,radius); ctx.lineTo(-radius*0.78,0); ctx.closePath(); break;
+              case "heart":
+                ctx.beginPath();
+                ctx.moveTo(0, radius * 0.96);
+                ctx.bezierCurveTo(radius * 0.92, radius * 0.3, radius * 1.02, -radius * 0.4, 0, -radius * 0.08);
+                ctx.bezierCurveTo(-radius * 1.02, -radius * 0.4, -radius * 0.92, radius * 0.3, 0, radius * 0.96);
+                ctx.closePath();
+                break;
               case "orb":
                 ctx.beginPath(); ctx.arc(0,0,radius*0.96,0,Math.PI*2); break;
               case "rounded-square":
@@ -2296,36 +2421,102 @@
           }
 
           createGemStyles() {
-            const shapes = shuffle(GEM_SHAPES).slice(0, 6);
-            const candyBases = shuffle([
-              { hue: 324, sat: 96, light: 66, accentHue: 194 },
-              { hue: 189, sat: 98, light: 66, accentHue: 292 },
-              { hue: 42, sat: 98, light: 66, accentHue: 329 },
-              { hue: 272, sat: 86, light: 67, accentHue: 48 },
-              { hue: 14, sat: 96, light: 67, accentHue: 186 },
-              { hue: 154, sat: 84, light: 64, accentHue: 321 },
-              { hue: 212, sat: 96, light: 68, accentHue: 45 },
-              { hue: 98, sat: 84, light: 64, accentHue: 203 }
-            ]).slice(0, 6);
-            return shapes.map((shape, i) => {
-              const palette = candyBases[i];
+            const candyProfiles = shuffle([
+              {
+                label: "Berlingot",
+                shape: "diamond",
+                candyKind: "hard",
+                pattern: "stripes",
+                hue: 330,
+                sat: 98,
+                light: 66,
+                accentHue: 188,
+                patternColor: "rgba(255,244,252,0.56)",
+                patternAngle: -Math.PI / 4
+              },
+              {
+                label: "Bubble gum",
+                shape: "orb",
+                candyKind: "gum",
+                pattern: "swirl",
+                hue: 188,
+                sat: 98,
+                light: 67,
+                accentHue: 304,
+                patternColor: "rgba(255,248,255,0.52)"
+              },
+              {
+                label: "Caramel twist",
+                shape: "rounded-square",
+                candyKind: "wrapped",
+                pattern: "band",
+                hue: 30,
+                sat: 99,
+                light: 66,
+                accentHue: 350,
+                patternColor: "rgba(255,243,205,0.54)",
+                tailHue: 18
+              },
+              {
+                label: "Coeur jelly",
+                shape: "heart",
+                candyKind: "jelly",
+                pattern: "sparkles",
+                hue: 284,
+                sat: 88,
+                light: 68,
+                accentHue: 54,
+                patternColor: "rgba(255,255,255,0.38)"
+              },
+              {
+                label: "Pastille fizz",
+                shape: "hexagon",
+                candyKind: "lozenge",
+                pattern: "ring",
+                hue: 142,
+                sat: 82,
+                light: 64,
+                accentHue: 318,
+                patternColor: "rgba(245,255,245,0.48)"
+              },
+              {
+                label: "Etoile acidulee",
+                shape: "star",
+                candyKind: "star",
+                pattern: "pinwheel",
+                hue: 212,
+                sat: 96,
+                light: 69,
+                accentHue: 46,
+                patternColor: "rgba(255,248,255,0.46)"
+              }
+            ]);
+            return candyProfiles.map((palette, i) => {
               const hue = palette.hue;
               const sat = palette.sat;
               const light = palette.light;
               return {
-                name: `${shape}-${i}`,
-                shape,
+                name: `${palette.label}-${i}`,
+                label: palette.label,
+                shape: palette.shape,
+                candyKind: palette.candyKind,
+                pattern: palette.pattern,
                 base: `hsl(${hue},${sat}%,${light}%)`,
                 shine: `hsl(${(hue - 8 + 360) % 360},98%,${Math.min(92, light + 24)}%)`,
                 mid: `hsl(${hue},${Math.max(74, sat - 8)}%,${Math.max(44, light - 12)}%)`,
                 shadow: `hsl(${(hue + 16) % 360},${Math.max(48, sat - 32)}%,${Math.max(24, light - 34)}%)`,
                 accent: `hsla(${palette.accentHue},96%,86%,0.34)`,
+                accentFill: `hsla(${palette.accentHue},92%,82%,0.42)`,
+                patternColor: palette.patternColor,
+                patternAngle: palette.patternAngle || 0,
+                tail: palette.tailHue ? `hsl(${palette.tailHue},92%,67%)` : null,
+                tailStripe: palette.tailHue ? `hsla(${(palette.tailHue + 24) % 360},96%,86%,0.62)` : null,
                 rotation: rnd(-0.45, 0.45),
                 squashX: rnd(0.92, 1.12),
                 squashY: rnd(0.92, 1.12),
                 sizeBias: rnd(0.94, 1.05),
                 facetScale: rnd(0.38, 0.58),
-                points: shape === "star" ? (Math.random() < 0.5 ? 5 : 6) : 0
+                points: palette.shape === "star" ? 5 : 0
               };
             });
           }
@@ -2334,6 +2525,7 @@
 
           labelForStyle(style) {
             if (!style) return "Inconnue";
+            if (style.label) return style.label;
             return style.shape.replace(/-/g, " ");
           }
 
