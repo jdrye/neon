@@ -1275,6 +1275,14 @@
         const lerp = (a, b, t) => a + (b - a) * t;
         const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 
+        function makeCanvas(width, height) {
+          if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(width, height);
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          return canvas;
+        }
+
         function shuffle(arr) {
           const a = [...arr];
           for (let i = a.length - 1; i > 0; i--) {
@@ -1831,6 +1839,22 @@
             this.layout.boardSize = bs; this.layout.cellSize = bs / this.cols;
           }
 
+          prepareCandySprites({ spriteScale = 2, maxSpriteSize = 180 } = {}) {
+            const logicalSize = Math.max(52, Math.min(maxSpriteSize, Math.round(this.layout.cellSize * 2.5)));
+            const spriteSize = Math.max(96, Math.round(logicalSize * spriteScale));
+            this.types.forEach(pal => {
+              if (pal.spriteCanvas && pal.spriteSize === spriteSize) return;
+              const canvas = makeCanvas(spriteSize, spriteSize);
+              const ctx = canvas.getContext("2d");
+              const radius = spriteSize * 0.24;
+              ctx.translate(spriteSize / 2, spriteSize / 2);
+              this.renderCandyBody(ctx, pal, radius);
+              pal.spriteCanvas = canvas;
+              pal.spriteSize = spriteSize;
+              pal.spriteDrawSize = radius * 4.3;
+            });
+          }
+
           getCellCenter(r, c) {
             return { x: this.layout.boardX + (c + 0.5) * this.layout.cellSize,
                      y: this.layout.boardY + (r + 0.5) * this.layout.cellSize };
@@ -1954,35 +1978,43 @@
             // Outer glow
             ctx.shadowBlur = glowStr;
             ctx.shadowColor = pal.base;
+            if (pal.spriteCanvas) {
+              const drawSize = radius * 4.3;
+              ctx.drawImage(pal.spriteCanvas, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+            } else {
+              this.renderCandyBody(ctx, pal, radius, t);
+            }
 
-            // Main candy body
+            if (tile.bonus) this.drawBonusMark(ctx, tile, radius, t, glowScale);
+            ctx.restore();
+          }
+
+          renderCandyBody(ctx, pal, radius, t = 0) {
+            if (pal.candyKind === "wrapped") this.drawWrappedCandyTails(ctx, pal, radius);
+
             const grad = ctx.createRadialGradient(-radius * 0.28, -radius * 0.32, radius * 0.12, 0, 0, radius * 1.32);
             grad.addColorStop(0, pal.shine);
             grad.addColorStop(0.28, pal.base);
             grad.addColorStop(0.76, pal.mid);
             grad.addColorStop(1, pal.shadow);
             ctx.fillStyle = grad;
-            this.drawShape(ctx, pal, radius); ctx.fill();
+            this.drawShape(ctx, pal, radius);
+            ctx.fill();
 
-            // Rim
             ctx.lineWidth = Math.max(1.5, radius * 0.09);
-            ctx.strokeStyle = "rgba(255,255,255,0.24)"; ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255,0.24)";
+            ctx.stroke();
 
-            // Candy pattern
             ctx.save();
             this.drawShape(ctx, pal, radius);
             ctx.clip();
             this.drawCandyPattern(ctx, pal, radius, t);
             ctx.restore();
 
-            // Gloss glaze
             ctx.save();
             this.drawShape(ctx, pal, radius);
             ctx.clip();
             this.drawCandyGloss(ctx, pal, radius);
-            ctx.restore();
-
-            if (tile.bonus) this.drawBonusMark(ctx, tile, radius, t, glowScale);
             ctx.restore();
           }
 
@@ -2371,6 +2403,7 @@
             this.levelBannerTimer = 0;
             this.invalidSwapPulse = 0;
             this.lastUiUpdateAt = 0;
+            this.lastRenderAt = 0;
             this.uiDirty = true;
 
             // Input
@@ -2404,7 +2437,10 @@
                   maxRings: 14,
                   maxBeams: 8,
                   maxPixelRatio: 1.25,
+                  spriteScale: 1.45,
+                  maxSpriteSize: 132,
                   uiUpdateInterval: 110,
+                  idleRenderInterval: 78,
                   starGlow: false
                 }
               : {
@@ -2415,7 +2451,10 @@
                   maxRings: 22,
                   maxBeams: 12,
                   maxPixelRatio: 1.7,
+                  spriteScale: 1.7,
+                  maxSpriteSize: 164,
                   uiUpdateInterval: 70,
+                  idleRenderInterval: 48,
                   starGlow: true
                 };
           }
@@ -2521,7 +2560,16 @@
             });
           }
 
-          refreshGemStyles() { this.gemStyles = this.createGemStyles(); this.board.types = this.gemStyles; }
+          refreshGemStyles() {
+            this.gemStyles = this.createGemStyles();
+            this.board.types = this.gemStyles;
+            if (this.board.layout.cellSize > 0) {
+              this.board.prepareCandySprites({
+                spriteScale: this.perf.spriteScale,
+                maxSpriteSize: this.perf.maxSpriteSize
+              });
+            }
+          }
 
           labelForStyle(style) {
             if (!style) return "Inconnue";
@@ -3130,6 +3178,10 @@
             const size = Math.min(rect.width, rect.height);
             const bs = size * 0.86;
             this.board.setLayout((rect.width - bs) / 2, (rect.height - bs) / 2, bs);
+            this.board.prepareCandySprites({
+              spriteScale: this.perf.spriteScale,
+              maxSpriteSize: this.perf.maxSpriteSize
+            });
             this.render(performance.now() / 1000);
           }
 
@@ -3901,6 +3953,24 @@
             });
           }
 
+          shouldRenderFrame(now) {
+            const busy = this.phase !== "idle"
+              || this.paused
+              || this.pulseMode
+              || this.flowActive > 0
+              || this.emergencyActive > 0
+              || this.candyRushActive > 0
+              || this.hintCells.length > 0
+              || this.comboIndicatorTimer > 0
+              || this.levelBannerTimer > 0
+              || this.flashAmt > 0.01
+              || this.levelFlash > 0
+              || this.shake.duration > 0
+              || !!this.hoverCell
+              || !!this.board.selectedCell;
+            return busy || now - this.lastRenderAt >= this.perf.idleRenderInterval;
+          }
+
           render(ts) {
             if (ts === undefined) ts = performance.now() / 1000;
             const rect = this.canvas.getBoundingClientRect();
@@ -4091,13 +4161,19 @@
             this.lastTimestamp = now;
             if (this.paused) {
               if (this.uiDirty) this.updateUi();
-              this.render(now / 1000);
+              if (this.shouldRenderFrame(now)) {
+                this.render(now / 1000);
+                this.lastRenderAt = now;
+              }
               requestAnimationFrame(this.loop);
               return;
             }
             this.update(dt, now / 1000);
             if (this.uiDirty) this.updateUi();
-            this.render(now / 1000);
+            if (this.shouldRenderFrame(now)) {
+              this.render(now / 1000);
+              this.lastRenderAt = now;
+            }
             requestAnimationFrame(this.loop);
           }
         }
