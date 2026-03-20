@@ -663,6 +663,24 @@
         line-height: 1.45;
       }
 
+      .directive-card.focus-card {
+        border-color: rgba(111, 234, 255, 0.18);
+        background:
+          linear-gradient(135deg, rgba(68,223,255,0.08), rgba(88,160,255,0.08) 45%, rgba(141,125,255,0.08)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.focus-card h4 { color: #9befff; }
+
+      .directive-card.protocol-card {
+        border-color: rgba(255,130,108,0.18);
+        background:
+          linear-gradient(135deg, rgba(255,164,102,0.08), rgba(255,88,88,0.08) 45%, rgba(255,79,168,0.08)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.protocol-card h4 { color: #ffd1ab; }
+
       .archive-card { padding: 18px 20px; }
 
       .archive-card h3 {
@@ -1057,6 +1075,16 @@
               <h4>Directive</h4>
               <p id="directiveTitle" class="directive-title">Aucune directive active.</p>
               <p id="directiveDetail" class="directive-detail">Passe un niveau pour déclencher une nouvelle règle de secteur.</p>
+            </div>
+            <div class="directive-card focus-card">
+              <h4>Famille en vedette</h4>
+              <p id="focusTitle" class="directive-title">Aucune famille ciblée.</p>
+              <p id="focusDetail" class="directive-detail">Les prismes mis en avant rapportent plus et rechargent mieux les systèmes.</p>
+            </div>
+            <div class="directive-card protocol-card">
+              <h4>Protocole d'urgence</h4>
+              <p id="protocolTitle" class="directive-title">Charge de secours indisponible.</p>
+              <p id="protocolDetail" class="directive-detail">Quand le temps devient critique, une stabilisation peut sauver le run.</p>
             </div>
           </section>
         </aside>
@@ -1890,6 +1918,10 @@
               missionReward: document.getElementById("missionReward"),
               directiveTitle: document.getElementById("directiveTitle"),
               directiveDetail: document.getElementById("directiveDetail"),
+              focusTitle: document.getElementById("focusTitle"),
+              focusDetail: document.getElementById("focusDetail"),
+              protocolTitle: document.getElementById("protocolTitle"),
+              protocolDetail: document.getElementById("protocolDetail"),
               archiveSummary: document.getElementById("archiveSummary"),
               achievementList: document.getElementById("achievementList"),
               leaderboardList: document.getElementById("leaderboardList"),
@@ -1928,6 +1960,9 @@
             this.activeMission = null;
             this.missionsCompleted = 0;
             this.currentDirective = null;
+            this.focusKind = 0;
+            this.protocolReady = true;
+            this.emergencyActive = 0;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
             this.stateLabel = "Prêt";
             this.levelFlash = 0; this.swapHintFlash = 0;
@@ -1987,6 +2022,56 @@
           }
 
           refreshGemStyles() { this.gemStyles = this.createGemStyles(); this.board.types = this.gemStyles; }
+
+          labelForStyle(style) {
+            if (!style) return "Inconnue";
+            return style.shape.replace(/-/g, " ");
+          }
+
+          currentFocusStyle() { return this.gemStyles[this.focusKind] || this.gemStyles[0] || null; }
+
+          assignFocusKind(exclude = null) {
+            const count = this.gemStyles.length || 1;
+            let next = Math.floor(Math.random() * count);
+            if (count > 1 && exclude !== null && next === exclude) next = (next + 1 + Math.floor(Math.random() * (count - 1))) % count;
+            this.focusKind = next;
+            return this.currentFocusStyle();
+          }
+
+          focusBonusForCells(cells, triggerKind = null) {
+            const hits = cells.reduce((sum, cell) => {
+              const tile = this.board.grid[cell.row]?.[cell.col];
+              return sum + (tile && tile.kind === this.focusKind ? 1 : 0);
+            }, 0);
+            const directHit = triggerKind === this.focusKind;
+            const scoreDelta = hits * 70 + (directHit ? 180 : 0);
+            const pulseDelta = hits * 6 + (directHit ? 14 : 0);
+            const timeDelta = hits > 0 ? Math.min(2.2, hits * 0.16) : 0;
+            const focus = this.currentFocusStyle();
+            const label = this.labelForStyle(focus);
+            const summary = hits > 0 || directHit
+              ? `Focus ${label}: +${scoreDelta} pts · +${pulseDelta}% Pulse${timeDelta > 0 ? ` · +${timeDelta.toFixed(1)}s` : ""}`
+              : "";
+            return { hits, scoreDelta, pulseDelta, timeDelta, summary };
+          }
+
+          triggerEmergencyProtocol() {
+            if (!this.protocolReady || !this.hasBegun || this.phase === "gameover") return false;
+            this.protocolReady = false;
+            this.emergencyActive = 6;
+            const boostTime = Math.min(120 - this.timeLeft, 6 + Math.min(4, this.level));
+            this.timeLeft += Math.max(0, boostTime);
+            this.addPulseCharge(18 + this.level * 2, { allowReadyEffect: false });
+            this.hintCells = this.board.findHintMove();
+            this.hintShown = this.hintCells.length > 0;
+            this.stateLabel = "Sauvetage";
+            this.statusText = `Protocole d'urgence: +${Math.round(boostTime)}s, temps ralenti et trajectoire stabilisée.`;
+            this.triggerShake(6, 0.22);
+            this.triggerFlash(255, 124, 92, 0.34);
+            this.showLevelBanner("Urgence");
+            this.audio.playLevelUp();
+            return true;
+          }
 
           flowCap() { return this.currentDirective?.id === "resonance" ? 10 : 8; }
 
@@ -2407,9 +2492,13 @@
             this.pulseCharge = 0; this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0; this.lastActionTime = 0;
             this.hoverCell = null;
+            this.protocolReady = true;
+            this.emergencyActive = 0;
             this.missionsCompleted = 0; this.activeMission = this.createMission();
             const openingDirective = this.assignDirective("start");
+            const focus = this.assignFocusKind();
             this.statusText = `Fais ton premier échange pour déclencher la réaction. ${openingDirective}.`;
+            this.statusText += ` Focus initial: ${this.labelForStyle(focus)}.`;
             this.stateLabel = "En jeu";
             this.levelFlash = 0; this.swapHintFlash = 0;
             this.lastMoveAnchor = null;
@@ -2435,6 +2524,8 @@
             this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0;
             this.hoverCell = null;
+            this.protocolReady = false;
+            this.emergencyActive = 0;
             this.currentDirective = null;
             this.board.selectedCell = null; this.resetPointer(); this.audio.playGameOver();
             this.profile.games++;
@@ -2507,6 +2598,24 @@
             } else {
               this.ui.directiveTitle.textContent = "Aucune directive active.";
               this.ui.directiveDetail.textContent = "Passe un niveau pour déclencher une nouvelle règle de secteur.";
+            }
+            const focus = this.currentFocusStyle();
+            if (focus) {
+              this.ui.focusTitle.textContent = this.labelForStyle(focus);
+              this.ui.focusDetail.textContent = "Cibler cette famille rapporte plus de score, de Pulse et un léger retour de temps.";
+            } else {
+              this.ui.focusTitle.textContent = "Aucune famille ciblée.";
+              this.ui.focusDetail.textContent = "Les prismes mis en avant rapportent plus et rechargent mieux les systèmes.";
+            }
+            if (this.emergencyActive > 0) {
+              this.ui.protocolTitle.textContent = `Stabilisation active · ${Math.max(1, Math.ceil(this.emergencyActive))}s`;
+              this.ui.protocolDetail.textContent = "Le temps se vide plus lentement pendant cette fenêtre critique.";
+            } else if (this.protocolReady && this.hasBegun && this.phase !== "gameover") {
+              this.ui.protocolTitle.textContent = "Charge de secours armée";
+              this.ui.protocolDetail.textContent = "Se déclenchera automatiquement quand le chrono passera en zone critique.";
+            } else {
+              this.ui.protocolTitle.textContent = "Charge de secours consommée";
+              this.ui.protocolDetail.textContent = "La prochaine montée de niveau réarmera le protocole.";
             }
           }
 
@@ -2672,6 +2781,11 @@
             this.score += gained;
             this.lastGain = gained;
             this.totalCleared += expanded.cells.length;
+            const focusFx = this.focusBonusForCells(expanded.cells, origin.kind);
+            this.score += focusFx.scoreDelta;
+            this.lastGain += focusFx.scoreDelta;
+            this.timeLeft = Math.min(120, this.timeLeft + focusFx.timeDelta);
+            this.addPulseCharge(focusFx.pulseDelta, { allowReadyEffect: false });
             this.profile.pulses++;
             if (this.profile.pulses >= 3) this.unlockAchievement("pulse-3");
             this.saveProfile();
@@ -2706,7 +2820,7 @@
             this.phaseClock = 0;
             this.stateLabel = "Pulse";
             const flowText = multiplier > 1 ? ` · Overdrive ${this.multiplierLabel(multiplier)}` : (this.flowActive > 0 ? " · Overdrive lancé" : "");
-            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${gained} pts${flowText}${missionRes.summary ? " · " + missionRes.summary : ""}`;
+            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${focusFx.summary ? " · " + focusFx.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}`;
             this.triggerShake(6.5, 0.24);
             this.triggerFlash(100, 236, 255, 0.52);
             this.audio.playPulseFire();
@@ -2769,6 +2883,11 @@
             const multiplier = this.scoreMultiplier();
             const gained = Math.round(base * (1 + (this.comboChain-1) * 0.45) * multiplier);
             this.score += gained; this.lastGain = gained; this.totalCleared += exp.cells.length;
+            const focusFx = this.focusBonusForCells(exp.cells);
+            this.score += focusFx.scoreDelta;
+            this.lastGain += focusFx.scoreDelta;
+            this.timeLeft = Math.min(120, this.timeLeft + focusFx.timeDelta);
+            this.addPulseCharge(focusFx.pulseDelta, { allowReadyEffect: false });
             if (this.comboChain >= 5) this.unlockAchievement("combo-5");
             if (this.comboChain === 1) this.registerFlowAction(exp.cells.length >= 5 ? 12 : 0);
             this.addPulseCharge(exp.cells.length * 3 + exp.triggeredBonuses.length * 10 + spawns.length * 12 + Math.max(0, this.comboChain - 1) * 5);
@@ -2799,6 +2918,7 @@
             const bonusSum = [
               exp.triggeredBonuses.length > 0 ? `${exp.triggeredBonuses.length} jeton${exp.triggeredBonuses.length>1?"s":""} activé${exp.triggeredBonuses.length>1?"s":""}` : "",
               spawns.length > 0 ? `${spawns.length} bonus créé${spawns.length>1?"s":""}` : "",
+              focusFx.summary,
               directiveFx.summary
             ].filter(Boolean).join(" · ");
             this.statusText = this.comboChain > 1
@@ -2856,7 +2976,7 @@
           }
 
           advanceLevel() {
-            let levs = 0, bonusSc = 0, timeBon = 0, directiveSummary = "";
+            let levs = 0, bonusSc = 0, timeBon = 0, directiveSummary = "", focusSummary = "";
             while (this.score >= this.goal) {
               this.level++; levs++;
               bonusSc += 290 + this.level * 148; timeBon += 17;
@@ -2866,6 +2986,8 @@
               this.score += bonusSc; this.lastGain = bonusSc;
               this.timeLeft = Math.min(120, this.timeLeft + timeBon);
               this.addPulseCharge(12 + levs * 8);
+              this.protocolReady = true;
+              this.emergencyActive = 0;
               this.levelFlash = 1.2;
               this.triggerShake(7, 0.4);
               this.triggerFlash(255, 210, 80, 0.65);
@@ -2873,8 +2995,9 @@
               this.burstLevelBonus(levs);
               this.audio.playLevelUp();
               directiveSummary = this.assignDirective("level");
+              focusSummary = `Focus ${this.labelForStyle(this.assignFocusKind(this.focusKind))}`;
             }
-            return { up: levs > 0, levs, bonusSc, timeBon, directiveSummary };
+            return { up: levs > 0, levs, bonusSc, timeBon, directiveSummary, focusSummary };
           }
 
           afterCascade() {
@@ -2899,6 +3022,7 @@
               });
               if (lvlTokens.length > 0) this.statusText += ` · ${lvlTokens.length} jeton${lvlTokens.length>1?"s":""} bonus chargé${lvlTokens.length>1?"s":""}.`;
               if (lr.directiveSummary) this.statusText += ` · ${lr.directiveSummary}.`;
+              if (lr.focusSummary) this.statusText += ` · ${lr.focusSummary}.`;
             }
             if (this.isPulseReady() && !this.pulseMode && this.phase === "idle") {
               this.statusText += " · Pulse prête.";
@@ -2930,6 +3054,13 @@
             this.levelFlash = Math.max(0, this.levelFlash - dt * 1.7);
             this.swapHintFlash = Math.max(0, this.swapHintFlash - dt * 3);
             this.invalidSwapPulse = Math.max(0, this.invalidSwapPulse - dt * 4.4);
+            const emergencyWasActive = this.emergencyActive > 0;
+            if (this.emergencyActive > 0) {
+              this.emergencyActive = Math.max(0, this.emergencyActive - dt);
+              if (emergencyWasActive && this.emergencyActive === 0 && this.hasBegun && this.phase === "idle") {
+                this.statusText = "La stabilisation d'urgence s'est dissipée.";
+              }
+            }
             const hadFlow = this.flowActive > 0;
             if (this.flowActive > 0) {
               const cap = this.flowCap();
@@ -2958,7 +3089,9 @@
             this.displayScore = lerp(this.displayScore, this.score, clamp(dt * 8, 0.05, 0.35));
 
             if (this.hasBegun && this.phase !== "title" && this.phase !== "gameover") {
-              this.timeLeft = Math.max(0, this.timeLeft - dt);
+              const timeDrain = this.emergencyActive > 0 ? dt * 0.38 : dt;
+              this.timeLeft = Math.max(0, this.timeLeft - timeDrain);
+              if (this.timeLeft <= 8 && this.protocolReady && !this.paused) this.triggerEmergencyProtocol();
               if (this.timeLeft <= 0) { this.endGame(); return; }
             }
 
@@ -3045,6 +3178,26 @@
               urgency: this.hasBegun && this.phase !== "gameover" ? clamp((12 - this.timeLeft) / 12, 0, 1) : 0
             });
 
+            const { boardX, boardY, boardSize, cellSize } = this.board.layout;
+            if (boardSize > 0) {
+              const focus = this.currentFocusStyle();
+              if (focus) {
+                this.ctx.save();
+                rrPath(this.ctx, boardX + 10, boardY + 10, 170, 34, 16);
+                this.ctx.fillStyle = "rgba(4,14,24,0.72)";
+                this.ctx.fill();
+                this.ctx.strokeStyle = focus.base;
+                this.ctx.lineWidth = 1.5;
+                this.ctx.stroke();
+                this.ctx.fillStyle = "#dffcff";
+                this.ctx.font = "700 12px 'Orbitron','Segoe UI',sans-serif";
+                this.ctx.textAlign = "left";
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillText(`FOCUS ${this.labelForStyle(focus).toUpperCase()}`, boardX + 22, boardY + 27);
+                this.ctx.restore();
+              }
+            }
+
             if (this.hintCells.length === 2) {
               const first = this.board.getCellCenter(this.hintCells[0].row, this.hintCells[0].col);
               const second = this.board.getCellCenter(this.hintCells[1].row, this.hintCells[1].col);
@@ -3118,18 +3271,19 @@
               this.ctx.fillRect(0, 0, w, h);
             }
 
-            if (this.flowActive > 0 || this.pulseMode) {
-              const { boardX, boardY, boardSize, cellSize } = this.board.layout;
+            if (this.flowActive > 0 || this.pulseMode || this.emergencyActive > 0) {
               if (boardSize > 0) {
-                const pulse = 0.5 + Math.sin(ts * (this.flowActive > 0 ? 7.5 : 9)) * 0.24;
+                const pulse = 0.5 + Math.sin(ts * (this.flowActive > 0 ? 7.5 : this.emergencyActive > 0 ? 10 : 9)) * 0.24;
                 this.ctx.save();
                 rrPath(this.ctx, boardX - cellSize * 0.12, boardY - cellSize * 0.12, boardSize + cellSize * 0.24, boardSize + cellSize * 0.24, cellSize * 0.44);
                 this.ctx.strokeStyle = this.flowActive > 0
                   ? `rgba(255,180,88,${0.28 + pulse * 0.34})`
-                  : `rgba(68,223,255,${0.34 + pulse * 0.34})`;
+                  : this.emergencyActive > 0
+                    ? `rgba(255,116,92,${0.34 + pulse * 0.34})`
+                    : `rgba(68,223,255,${0.34 + pulse * 0.34})`;
                 this.ctx.lineWidth = this.flowActive > 0 ? 4 : 3.5;
                 this.ctx.shadowBlur = 22;
-                this.ctx.shadowColor = this.flowActive > 0 ? "rgba(255,154,60,0.44)" : "rgba(68,223,255,0.45)";
+                this.ctx.shadowColor = this.flowActive > 0 ? "rgba(255,154,60,0.44)" : this.emergencyActive > 0 ? "rgba(255,98,82,0.45)" : "rgba(68,223,255,0.45)";
                 this.ctx.stroke();
                 this.ctx.restore();
 
@@ -3142,6 +3296,17 @@
                   this.ctx.shadowBlur = 18;
                   this.ctx.shadowColor = "rgba(68,223,255,0.45)";
                   this.ctx.fillText("PULSE ARMEE", w / 2, boardY + 22);
+                  this.ctx.restore();
+                }
+                if (this.emergencyActive > 0) {
+                  this.ctx.save();
+                  this.ctx.textAlign = "center";
+                  this.ctx.textBaseline = "middle";
+                  this.ctx.fillStyle = "rgba(255,226,214,0.94)";
+                  this.ctx.font = "700 18px 'Orbitron','Segoe UI',sans-serif";
+                  this.ctx.shadowBlur = 16;
+                  this.ctx.shadowColor = "rgba(255,108,92,0.4)";
+                  this.ctx.fillText("STABILISATION", w / 2, boardY + boardSize - 18);
                   this.ctx.restore();
                 }
               }
