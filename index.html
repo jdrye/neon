@@ -2360,7 +2360,8 @@
           }
 
           renderAchievements() {
-            this.ui.archiveSummary.textContent = `Jeux: ${this.profile.games} · Missions: ${this.profile.missions} · Pulses: ${this.profile.pulses}`;
+            const unlocked = ACHIEVEMENT_DEFS.filter(def => this.profile.achievements[def.id]).length;
+            this.ui.archiveSummary.textContent = `Jeux: ${this.profile.games} · Missions: ${this.profile.missions} · Pulses: ${this.profile.pulses} · Archives: ${unlocked}/${ACHIEVEMENT_DEFS.length}`;
             this.ui.achievementList.innerHTML = "";
             ACHIEVEMENT_DEFS.forEach(def => {
               const item = document.createElement("li");
@@ -2374,6 +2375,27 @@
               item.append(label, detail);
               this.ui.achievementList.append(item);
             });
+          }
+
+          applyArchivePerks() {
+            const perks = [];
+            if (this.profile.achievements["first-mission"]) {
+              this.addPulseCharge(12, { allowReadyEffect: false });
+              perks.push("+12% Pulse");
+            }
+            if (this.profile.achievements["combo-5"]) {
+              this.flowCharge = Math.max(this.flowCharge, 22);
+              perks.push("Overdrive +22%");
+            }
+            if (this.profile.achievements["level-6"]) {
+              this.timeLeft = Math.min(120, this.timeLeft + 6);
+              perks.push("+6s chrono");
+            }
+            if (this.profile.achievements["pulse-3"]) {
+              this.board.injectBonusTokens(1, "level");
+              perks.push("1 jeton bonus");
+            }
+            return perks;
           }
 
           normalizeLeaderboard(entries) {
@@ -2497,8 +2519,10 @@
             this.missionsCompleted = 0; this.activeMission = this.createMission();
             const openingDirective = this.assignDirective("start");
             const focus = this.assignFocusKind();
+            const archivePerks = this.applyArchivePerks();
             this.statusText = `Fais ton premier échange pour déclencher la réaction. ${openingDirective}.`;
             this.statusText += ` Focus initial: ${this.labelForStyle(focus)}.`;
+            if (archivePerks.length > 0) this.statusText += ` Archives actives: ${archivePerks.join(" · ")}.`;
             this.stateLabel = "En jeu";
             this.levelFlash = 0; this.swapHintFlash = 0;
             this.lastMoveAnchor = null;
