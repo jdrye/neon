@@ -981,6 +981,15 @@
         .overlay-card { padding: 20px; }
       }
 
+      @media (pointer: coarse), (max-width: 960px) {
+        .top-bar,
+        .panel,
+        .board-overlay,
+        .combo-indicator {
+          backdrop-filter: none;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {
           animation: none !important;
@@ -1362,11 +1371,23 @@
 
         // ──────────────── PARTICLES ────────────────
         class ParticleSystem {
-          constructor() { this.items = []; this.rings = []; this.beams = []; }
+          constructor(options = {}) {
+            this.items = [];
+            this.rings = [];
+            this.beams = [];
+            this.glowScale = options.glowScale ?? 1;
+            this.particleMultiplier = options.particleMultiplier ?? 1;
+            this.maxParticles = options.maxParticles ?? 240;
+            this.maxRings = options.maxRings ?? 30;
+            this.maxBeams = options.maxBeams ?? 16;
+          }
 
           burst(x, y, color, count, intensity = 1) {
-            for (let i = 0; i < count; i++) {
-              const a = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+            const desired = Math.max(2, Math.round(count * this.particleMultiplier));
+            const available = this.maxParticles - this.items.length;
+            const actual = Math.min(desired, Math.max(0, available));
+            for (let i = 0; i < actual; i++) {
+              const a = (Math.PI * 2 * i) / actual + Math.random() * 0.5;
               const spd = (60 + Math.random() * 160) * intensity;
               this.items.push({
                 x, y,
@@ -1382,32 +1403,47 @@
           }
 
           addRing(x, y, color, maxRadius = 60) {
+            if (this.rings.length >= this.maxRings) this.rings.shift();
             this.rings.push({ x, y, radius: 4, maxRadius, color, age: 0, life: 0.45 });
           }
 
           addBeam(x1, y1, x2, y2, color, width = 12, life = 0.2) {
+            if (this.beams.length >= this.maxBeams) this.beams.shift();
             this.beams.push({ x1, y1, x2, y2, color, width, age: 0, life });
           }
 
           update(dt) {
-            this.items = this.items.filter(p => {
+            let writeIndex = 0;
+            for (let i = 0; i < this.items.length; i++) {
+              const p = this.items[i];
               p.age += dt;
-              if (p.age >= p.life) return false;
+              if (p.age >= p.life) continue;
               p.x += p.vx * dt;
               p.y += p.vy * dt;
               p.vx *= 0.98;
               p.vy += 280 * dt;
-              return true;
-            });
-            this.rings = this.rings.filter(r => {
+              this.items[writeIndex++] = p;
+            }
+            this.items.length = writeIndex;
+
+            writeIndex = 0;
+            for (let i = 0; i < this.rings.length; i++) {
+              const r = this.rings[i];
               r.age += dt;
               r.radius = lerp(r.radius, r.maxRadius, dt * 7);
-              return r.age < r.life;
-            });
-            this.beams = this.beams.filter(b => {
+              if (r.age >= r.life) continue;
+              this.rings[writeIndex++] = r;
+            }
+            this.rings.length = writeIndex;
+
+            writeIndex = 0;
+            for (let i = 0; i < this.beams.length; i++) {
+              const b = this.beams[i];
               b.age += dt;
-              return b.age < b.life;
-            });
+              if (b.age >= b.life) continue;
+              this.beams[writeIndex++] = b;
+            }
+            this.beams.length = writeIndex;
           }
 
           draw(ctx) {
@@ -1419,7 +1455,7 @@
               ctx.strokeStyle = b.color;
               ctx.lineWidth = b.width * (1 - p * 0.45);
               ctx.lineCap = "round";
-              ctx.shadowBlur = 22;
+              ctx.shadowBlur = 22 * this.glowScale;
               ctx.shadowColor = b.color;
               ctx.beginPath();
               ctx.moveTo(b.x1, b.y1);
@@ -1434,7 +1470,7 @@
               ctx.globalAlpha = alpha * 0.7;
               ctx.strokeStyle = r.color;
               ctx.lineWidth = 2 * alpha;
-              ctx.shadowBlur = 14 * alpha;
+              ctx.shadowBlur = 14 * alpha * this.glowScale;
               ctx.shadowColor = r.color;
               ctx.beginPath();
               ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
@@ -1449,13 +1485,13 @@
               ctx.globalAlpha = alpha;
               if (p.sparkle) {
                 ctx.fillStyle = '#fff';
-                ctx.shadowBlur = 8;
+                ctx.shadowBlur = 8 * this.glowScale;
                 ctx.shadowColor = p.color;
                 const s = p.radius * (1 - t * 0.5);
                 ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
               } else {
                 ctx.fillStyle = p.color;
-                ctx.shadowBlur = 6;
+                ctx.shadowBlur = 6 * this.glowScale;
                 ctx.shadowColor = p.color;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.radius * (1 - t * 0.4), 0, Math.PI * 2);
@@ -1783,6 +1819,8 @@
           draw(ctx, t, flash, hintCells, shake, fx = {}) {
             const { boardX, boardY, boardSize, cellSize } = this.layout;
             if (!boardSize) return;
+            const glowScale = fx.glowScale ?? 1;
+            const hintKeySet = hintCells.length > 0 ? new Set(hintCells.map(cell => `${cell.row}:${cell.col}`)) : null;
 
             ctx.save();
             if (shake.x || shake.y) ctx.translate(shake.x, shake.y);
@@ -1801,7 +1839,7 @@
             ctx.save();
             ctx.strokeStyle = borderGlow > 0 ? `rgba(255,110,110,${0.28 + borderGlow * 0.44})` : "rgba(255,228,246,0.24)";
             ctx.lineWidth = 2.4 + borderGlow * 1.8;
-            ctx.shadowBlur = borderGlow > 0 ? 24 : 12;
+            ctx.shadowBlur = (borderGlow > 0 ? 24 : 12) * glowScale;
             ctx.shadowColor = borderGlow > 0 ? "rgba(255,90,90,0.45)" : "rgba(255,83,196,0.2)";
             ctx.stroke();
             ctx.restore();
@@ -1826,7 +1864,7 @@
                 ctx.save();
                 ctx.strokeStyle = `rgba(111, 247, 255, ${0.55 + pulse * 0.3})`;
                 ctx.lineWidth = 3;
-                ctx.shadowBlur = 18;
+                ctx.shadowBlur = 18 * glowScale;
                 ctx.shadowColor = "rgba(111,247,255,0.6)";
                 ctx.stroke();
                 ctx.restore();
@@ -1841,14 +1879,14 @@
               rrPath(ctx, sx + 3, sy + 3, cellSize - 6, cellSize - 6, corner);
               ctx.strokeStyle = `rgba(255, 228, 122, ${0.7 + pulse * 0.25})`;
               ctx.lineWidth = 4;
-              ctx.shadowBlur = 22;
+              ctx.shadowBlur = 22 * glowScale;
               ctx.shadowColor = "rgba(255,228,122,0.6)";
               ctx.stroke();
               ctx.restore();
             }
 
             // Tiles
-            this.forEach(tile => this.drawTile(ctx, tile, t, flash, hintCells));
+            this.forEach(tile => this.drawTile(ctx, tile, t, flash, hintKeySet, glowScale));
 
             const vignette = ctx.createRadialGradient(boardX + boardSize * 0.5, boardY + boardSize * 0.5, boardSize * 0.2, boardX + boardSize * 0.5, boardY + boardSize * 0.5, boardSize * 0.8);
             vignette.addColorStop(0, "rgba(0,0,0,0)");
@@ -1859,16 +1897,16 @@
             ctx.restore();
           }
 
-          drawTile(ctx, tile, t, flash, hintCells) {
+          drawTile(ctx, tile, t, flash, hintKeySet, glowScale = 1) {
             const { boardX, boardY, cellSize } = this.layout;
             const pal = this.types[tile.kind];
             const cx = boardX + (tile.renderCol + 0.5) * cellSize;
             const cy = boardY + (tile.renderRow + 0.5) * cellSize;
             const radius = cellSize * 0.33 * tile.scale * pal.sizeBias;
             const breathe = 1 + Math.sin(t * 1.9 + tile.col * 0.3 + tile.row * 0.28) * 0.014;
-            const isHint = hintCells.some(h => h.row === tile.row && h.col === tile.col);
+            const isHint = hintKeySet ? hintKeySet.has(`${tile.row}:${tile.col}`) : false;
             const hintBoost = isHint ? 0.5 + Math.sin(t * 8) * 0.3 : 0;
-            const glowStr = 24 + flash * 20 + (tile.bonus ? 28 : 0) + hintBoost * 16;
+            const glowStr = (24 + flash * 20 + (tile.bonus ? 28 : 0) + hintBoost * 16) * glowScale;
 
             ctx.save();
             ctx.globalAlpha = tile.alpha;
@@ -1936,14 +1974,14 @@
             ctx.beginPath(); ctx.arc(radius*0.3, radius*0.28, radius*0.09, 0, Math.PI*2); ctx.fill();
             ctx.restore();
 
-            if (tile.bonus) this.drawBonusMark(ctx, tile, radius, t);
+            if (tile.bonus) this.drawBonusMark(ctx, tile, radius, t, glowScale);
             ctx.restore();
           }
 
-          drawBonusMark(ctx, tile, radius, t) {
+          drawBonusMark(ctx, tile, radius, t, glowScale = 1) {
             const pulse = 0.7 + Math.sin(t * 5.5 + tile.row * 0.4 + tile.col * 0.3) * 0.18;
             ctx.save();
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 20 * glowScale;
             ctx.shadowColor = "rgba(255,244,196,0.55)";
             ctx.strokeStyle = `rgba(255,248,220,${0.8 + pulse * 0.15})`;
             ctx.lineWidth = Math.max(2, radius * 0.12);
@@ -2067,11 +2105,18 @@
           constructor() {
             this.canvas = document.getElementById("gameCanvas");
             this.ctx = this.canvas.getContext("2d");
+            this.perf = this.createPerformanceProfile();
             this.gemStyles = this.createGemStyles();
             this.board = new Match3Board(8, 8, this.gemStyles);
-            this.particles = new ParticleSystem();
+            this.particles = new ParticleSystem({
+              glowScale: this.perf.glowScale,
+              particleMultiplier: this.perf.particleMultiplier,
+              maxParticles: this.perf.maxParticles,
+              maxRings: this.perf.maxRings,
+              maxBeams: this.perf.maxBeams
+            });
             this.celebrations = new CelebrationSystem();
-            this.stars = makeStars(70);
+            this.stars = makeStars(this.perf.starCount);
 
             this.ui = {
               score: document.getElementById("scoreValue"),
@@ -2173,6 +2218,8 @@
             this.comboIndicatorTimer = 0;
             this.levelBannerTimer = 0;
             this.invalidSwapPulse = 0;
+            this.lastUiUpdateAt = 0;
+            this.uiDirty = true;
 
             // Input
             this.inputDrag = { active: false, pointerId: null, startPoint: null, startCell: null, moved: false };
@@ -2186,9 +2233,39 @@
             this.board.reset();
             this.renderLeaderboard();
             this.renderAchievements();
-            this.updateUi();
+            this.updateUi(true);
             this.handleResize();
             requestAnimationFrame(this.loop);
+          }
+
+          createPerformanceProfile() {
+            const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+            const memory = Number(navigator.deviceMemory || 0);
+            const lowEnd = reducedMotion || coarsePointer || (memory > 0 && memory <= 4) || window.innerWidth < 900;
+            return lowEnd
+              ? {
+                  glowScale: 0.62,
+                  particleMultiplier: 0.55,
+                  starCount: 28,
+                  maxParticles: 140,
+                  maxRings: 14,
+                  maxBeams: 8,
+                  maxPixelRatio: 1.25,
+                  uiUpdateInterval: 110,
+                  starGlow: false
+                }
+              : {
+                  glowScale: 0.84,
+                  particleMultiplier: 0.82,
+                  starCount: 42,
+                  maxParticles: 220,
+                  maxRings: 22,
+                  maxBeams: 12,
+                  maxPixelRatio: 1.7,
+                  uiUpdateInterval: 70,
+                  starGlow: true
+                };
           }
 
           createGemStyles() {
@@ -2523,7 +2600,7 @@
               default:
                 return false;
             }
-            this.updateUi();
+            this.updateUi(true);
             return true;
           }
 
@@ -2827,7 +2904,7 @@
 
           handleResize() {
             const rect = this.canvas.getBoundingClientRect();
-            const ratio = window.devicePixelRatio || 1;
+            const ratio = Math.min(window.devicePixelRatio || 1, this.perf.maxPixelRatio);
             this.canvas.width = Math.round(rect.width * ratio);
             this.canvas.height = Math.round(rect.height * ratio);
             this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -2907,7 +2984,14 @@
             this.updateUi();
           }
 
-          updateUi() {
+          updateUi(force = false) {
+            const now = performance.now();
+            if (!force && now - this.lastUiUpdateAt < this.perf.uiUpdateInterval) {
+              this.uiDirty = true;
+              return;
+            }
+            this.lastUiUpdateAt = now;
+            this.uiDirty = false;
             this.ui.score.textContent = Math.round(this.displayScore).toString();
             this.ui.level.textContent = this.level.toString();
             this.ui.goal.textContent = Math.round(this.goal).toString();
@@ -3481,6 +3565,7 @@
           }
 
           update(dt, ts) {
+            this.uiDirty = true;
             this.phaseClock += dt;
             this.levelFlash = Math.max(0, this.levelFlash - dt * 1.7);
             this.swapHintFlash = Math.max(0, this.swapHintFlash - dt * 3);
@@ -3581,7 +3666,7 @@
                 break;
             }
 
-            if (Math.floor(ts * 10) % 2 === 0) this.updateUi();
+            if (this.uiDirty) this.updateUi();
           }
 
           drawStarfield(ts, w, h) {
@@ -3590,7 +3675,7 @@
               this.ctx.save();
               this.ctx.globalAlpha = a;
               this.ctx.fillStyle = s.color;
-              this.ctx.shadowBlur = s.r > 1.2 ? 10 : 0;
+              this.ctx.shadowBlur = this.perf.starGlow && s.r > 1.2 ? 10 * this.perf.glowScale : 0;
               this.ctx.shadowColor = s.color;
               this.ctx.beginPath(); this.ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2); this.ctx.fill();
               this.ctx.restore();
@@ -3617,7 +3702,8 @@
             // Board
             this.board.draw(this.ctx, ts, this.levelFlash, this.hintCells, this.shake, {
               invalidSwapPulse: this.invalidSwapPulse,
-              urgency: this.hasBegun && this.phase !== "gameover" ? clamp((12 - this.timeLeft) / 12, 0, 1) : 0
+              urgency: this.hasBegun && this.phase !== "gameover" ? clamp((12 - this.timeLeft) / 12, 0, 1) : 0,
+              glowScale: this.perf.glowScale
             });
 
             const { boardX, boardY, boardSize, cellSize } = this.board.layout;
@@ -3726,7 +3812,7 @@
                       ? `rgba(255,83,196,${0.32 + pulse * 0.36})`
                       : `rgba(68,223,255,${0.34 + pulse * 0.34})`;
                 this.ctx.lineWidth = this.flowActive > 0 ? 4 : 3.5;
-                this.ctx.shadowBlur = 22;
+                this.ctx.shadowBlur = 22 * this.perf.glowScale;
                 this.ctx.shadowColor = this.flowActive > 0 ? "rgba(255,154,60,0.44)" : this.emergencyActive > 0 ? "rgba(255,98,82,0.45)" : this.candyRushActive > 0 ? "rgba(255,83,196,0.45)" : "rgba(68,223,255,0.45)";
                 this.ctx.stroke();
                 this.ctx.restore();
@@ -3737,7 +3823,7 @@
                   this.ctx.textBaseline = "middle";
                   this.ctx.fillStyle = "rgba(196,248,255,0.92)";
                   this.ctx.font = "700 20px 'Orbitron','Segoe UI',sans-serif";
-                  this.ctx.shadowBlur = 18;
+                  this.ctx.shadowBlur = 18 * this.perf.glowScale;
                   this.ctx.shadowColor = "rgba(68,223,255,0.45)";
                   this.ctx.fillText("PULSE ARMEE", w / 2, boardY + (this.candyRushActive > 0 ? 50 : 22));
                   this.ctx.restore();
@@ -3748,7 +3834,7 @@
                   this.ctx.textBaseline = "middle";
                   this.ctx.fillStyle = "rgba(255,226,214,0.94)";
                   this.ctx.font = "700 18px 'Orbitron','Segoe UI',sans-serif";
-                  this.ctx.shadowBlur = 16;
+                  this.ctx.shadowBlur = 16 * this.perf.glowScale;
                   this.ctx.shadowColor = "rgba(255,108,92,0.4)";
                   this.ctx.fillText("STABILISATION", w / 2, boardY + boardSize - 18);
                   this.ctx.restore();
@@ -3759,7 +3845,7 @@
                   this.ctx.textBaseline = "middle";
                   this.ctx.fillStyle = "rgba(255,236,248,0.94)";
                   this.ctx.font = "700 18px 'Orbitron','Segoe UI',sans-serif";
-                  this.ctx.shadowBlur = 18;
+                  this.ctx.shadowBlur = 18 * this.perf.glowScale;
                   this.ctx.shadowColor = "rgba(255,83,196,0.48)";
                   this.ctx.fillText("CANDY RUSH", w / 2, boardY + 24);
                   this.ctx.restore();
@@ -3785,11 +3871,13 @@
             const dt = clamp((now - this.lastTimestamp) / 1000, 0.001, 0.033);
             this.lastTimestamp = now;
             if (this.paused) {
+              if (this.uiDirty) this.updateUi();
               this.render(now / 1000);
               requestAnimationFrame(this.loop);
               return;
             }
             this.update(dt, now / 1000);
+            if (this.uiDirty) this.updateUi();
             this.render(now / 1000);
             requestAnimationFrame(this.loop);
           }
@@ -3861,11 +3949,11 @@
             game.showManualHint();
             return this.findBestMove();
           },
-          async waitForIdle(timeout = 5000) {
-            await waitFor(() => game.phase === "idle" && game.board.isSettled(), timeout);
+          async waitForIdle(timeout = 12000) {
+            await waitFor(() => game.phase === "idle", timeout);
             return snapshot();
           },
-          async performBestMove(timeout = 5000) {
+          async performBestMove(timeout = 12000) {
             const analysis = game.board.findHintMove(game.focusKind);
             if (!analysis) return false;
             game.trySwap(analysis.cells[0], analysis.cells[1]);
@@ -3902,7 +3990,7 @@
             game.updateUi();
             return snapshot();
           },
-          async firePulseOnFocus(timeout = 5000) {
+          async firePulseOnFocus(timeout = 12000) {
             if (!game.hasBegun) await game.startNewGame();
             if (!game.isPulseReady()) game.pulseCharge = 100;
             const analysis = game.board.findHintMove(game.focusKind);
