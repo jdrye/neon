@@ -630,6 +630,39 @@
         letter-spacing: 0.02em;
       }
 
+      .directive-card {
+        margin-top: 12px;
+        padding: 14px;
+        border-radius: 16px;
+        background:
+          linear-gradient(135deg, rgba(255,208,99,0.08), rgba(255,129,74,0.08) 45%, rgba(255,79,168,0.08)),
+          rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,190,108,0.18);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+
+      .directive-card h4 {
+        margin: 0 0 6px;
+        font-size: 0.75rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #ffd499;
+      }
+
+      .directive-title {
+        margin: 0;
+        color: #fff1cf;
+        font-size: 0.96rem;
+        line-height: 1.4;
+      }
+
+      .directive-detail {
+        margin: 6px 0 0;
+        color: #ffdcb9;
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+
       /* ── LEADERBOARD ── */
       .leaderboard-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 
@@ -949,6 +982,11 @@
                 <div id="missionBar" class="mission-progress-fill"></div>
               </div>
               <div id="missionReward" class="mission-reward">Récompense: --</div>
+            </div>
+            <div class="directive-card">
+              <h4>Directive</h4>
+              <p id="directiveTitle" class="directive-title">Aucune directive active.</p>
+              <p id="directiveDetail" class="directive-detail">Passe un niveau pour déclencher une nouvelle règle de secteur.</p>
             </div>
           </section>
         </aside>
@@ -1773,6 +1811,8 @@
               missionDetail: document.getElementById("missionDetail"),
               missionBar: document.getElementById("missionBar"),
               missionReward: document.getElementById("missionReward"),
+              directiveTitle: document.getElementById("directiveTitle"),
+              directiveDetail: document.getElementById("directiveDetail"),
               leaderboardList: document.getElementById("leaderboardList"),
               titleOverlay: document.getElementById("titleOverlay"),
               gameOverOverlay: document.getElementById("gameOverOverlay"),
@@ -1807,6 +1847,7 @@
             this.hoverCell = null;
             this.activeMission = null;
             this.missionsCompleted = 0;
+            this.currentDirective = null;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
             this.stateLabel = "Prêt";
             this.levelFlash = 0; this.swapHintFlash = 0;
@@ -1866,6 +1907,8 @@
 
           refreshGemStyles() { this.gemStyles = this.createGemStyles(); this.board.types = this.gemStyles; }
 
+          flowCap() { return this.currentDirective?.id === "resonance" ? 10 : 8; }
+
           isPulseReady() { return this.pulseCharge >= 100; }
 
           addPulseCharge(amount, { allowReadyEffect = true } = {}) {
@@ -1882,10 +1925,15 @@
             }
           }
 
-          scoreMultiplier() { return this.flowActive > 0 ? 1.35 : 1; }
+          scoreMultiplier() {
+            if (this.flowActive <= 0) return 1;
+            return this.currentDirective?.id === "resonance" ? 1.55 : 1.35;
+          }
+
+          multiplierLabel(mult = this.scoreMultiplier()) { return `×${mult.toFixed(2)}`; }
 
           activateFlow() {
-            this.flowActive = 8;
+            this.flowActive = this.flowCap();
             this.flowCharge = 100;
             this.triggerShake(5.2, 0.18);
             this.triggerFlash(255, 176, 84, 0.28);
@@ -1899,14 +1947,98 @@
             this.lastActionTime = now;
 
             if (this.flowActive > 0) {
-              this.flowActive = Math.min(8, this.flowActive + 0.5);
-              this.flowCharge = Math.max(this.flowCharge, (this.flowActive / 8) * 100);
+              const cap = this.flowCap();
+              this.flowActive = Math.min(cap, this.flowActive + 0.5);
+              this.flowCharge = Math.max(this.flowCharge, (this.flowActive / cap) * 100);
               return;
             }
 
             const gain = (quick ? 34 : 22) + boost;
             this.flowCharge = clamp(this.flowCharge + gain, 0, 100);
             if (this.flowCharge >= 100) this.activateFlow();
+          }
+
+          createDirective(excludeId = null) {
+            const pool = [
+              {
+                id: "chrono",
+                title: "Chrono siphon",
+                detail: "Chaque match réussi rend un peu de temps au réacteur."
+              },
+              {
+                id: "forge",
+                title: "Forge vive",
+                detail: "Les bonus créés ou déclenchés rapportent plus et chargent davantage la Pulse."
+              },
+              {
+                id: "storm",
+                title: "Orage prismatique",
+                detail: "Le début du niveau injecte des jetons bonus et une surcharge de Pulse."
+              },
+              {
+                id: "resonance",
+                title: "Résonance dense",
+                detail: "Overdrive dure plus longtemps et grimpe à un multiplicateur supérieur."
+              }
+            ];
+            const choices = pool.filter(item => item.id !== excludeId);
+            const source = choices.length > 0 ? choices : pool;
+            return source[Math.floor(Math.random() * source.length)];
+          }
+
+          assignDirective(reason = "level") {
+            const prev = this.currentDirective?.id || null;
+            this.currentDirective = this.createDirective(prev);
+            let summary = `${this.currentDirective.title}: ${this.currentDirective.detail}`;
+            if (this.currentDirective.id === "storm") {
+              const extraTokens = this.board.injectBonusTokens(Math.min(3, 1 + Math.floor(this.level / 2)), "level");
+              const pulseGain = 12 + this.level * 4;
+              this.addPulseCharge(pulseGain, { allowReadyEffect: false });
+              extraTokens.forEach((sp, i) => {
+                const center = this.board.getCellCenter(sp.row, sp.col);
+                const tint = this.board.types[(sp.row + sp.col + i) % this.board.types.length].shine;
+                this.particles.burst(center.x, center.y, tint, 14, 1.08);
+                this.particles.addRing(center.x, center.y, tint, 50);
+              });
+              summary = `${this.currentDirective.title}: ${extraTokens.length} jeton${extraTokens.length > 1 ? "s" : ""} injecté${extraTokens.length > 1 ? "s" : ""} · +${pulseGain}% Pulse`;
+            }
+            if (reason === "level") this.showLevelBanner(this.currentDirective.title);
+            return summary;
+          }
+
+          applyDirectiveMatchEffects(exp, spawns, multiplier) {
+            if (!this.currentDirective) return { scoreDelta: 0, timeDelta: 0, pulseDelta: 0, flowDelta: 0, summary: "" };
+            let scoreDelta = 0;
+            let timeDelta = 0;
+            let pulseDelta = 0;
+            let flowDelta = 0;
+            let summary = "";
+
+            switch (this.currentDirective.id) {
+              case "chrono":
+                timeDelta = Math.min(2.8, exp.cells.length * 0.12 + exp.triggeredBonuses.length * 0.34);
+                if (timeDelta > 0) summary = `Directive chrono: +${timeDelta.toFixed(1)}s`;
+                break;
+              case "forge":
+                scoreDelta = spawns.length * 110 + exp.triggeredBonuses.length * 90;
+                pulseDelta = spawns.length * 12 + exp.triggeredBonuses.length * 9;
+                if (scoreDelta > 0 || pulseDelta > 0) summary = `Directive forge: +${scoreDelta} pts · +${pulseDelta}% Pulse`;
+                break;
+              case "storm":
+                pulseDelta = exp.cells.length >= 4 && this.comboChain === 1 ? 8 : 0;
+                scoreDelta = exp.cells.length >= 5 ? 90 : 0;
+                if (scoreDelta > 0 || pulseDelta > 0) summary = `Directive orage: +${scoreDelta} pts · +${pulseDelta}% Pulse`;
+                break;
+              case "resonance":
+                if (multiplier > 1) {
+                  scoreDelta = Math.round(exp.cells.length * 34 + exp.triggeredBonuses.length * 88);
+                  flowDelta = 0.65 + exp.triggeredBonuses.length * 0.24;
+                  summary = `Directive résonance: ${this.multiplierLabel(multiplier)} stabilisé`;
+                }
+                break;
+            }
+
+            return { scoreDelta, timeDelta, pulseDelta, flowDelta, summary };
           }
 
           togglePulseMode() {
@@ -2132,7 +2264,8 @@
             this.flowCharge = 0; this.flowActive = 0; this.lastActionTime = 0;
             this.hoverCell = null;
             this.missionsCompleted = 0; this.activeMission = this.createMission();
-            this.statusText = "Fais ton premier échange pour déclencher la réaction.";
+            const openingDirective = this.assignDirective("start");
+            this.statusText = `Fais ton premier échange pour déclencher la réaction. ${openingDirective}.`;
             this.stateLabel = "En jeu";
             this.levelFlash = 0; this.swapHintFlash = 0;
             this.lastMoveAnchor = null;
@@ -2158,6 +2291,7 @@
             this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0;
             this.hoverCell = null;
+            this.currentDirective = null;
             this.board.selectedCell = null; this.resetPointer(); this.audio.playGameOver();
             this.triggerShake(10, 0.5);
             this.triggerFlash(255, 80, 80, 0.9);
@@ -2192,9 +2326,9 @@
             this.ui.pulse.textContent = this.pulseMode ? "CIBLE" : (this.isPulseReady() ? "PRÊTE" : `${Math.round(this.pulseCharge)}%`);
             this.ui.pulseBar.style.width = `${this.pulseCharge}%`;
             this.ui.flowBar.style.width = `${clamp(this.flowCharge, 0, 100)}%`;
-            this.ui.flowValue.textContent = this.flowActive > 0 ? "×1.35" : "×1.00";
+            this.ui.flowValue.textContent = this.flowActive > 0 ? this.multiplierLabel() : "×1.00";
             this.ui.flowCopy.textContent = this.flowActive > 0
-              ? `Overdrive actif pendant ${Math.max(1, Math.ceil(this.flowActive))}s. Chaque gain est amplifié.`
+              ? `Overdrive actif pendant ${Math.max(1, Math.ceil(this.flowActive))}s. Chaque gain suit ${this.multiplierLabel()}.`
               : `Charge ${Math.round(this.flowCharge)}%. Enchaîne des ouvertures rapides pour allumer l'Overdrive.`;
             this.ui.state.textContent = this.stateLabel;
             this.ui.message.textContent = this.statusText;
@@ -2214,6 +2348,13 @@
               this.ui.missionDetail.textContent = "Chaque mission réussie ajoute score, temps et charge de Pulse.";
               this.ui.missionBar.style.width = "0%";
               this.ui.missionReward.textContent = "Récompense: --";
+            }
+            if (this.currentDirective) {
+              this.ui.directiveTitle.textContent = this.currentDirective.title;
+              this.ui.directiveDetail.textContent = this.currentDirective.detail;
+            } else {
+              this.ui.directiveTitle.textContent = "Aucune directive active.";
+              this.ui.directiveDetail.textContent = "Passe un niveau pour déclencher une nouvelle règle de secteur.";
             }
           }
 
@@ -2380,6 +2521,9 @@
             this.lastGain = gained;
             this.totalCleared += expanded.cells.length;
             this.registerFlowAction(42);
+            if (this.currentDirective?.id === "chrono") {
+              this.timeLeft = Math.min(120, this.timeLeft + Math.min(2.5, expanded.cells.length * 0.16));
+            }
 
             const missionRes = this.applyMissionEvent({
               pulseUsed: 1,
@@ -2405,7 +2549,7 @@
             this.phase = "clear";
             this.phaseClock = 0;
             this.stateLabel = "Pulse";
-            const flowText = multiplier > 1 ? " · Overdrive ×1.35" : (this.flowActive > 0 ? " · Overdrive lancé" : "");
+            const flowText = multiplier > 1 ? ` · Overdrive ${this.multiplierLabel(multiplier)}` : (this.flowActive > 0 ? " · Overdrive lancé" : "");
             this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${gained} pts${flowText}${missionRes.summary ? " · " + missionRes.summary : ""}`;
             this.triggerShake(6.5, 0.24);
             this.triggerFlash(100, 236, 255, 0.52);
@@ -2471,6 +2615,16 @@
             this.score += gained; this.lastGain = gained; this.totalCleared += exp.cells.length;
             if (this.comboChain === 1) this.registerFlowAction(exp.cells.length >= 5 ? 12 : 0);
             this.addPulseCharge(exp.cells.length * 3 + exp.triggeredBonuses.length * 10 + spawns.length * 12 + Math.max(0, this.comboChain - 1) * 5);
+            const directiveFx = this.applyDirectiveMatchEffects(exp, spawns, multiplier);
+            this.score += directiveFx.scoreDelta;
+            this.lastGain += directiveFx.scoreDelta;
+            this.timeLeft = Math.min(120, this.timeLeft + directiveFx.timeDelta);
+            this.addPulseCharge(directiveFx.pulseDelta, { allowReadyEffect: false });
+            if (directiveFx.flowDelta > 0 && this.flowActive > 0) {
+              const cap = this.flowCap();
+              this.flowActive = Math.min(cap, this.flowActive + directiveFx.flowDelta);
+              this.flowCharge = Math.max(this.flowCharge, (this.flowActive / cap) * 100);
+            }
             const missionRes = this.applyMissionEvent({
               cleared: exp.cells.length,
               bonusesTriggered: exp.triggeredBonuses.length,
@@ -2487,12 +2641,13 @@
             this.stateLabel = this.comboChain > 1 ? `Cascade ×${this.comboChain}` : "Match";
             const bonusSum = [
               exp.triggeredBonuses.length > 0 ? `${exp.triggeredBonuses.length} jeton${exp.triggeredBonuses.length>1?"s":""} activé${exp.triggeredBonuses.length>1?"s":""}` : "",
-              spawns.length > 0 ? `${spawns.length} bonus créé${spawns.length>1?"s":""}` : ""
+              spawns.length > 0 ? `${spawns.length} bonus créé${spawns.length>1?"s":""}` : "",
+              directiveFx.summary
             ].filter(Boolean).join(" · ");
             this.statusText = this.comboChain > 1
-              ? `Cascade ×${this.comboChain} ! +${gained} pts${bonusSum ? " · "+bonusSum : ""}`
-              : `${exp.cells.length} prismes brisés · +${gained} pts${bonusSum ? " · "+bonusSum : ""}`;
-            if (multiplier > 1) this.statusText += " · Overdrive ×1.35";
+              ? `Cascade ×${this.comboChain} ! +${this.lastGain} pts${bonusSum ? " · "+bonusSum : ""}`
+              : `${exp.cells.length} prismes brisés · +${this.lastGain} pts${bonusSum ? " · "+bonusSum : ""}`;
+            if (multiplier > 1) this.statusText += ` · Overdrive ${this.multiplierLabel(multiplier)}`;
             else if (this.flowActive > 0) this.statusText += " · Overdrive lancé";
             if (missionRes.summary) this.statusText += ` · ${missionRes.summary}`;
 
@@ -2544,7 +2699,7 @@
           }
 
           advanceLevel() {
-            let levs = 0, bonusSc = 0, timeBon = 0;
+            let levs = 0, bonusSc = 0, timeBon = 0, directiveSummary = "";
             while (this.score >= this.goal) {
               this.level++; levs++;
               bonusSc += 290 + this.level * 148; timeBon += 17;
@@ -2560,9 +2715,9 @@
               this.spawnCelebration({ gain: bonusSc, rate: this.comboRate(), title: `Niveau ${this.level}`, color: "#ffe880" });
               this.burstLevelBonus(levs);
               this.audio.playLevelUp();
-              this.showLevelBanner(`Niveau ${this.level}`);
+              directiveSummary = this.assignDirective("level");
             }
-            return { up: levs > 0, levs, bonusSc, timeBon };
+            return { up: levs > 0, levs, bonusSc, timeBon, directiveSummary };
           }
 
           afterCascade() {
@@ -2586,6 +2741,7 @@
                 this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 16, 1.2);
               });
               if (lvlTokens.length > 0) this.statusText += ` · ${lvlTokens.length} jeton${lvlTokens.length>1?"s":""} bonus chargé${lvlTokens.length>1?"s":""}.`;
+              if (lr.directiveSummary) this.statusText += ` · ${lr.directiveSummary}.`;
             }
             if (this.isPulseReady() && !this.pulseMode && this.phase === "idle") {
               this.statusText += " · Pulse prête.";
@@ -2619,8 +2775,9 @@
             this.invalidSwapPulse = Math.max(0, this.invalidSwapPulse - dt * 4.4);
             const hadFlow = this.flowActive > 0;
             if (this.flowActive > 0) {
+              const cap = this.flowCap();
               this.flowActive = Math.max(0, this.flowActive - dt);
-              this.flowCharge = (this.flowActive / 8) * 100;
+              this.flowCharge = (this.flowActive / cap) * 100;
               if (hadFlow && this.flowActive === 0 && this.hasBegun && this.phase === "idle") {
                 this.statusText = "Overdrive dissipé. Recharge-le par des ouvertures rapides.";
               }
