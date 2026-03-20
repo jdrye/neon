@@ -894,6 +894,7 @@
         <div class="control-row">
           <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
           <button id="hintButton" class="pill-button" type="button">💡 Indice</button>
+          <button id="rerollButton" class="pill-button" type="button" disabled>🌀 Reroll 0</button>
           <button id="pulseButton" class="pill-button" type="button" aria-pressed="false" disabled>⚡ Pulse 0%</button>
           <button id="pauseButton" class="pill-button" type="button" aria-pressed="false">⏸ Pause</button>
           <button id="restartButton" class="pill-button" type="button">↺ Relancer</button>
@@ -1935,6 +1936,7 @@
               playAgainButton: document.getElementById("playAgainButton"),
               restartButton: document.getElementById("restartButton"),
               hintButton: document.getElementById("hintButton"),
+              rerollButton: document.getElementById("rerollButton"),
               pulseButton: document.getElementById("pulseButton"),
               pauseButton: document.getElementById("pauseButton")
             };
@@ -1963,6 +1965,7 @@
             this.focusKind = 0;
             this.protocolReady = true;
             this.emergencyActive = 0;
+            this.tacticalRerolls = 0;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
             this.stateLabel = "Prêt";
             this.levelFlash = 0; this.swapHintFlash = 0;
@@ -2207,6 +2210,22 @@
             return { scoreDelta, timeDelta, pulseDelta, flowDelta, summary };
           }
 
+          performTacticalReroll() {
+            if (!this.canInput() || this.tacticalRerolls <= 0) return;
+            const prevMission = this.activeMission?.id || null;
+            const prevFocus = this.focusKind;
+            this.tacticalRerolls--;
+            this.activeMission = this.createMission(prevMission);
+            const directiveSummary = this.assignDirective("reroll");
+            const focus = this.assignFocusKind(prevFocus);
+            this.stateLabel = "Reroll";
+            this.statusText = `Reroll tactique: ${directiveSummary}. Focus ${this.labelForStyle(focus)}. Nouvelle mission: ${this.activeMission.title}.`;
+            this.triggerShake(4.2, 0.14);
+            this.triggerFlash(120, 186, 255, 0.22);
+            this.audio.playShuffle();
+            this.updateUi();
+          }
+
           togglePulseMode() {
             if (!this.hasBegun || this.phase === "title" || this.phase === "gameover" || this.paused) return;
             if (!this.isPulseReady() && !this.pulseMode) return;
@@ -2222,7 +2241,7 @@
             this.updateUi();
           }
 
-          createMission() {
+          createMission(excludeId = null) {
             const rewardScore = 320 + this.level * 90 + this.missionsCompleted * 35;
             const rewardTime = Math.min(14, 5 + Math.floor(this.level / 2));
             const rewardCharge = Math.min(42, 18 + this.level * 2 + this.missionsCompleted);
@@ -2264,7 +2283,9 @@
                 target: 1
               });
             }
-            const choice = pool[Math.floor(Math.random() * pool.length)];
+            const source = pool.filter(item => item.id !== excludeId);
+            const choices = source.length > 0 ? source : pool;
+            const choice = choices[Math.floor(Math.random() * choices.length)];
             return { ...choice, progress: 0, rewardScore, rewardTime, rewardCharge };
           }
 
@@ -2395,6 +2416,10 @@
               this.board.injectBonusTokens(1, "level");
               perks.push("1 jeton bonus");
             }
+            if (this.profile.achievements["level-6"]) {
+              this.tacticalRerolls += 1;
+              perks.push("+1 reroll tactique");
+            }
             return perks;
           }
 
@@ -2481,6 +2506,7 @@
               if (this.audio.enabled) { await this.audio.unlock(); this.audio.playSwap(); }
             }));
             this.ui.hintButton.addEventListener("click", () => this.showManualHint());
+            this.ui.rerollButton.addEventListener("click", () => this.performTacticalReroll());
             this.ui.pulseButton.addEventListener("click", () => this.togglePulseMode());
             this.ui.pauseButton.addEventListener("click", () => this.togglePause());
             this.canvas.addEventListener("pointerdown", e => this.onPointerDown(e));
@@ -2516,6 +2542,7 @@
             this.hoverCell = null;
             this.protocolReady = true;
             this.emergencyActive = 0;
+            this.tacticalRerolls = 1;
             this.missionsCompleted = 0; this.activeMission = this.createMission();
             const openingDirective = this.assignDirective("start");
             const focus = this.assignFocusKind();
@@ -2602,9 +2629,12 @@
             this.ui.pauseButton.textContent = this.paused ? "▶ Reprendre" : "⏸ Pause";
             this.ui.pauseButton.setAttribute("aria-pressed", String(this.paused));
             const pulseAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.isPulseReady();
+            const rerollAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.tacticalRerolls > 0;
             this.ui.pulseButton.disabled = !(pulseAvailable || this.pulseMode);
             this.ui.pulseButton.setAttribute("aria-pressed", String(this.pulseMode));
             this.ui.pulseButton.textContent = this.pulseMode ? "⚡ Vise la grille" : (this.isPulseReady() ? "⚡ Pulse prête" : `⚡ Pulse ${Math.round(this.pulseCharge)}%`);
+            this.ui.rerollButton.disabled = !rerollAvailable;
+            this.ui.rerollButton.textContent = `🌀 Reroll ${this.tacticalRerolls}`;
             if (this.activeMission) {
               this.ui.missionTitle.textContent = this.activeMission.title;
               this.ui.missionDetail.textContent = `${this.activeMission.detail} · ${this.activeMission.progress}/${this.activeMission.target}`;
@@ -2686,9 +2716,13 @@
           }
 
           onKeyDown(e) {
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "Escape"].includes(e.key)) e.preventDefault();
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "r", "R", "Escape"].includes(e.key)) e.preventDefault();
             if (e.key === " ") {
               this.togglePause();
+              return;
+            }
+            if (e.key === "r" || e.key === "R") {
+              this.performTacticalReroll();
               return;
             }
             if (e.key === "Escape") {
