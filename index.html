@@ -183,6 +183,14 @@
         border-color: rgba(53,243,255,0.62);
       }
 
+      .pill-button:disabled, .primary-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+        transform: none;
+        box-shadow: none;
+        border-color: rgba(255,255,255,0.08);
+      }
+
       .pill-button[aria-pressed="true"] {
         background: rgba(68,223,255,0.14);
         color: #c8f8ff;
@@ -239,7 +247,7 @@
       /* ── HUD ── */
       .hud {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 10px;
         margin-bottom: 12px;
       }
@@ -278,6 +286,7 @@
       .stat-card.time-card::after { background: var(--accent-3); }
       .stat-card.level-card::after { background: var(--ok); }
       .stat-card.goal-card::after { background: linear-gradient(90deg, var(--ok), var(--accent)); }
+      .stat-card.pulse-card::after { background: linear-gradient(90deg, var(--accent-3), #8d7dff, var(--accent)); }
 
       .stat-label {
         display: block;
@@ -312,6 +321,24 @@
         border-radius: 4px;
         transition: width 0.3s ease;
         box-shadow: 0 0 8px rgba(78,242,184,0.6);
+      }
+
+      .charge-progress {
+        position: absolute;
+        bottom: 2px; left: 0; right: 0;
+        height: 3px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 0 0 18px 18px;
+        overflow: hidden;
+      }
+
+      .charge-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--accent-3), #8d7dff, var(--accent));
+        border-radius: 4px;
+        transition: width 0.25s ease;
+        box-shadow: 0 0 10px rgba(68,223,255,0.7);
       }
 
       /* ── BOARD ── */
@@ -494,6 +521,63 @@
         line-height: 1.5;
       }
 
+      .mission-card {
+        margin-top: 12px;
+        padding: 14px;
+        border-radius: 16px;
+        background:
+          linear-gradient(135deg, rgba(53,243,255,0.08), rgba(141,125,255,0.1) 46%, rgba(255,63,210,0.08)),
+          rgba(255,255,255,0.03);
+        border: 1px solid rgba(111, 201, 255, 0.18);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+
+      .mission-card h4 {
+        margin: 0 0 6px;
+        font-size: 0.75rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent-3);
+      }
+
+      .mission-title {
+        margin: 0;
+        color: var(--text);
+        font-size: 0.97rem;
+        line-height: 1.45;
+      }
+
+      .mission-detail {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+
+      .mission-progress {
+        margin-top: 12px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        overflow: hidden;
+      }
+
+      .mission-progress-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent-3), #8d7dff, var(--accent));
+        box-shadow: 0 0 14px rgba(68,223,255,0.3);
+        transition: width 0.25s ease;
+      }
+
+      .mission-reward {
+        margin-top: 10px;
+        color: #d8f7ff;
+        font-size: 0.8rem;
+        letter-spacing: 0.02em;
+      }
+
       /* ── LEADERBOARD ── */
       .leaderboard-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 
@@ -648,6 +732,7 @@
         <div class="control-row">
           <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
           <button id="hintButton" class="pill-button" type="button">💡 Indice</button>
+          <button id="pulseButton" class="pill-button" type="button" aria-pressed="false" disabled>⚡ Pulse 0%</button>
           <button id="pauseButton" class="pill-button" type="button" aria-pressed="false">⏸ Pause</button>
           <button id="restartButton" class="pill-button" type="button">↺ Relancer</button>
         </div>
@@ -705,6 +790,13 @@
               <span class="stat-label">Temps</span>
               <span id="timeValue" class="stat-value">75</span>
             </article>
+            <article class="stat-card pulse-card">
+              <span class="stat-label">Pulse</span>
+              <span id="pulseValue" class="stat-value">0%</span>
+              <div class="charge-progress" aria-hidden="true">
+                <div id="pulseBar" class="charge-progress-fill"></div>
+              </div>
+            </article>
           </div>
 
           <div class="board-frame">
@@ -720,6 +812,7 @@
                 <ul class="instruction-list">
                   <li>Glisse un prisme ou touche deux cases adjacentes.</li>
                   <li>Les cascades et les bonus rapportent plus — enchaîne.</li>
+                  <li>Charge la Pulse pour vaporiser tous les prismes d'une même famille.</li>
                   <li>Atteins l'objectif pour passer au niveau suivant et gagner du temps.</li>
                 </ul>
                 <div class="overlay-actions">
@@ -737,6 +830,7 @@
                 <ul class="bullet-list">
                   <li>Un bon timing sur les cascades change tout.</li>
                   <li>Utilise les jetons bonus pour effacer des lignes entières.</li>
+                  <li>Une Pulse bien placée peut renverser la grille.</li>
                   <li>Le chrono remonte à chaque objectif atteint.</li>
                 </ul>
                 <div class="overlay-actions">
@@ -759,6 +853,7 @@
               <li>Clavier : flèches pour naviguer, Entrée pour sélectionner, Espace pour pause.</li>
               <li>Auto-mélange si aucun coup possible.</li>
               <li>Après 5s d'inactivité : un indice s'affiche.</li>
+              <li>Quand la Pulse atteint 100%, vise une forme pour purger tout son type.</li>
             </ul>
           </section>
 
@@ -784,6 +879,15 @@
               </div>
             </div>
             <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
+            <div class="mission-card">
+              <h4>Mission active</h4>
+              <p id="missionTitle" class="mission-title">Démarre une partie pour recevoir un objectif tactique.</p>
+              <p id="missionDetail" class="mission-detail">Chaque mission réussie ajoute score, temps et charge de Pulse.</p>
+              <div class="mission-progress" aria-hidden="true">
+                <div id="missionBar" class="mission-progress-fill"></div>
+              </div>
+              <div id="missionReward" class="mission-reward">Récompense: --</div>
+            </div>
           </section>
         </aside>
       </section>
@@ -911,6 +1015,15 @@
             this.tone({ frequency: 520, duration: 0.14, type: "sine", volume: 0.035, slideTo: 660 });
           }
           playHint() { this.tone({ frequency: 680, duration: 0.08, type: "sine", volume: 0.025, slideTo: 720 }); }
+          playPulseReady() {
+            this.tone({ frequency: 720, duration: 0.1, type: "triangle", volume: 0.03, slideTo: 960 });
+            this.tone({ frequency: 960, duration: 0.16, type: "sine", volume: 0.028, slideTo: 1240 });
+          }
+          playPulseFire() {
+            this.tone({ frequency: 260, duration: 0.08, type: "sawtooth", volume: 0.045, slideTo: 420 });
+            this.tone({ frequency: 420, duration: 0.14, type: "triangle", volume: 0.05, slideTo: 840 });
+            setTimeout(() => this.tone({ frequency: 880, duration: 0.18, type: "sine", volume: 0.035, slideTo: 680 }), 60);
+          }
         }
 
         // ──────────────── PARTICLES ────────────────
@@ -1584,11 +1697,17 @@
               goalBar: document.getElementById("goalBar"),
               time: document.getElementById("timeValue"),
               timeCard: document.getElementById("timeCard"),
+              pulse: document.getElementById("pulseValue"),
+              pulseBar: document.getElementById("pulseBar"),
               combo: document.getElementById("comboValue"),
               cleared: document.getElementById("clearedValue"),
               gain: document.getElementById("gainValue"),
               state: document.getElementById("stateValue"),
               message: document.getElementById("statusMessage"),
+              missionTitle: document.getElementById("missionTitle"),
+              missionDetail: document.getElementById("missionDetail"),
+              missionBar: document.getElementById("missionBar"),
+              missionReward: document.getElementById("missionReward"),
               leaderboardList: document.getElementById("leaderboardList"),
               titleOverlay: document.getElementById("titleOverlay"),
               gameOverOverlay: document.getElementById("gameOverOverlay"),
@@ -1600,6 +1719,7 @@
               playAgainButton: document.getElementById("playAgainButton"),
               restartButton: document.getElementById("restartButton"),
               hintButton: document.getElementById("hintButton"),
+              pulseButton: document.getElementById("pulseButton"),
               pauseButton: document.getElementById("pauseButton")
             };
 
@@ -1614,6 +1734,10 @@
             this.bestCombo = 1; this.totalCleared = 0; this.lastGain = 0;
             this.hasBegun = false; this.pendingSwap = null;
             this.comboChain = 0;
+            this.pulseCharge = 0;
+            this.pulseMode = false;
+            this.activeMission = null;
+            this.missionsCompleted = 0;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
             this.stateLabel = "Prêt";
             this.levelFlash = 0; this.swapHintFlash = 0;
@@ -1672,6 +1796,128 @@
           }
 
           refreshGemStyles() { this.gemStyles = this.createGemStyles(); this.board.types = this.gemStyles; }
+
+          isPulseReady() { return this.pulseCharge >= 100; }
+
+          addPulseCharge(amount, { allowReadyEffect = true } = {}) {
+            if (!Number.isFinite(amount) || amount === 0) return;
+            const before = this.pulseCharge;
+            this.pulseCharge = clamp(this.pulseCharge + amount, 0, 100);
+            if (before < 100 && this.pulseCharge >= 100 && allowReadyEffect) {
+              this.triggerFlash(80, 226, 255, 0.22);
+              this.audio.playPulseReady();
+              if (this.hasBegun && this.phase === "idle" && !this.paused) {
+                this.stateLabel = "Pulse prête";
+                this.statusText = "Pulse chargée. Active-la puis vise une famille de prismes.";
+              }
+            }
+          }
+
+          togglePulseMode() {
+            if (!this.hasBegun || this.phase === "title" || this.phase === "gameover" || this.paused) return;
+            if (!this.isPulseReady() && !this.pulseMode) return;
+            this.pulseMode = !this.pulseMode;
+            if (this.pulseMode) {
+              this.stateLabel = "Pulse";
+              this.statusText = "Pulse armée. Clique une forme pour effacer tous les prismes de cette famille.";
+              this.audio.playHint();
+            } else if (this.phase === "idle") {
+              this.stateLabel = "En jeu";
+              this.statusText = "Pulse annulée. Reviens au plateau.";
+            }
+            this.updateUi();
+          }
+
+          createMission() {
+            const rewardScore = 320 + this.level * 90 + this.missionsCompleted * 35;
+            const rewardTime = Math.min(14, 5 + Math.floor(this.level / 2));
+            const rewardCharge = Math.min(42, 18 + this.level * 2 + this.missionsCompleted);
+            const clearTarget = 18 + this.level * 3;
+            const triggerTarget = 2 + Math.floor(this.level / 4);
+            const forgeTarget = 1 + Math.floor(this.level / 5);
+            const cascadeTarget = Math.min(4, 2 + Math.floor(this.level / 4));
+            const pool = [
+              {
+                id: "clear",
+                title: "Nettoyage du secteur",
+                detail: `Brise ${clearTarget} prismes avant la prochaine rotation tactique.`,
+                target: clearTarget
+              },
+              {
+                id: "bonus-trigger",
+                title: "Synchronisation bonus",
+                detail: `Déclenche ${triggerTarget} jeton${triggerTarget > 1 ? "s" : ""} pour ouvrir la grille.`,
+                target: triggerTarget
+              },
+              {
+                id: "forge",
+                title: "Forge prismatique",
+                detail: `Crée ${forgeTarget} bonus d'alignement en provoquant de longues lignes.`,
+                target: forgeTarget
+              },
+              {
+                id: "cascade",
+                title: "Réaction contrôlée",
+                detail: `Atteins une cascade ×${cascadeTarget} pour prouver ta maîtrise du rythme.`,
+                target: cascadeTarget
+              }
+            ];
+            if (this.level >= 2 || this.missionsCompleted >= 1) {
+              pool.push({
+                id: "pulse",
+                title: "Surcharge tactique",
+                detail: "Déclenche une Pulse complète pour retourner la partie.",
+                target: 1
+              });
+            }
+            const choice = pool[Math.floor(Math.random() * pool.length)];
+            return { ...choice, progress: 0, rewardScore, rewardTime, rewardCharge };
+          }
+
+          resetMission(force = false) {
+            if (!force && this.activeMission && this.activeMission.progress < this.activeMission.target) return;
+            this.activeMission = this.createMission();
+          }
+
+          applyMissionEvent(evt) {
+            const mission = this.activeMission;
+            if (!mission) return { completed: false, summary: "" };
+            let delta = 0;
+            switch (mission.id) {
+              case "clear":
+                delta = evt.cleared || 0;
+                break;
+              case "bonus-trigger":
+                delta = evt.bonusesTriggered || 0;
+                break;
+              case "forge":
+                delta = evt.bonusesCreated || 0;
+                break;
+              case "cascade":
+                if ((evt.comboChain || 0) >= mission.target) delta = mission.target;
+                break;
+              case "pulse":
+                delta = evt.pulseUsed ? 1 : 0;
+                break;
+            }
+            if (delta <= 0) return { completed: false, summary: "" };
+
+            mission.progress = clamp(mission.progress + delta, 0, mission.target);
+            if (mission.progress < mission.target) return { completed: false, summary: "" };
+
+            this.score += mission.rewardScore;
+            this.lastGain += mission.rewardScore;
+            this.timeLeft = Math.min(120, this.timeLeft + mission.rewardTime);
+            this.addPulseCharge(mission.rewardCharge, { allowReadyEffect: false });
+            this.missionsCompleted++;
+            this.triggerShake(4.8, 0.2);
+            this.triggerFlash(90, 230, 255, 0.34);
+            this.showLevelBanner("Mission accomplie");
+            this.spawnCelebration({ gain: mission.rewardScore, rate: Math.max(1, this.comboRate()), title: "Mission", color: "#82f6ff" });
+            const summary = `Mission réussie: +${mission.rewardScore} pts · +${mission.rewardTime}s · +${mission.rewardCharge}% Pulse`;
+            this.activeMission = this.createMission();
+            return { completed: true, summary };
+          }
 
           normalizeLeaderboard(entries) {
             return entries.map(e => ({
@@ -1756,6 +2002,7 @@
               if (this.audio.enabled) { await this.audio.unlock(); this.audio.playSwap(); }
             }));
             this.ui.hintButton.addEventListener("click", () => this.showManualHint());
+            this.ui.pulseButton.addEventListener("click", () => this.togglePulseMode());
             this.ui.pauseButton.addEventListener("click", () => this.togglePause());
             this.canvas.addEventListener("pointerdown", e => this.onPointerDown(e));
             this.canvas.addEventListener("pointermove", e => this.onPointerMove(e));
@@ -1784,6 +2031,8 @@
             this.level = 1; this.goal = 1800; this.timeLeft = 75;
             this.bestCombo = 1; this.totalCleared = 0; this.lastGain = 0;
             this.pendingSwap = null; this.comboChain = 0;
+            this.pulseCharge = 0; this.pulseMode = false;
+            this.missionsCompleted = 0; this.activeMission = this.createMission();
             this.statusText = "Fais ton premier échange pour déclencher la réaction.";
             this.stateLabel = "En jeu";
             this.levelFlash = 0; this.swapHintFlash = 0;
@@ -1807,6 +2056,7 @@
             const lr = this.recordEntry();
             this.phase = "gameover"; this.phaseClock = 0;
             this.stateLabel = "Fin"; this.statusText = "Temps écoulé. Relance pour une nouvelle grille.";
+            this.pulseMode = false;
             this.board.selectedCell = null; this.resetPointer(); this.audio.playGameOver();
             this.triggerShake(10, 0.5);
             this.triggerFlash(255, 80, 80, 0.9);
@@ -1838,14 +2088,32 @@
             this.ui.combo.textContent = `×${this.bestCombo}`;
             this.ui.cleared.textContent = this.totalCleared.toString();
             this.ui.gain.textContent = this.lastGain.toString();
+            this.ui.pulse.textContent = this.pulseMode ? "CIBLE" : (this.isPulseReady() ? "PRÊTE" : `${Math.round(this.pulseCharge)}%`);
+            this.ui.pulseBar.style.width = `${this.pulseCharge}%`;
             this.ui.state.textContent = this.stateLabel;
             this.ui.message.textContent = this.statusText;
             this.ui.pauseButton.textContent = this.paused ? "▶ Reprendre" : "⏸ Pause";
             this.ui.pauseButton.setAttribute("aria-pressed", String(this.paused));
+            const pulseAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.isPulseReady();
+            this.ui.pulseButton.disabled = !(pulseAvailable || this.pulseMode);
+            this.ui.pulseButton.setAttribute("aria-pressed", String(this.pulseMode));
+            this.ui.pulseButton.textContent = this.pulseMode ? "⚡ Vise la grille" : (this.isPulseReady() ? "⚡ Pulse prête" : `⚡ Pulse ${Math.round(this.pulseCharge)}%`);
+            if (this.activeMission) {
+              this.ui.missionTitle.textContent = this.activeMission.title;
+              this.ui.missionDetail.textContent = `${this.activeMission.detail} · ${this.activeMission.progress}/${this.activeMission.target}`;
+              this.ui.missionBar.style.width = `${(this.activeMission.progress / this.activeMission.target) * 100}%`;
+              this.ui.missionReward.textContent = `Récompense: +${this.activeMission.rewardScore} pts · +${this.activeMission.rewardTime}s · +${this.activeMission.rewardCharge}% Pulse`;
+            } else {
+              this.ui.missionTitle.textContent = "Démarre une partie pour recevoir un objectif tactique.";
+              this.ui.missionDetail.textContent = "Chaque mission réussie ajoute score, temps et charge de Pulse.";
+              this.ui.missionBar.style.width = "0%";
+              this.ui.missionReward.textContent = "Récompense: --";
+            }
           }
 
           showManualHint() {
             if (!this.hasBegun || this.phase === "gameover") return;
+            this.pulseMode = false;
             this.hintTimer = 0;
             this.hintCells = this.board.findHintMove();
             this.hintShown = this.hintCells.length > 0;
@@ -1862,6 +2130,7 @@
           togglePause() {
             if (!this.hasBegun || this.phase === "title" || this.phase === "gameover") return;
             this.paused = !this.paused;
+            this.pulseMode = false;
             this.board.selectedCell = null;
             this.resetPointer();
             this.stateLabel = this.paused ? "Pause" : "En jeu";
@@ -1877,8 +2146,10 @@
             this.hintTimer = 0;
             this.hintCells = [];
             this.hintShown = false;
-            this.stateLabel = "Sélection";
-            this.statusText = "Sélection clavier active. Valide avec Entrée.";
+            this.stateLabel = this.pulseMode ? "Pulse" : "Sélection";
+            this.statusText = this.pulseMode
+              ? "Pulse armée au clavier. Vise une famille puis valide avec Entrée."
+              : "Sélection clavier active. Valide avec Entrée.";
             this.updateUi();
           }
 
@@ -1912,6 +2183,7 @@
 
           onPointerMove(e) {
             if (!this.inputDrag.active || this.inputDrag.pointerId !== e.pointerId || !this.canInput()) return;
+            if (this.pulseMode) return;
             const pt = this.ptFromEvent(e);
             const dx = pt.x - this.inputDrag.startPoint.x, dy = pt.y - this.inputDrag.startPoint.y;
             const thresh = this.board.layout.cellSize * 0.25;
@@ -1941,6 +2213,7 @@
 
           handleTap(cell) {
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            if (this.pulseMode) { this.firePulse(cell); return; }
             if (!this.board.selectedCell) {
               this.board.selectedCell = cell;
               this.statusText = "Sélectionne une case voisine pour échanger."; this.stateLabel = "Sélection"; this.updateUi(); return;
@@ -1950,6 +2223,61 @@
             }
             if (this.board.areAdj(this.board.selectedCell, cell)) { this.trySwap(this.board.selectedCell, cell); return; }
             this.board.selectedCell = cell; this.statusText = "Cases non adjacentes."; this.stateLabel = "Sélection"; this.updateUi();
+          }
+
+          firePulse(cell) {
+            if (!this.canInput() || !this.isPulseReady()) return;
+            const origin = this.board.grid[cell.row]?.[cell.col];
+            if (!origin) return;
+
+            const targets = [];
+            this.board.forEach(tile => {
+              if (!tile.removing && tile.kind === origin.kind) targets.push({ row: tile.row, col: tile.col });
+            });
+            if (!targets.length) return;
+
+            this.board.selectedCell = null;
+            this.pulseMode = false;
+            this.pulseCharge = 0;
+            this.comboChain = 1;
+            this.bestCombo = Math.max(this.bestCombo, this.comboChain);
+            this.lastMoveAnchor = { row: cell.row, col: cell.col };
+
+            const expanded = this.board.expandBonus({ cells: targets, lines: [] });
+            const gained = Math.round(expanded.cells.length * 135 + expanded.triggeredBonuses.length * 220 + 260);
+            this.score += gained;
+            this.lastGain = gained;
+            this.totalCleared += expanded.cells.length;
+
+            const missionRes = this.applyMissionEvent({
+              pulseUsed: 1,
+              cleared: expanded.cells.length,
+              bonusesTriggered: expanded.triggeredBonuses.length,
+              comboChain: this.comboChain
+            });
+
+            const palette = this.board.types[origin.kind];
+            expanded.cells.forEach((target, index) => {
+              const center = this.board.getCellCenter(target.row, target.col);
+              const tint = index % 2 === 0 ? palette.shine : palette.base;
+              this.particles.burst(center.x, center.y, tint, 12, 1.18);
+              this.particles.addRing(center.x, center.y, palette.shine, 42);
+            });
+            const center = this.board.getCellCenter(cell.row, cell.col);
+            this.particles.addRing(center.x, center.y, palette.shine, 130);
+            this.particles.addBeam(center.x - 120, center.y, center.x + 120, center.y, palette.shine, 18, 0.2);
+            this.particles.addBeam(center.x, center.y - 120, center.x, center.y + 120, palette.shine, 18, 0.2);
+
+            this.spawnCelebration({ gain: gained, rate: 1.2, title: "Pulse", color: palette.shine });
+            this.board.markMatches(expanded, []);
+            this.phase = "clear";
+            this.phaseClock = 0;
+            this.stateLabel = "Pulse";
+            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${gained} pts${missionRes.summary ? " · " + missionRes.summary : ""}`;
+            this.triggerShake(6.5, 0.24);
+            this.triggerFlash(100, 236, 255, 0.52);
+            this.audio.playPulseFire();
+            this.updateUi();
           }
 
           canInput() { return this.hasBegun && !this.paused && this.phase === "idle" && !this.ui.gameOverOverlay.classList.contains("visible"); }
@@ -2007,6 +2335,13 @@
             const base = exp.cells.length * 125 + lineBonus + bonus;
             const gained = Math.round(base * (1 + (this.comboChain-1) * 0.45));
             this.score += gained; this.lastGain = gained; this.totalCleared += exp.cells.length;
+            this.addPulseCharge(exp.cells.length * 3 + exp.triggeredBonuses.length * 10 + spawns.length * 12 + Math.max(0, this.comboChain - 1) * 5);
+            const missionRes = this.applyMissionEvent({
+              cleared: exp.cells.length,
+              bonusesTriggered: exp.triggeredBonuses.length,
+              bonusesCreated: spawns.length,
+              comboChain: this.comboChain
+            });
 
             if (this.comboChain >= 3) this.triggerShake(4 + this.comboChain, 0.24);
             else if (this.comboChain === 2) this.triggerShake(3, 0.16);
@@ -2022,6 +2357,7 @@
             this.statusText = this.comboChain > 1
               ? `Cascade ×${this.comboChain} ! +${gained} pts${bonusSum ? " · "+bonusSum : ""}`
               : `${exp.cells.length} prismes brisés · +${gained} pts${bonusSum ? " · "+bonusSum : ""}`;
+            if (missionRes.summary) this.statusText += ` · ${missionRes.summary}`;
 
             const pal = this.board.types[(exp.cells[0].row + exp.cells[0].col) % this.board.types.length];
             this.spawnCelebration({ gain: gained, rate: this.comboRate(), title: this.comboChain > 1 ? `Cascade ×${this.comboChain}` : "Gain", color: pal.shine });
@@ -2080,6 +2416,7 @@
             if (levs > 0) {
               this.score += bonusSc; this.lastGain = bonusSc;
               this.timeLeft = Math.min(120, this.timeLeft + timeBon);
+              this.addPulseCharge(12 + levs * 8);
               this.levelFlash = 1.2;
               this.triggerShake(7, 0.4);
               this.triggerFlash(255, 210, 80, 0.65);
@@ -2112,6 +2449,9 @@
                 this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 16, 1.2);
               });
               if (lvlTokens.length > 0) this.statusText += ` · ${lvlTokens.length} jeton${lvlTokens.length>1?"s":""} bonus chargé${lvlTokens.length>1?"s":""}.`;
+            }
+            if (this.isPulseReady() && !this.pulseMode && this.phase === "idle") {
+              this.statusText += " · Pulse prête.";
             }
             this.updateUi();
           }
