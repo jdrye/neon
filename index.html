@@ -230,7 +230,7 @@
       /* ── LAYOUT ── */
       .layout {
         display: grid;
-        grid-template-columns: minmax(220px, 0.64fr) minmax(0, 1.2fr) minmax(260px, 0.76fr);
+        grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
         gap: 14px;
         align-items: start;
       }
@@ -472,8 +472,8 @@
 
       .overlay-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 
-      /* ── SIDEBARS ── */
-      .left-panel, .side-panel { display: flex; flex-direction: column; gap: 14px; }
+      /* ── SIDE RAIL ── */
+      .left-panel { display: flex; flex-direction: column; gap: 14px; }
 
       .info-card, .status-card, .leaderboard-card { padding: 18px 20px; }
 
@@ -677,6 +677,41 @@
         color: #fff2f5;
         font-size: 0.8rem;
         line-height: 1.45;
+      }
+
+      .left-panel .lab-card,
+      .play-meta-panel .flow-panel,
+      .play-meta-panel .rush-panel,
+      .play-meta-panel .mission-card,
+      .play-meta-panel .directive-card {
+        margin-top: 0;
+      }
+
+      .play-meta-panel {
+        margin-top: 14px;
+        padding: 16px;
+      }
+
+      .play-system-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .play-card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .play-card-grid .mission-card {
+        grid-column: 1 / -1;
+      }
+
+      .archive-cache {
+        display: none;
       }
 
       .mission-card {
@@ -969,6 +1004,10 @@
       @media (max-width: 980px) {
         .layout { grid-template-columns: 1fr; }
         .play-panel { order: -1; }
+        .play-system-grid,
+        .play-card-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 720px) {
@@ -1045,16 +1084,15 @@
               </li>
             </ol>
           </section>
-          <section class="panel archive-card">
-            <h3>Archives</h3>
-            <p>Succès persistants et mémoire locale de tes runs.</p>
-            <div id="archiveSummary" class="archive-summary">Jeux: 0 · Missions: 0 · Pulses: 0</div>
-            <ul id="achievementList" class="achievement-list" aria-label="Succès débloqués">
-              <li class="achievement-entry">
-                <span class="achievement-label">Chargement...</span>
-                <span class="achievement-detail">Lecture des archives locales.</span>
-              </li>
-            </ul>
+          <section class="panel lab-card">
+            <h4>Lab rapide</h4>
+            <div class="lab-actions">
+              <button id="labMoveButton" class="pill-button mini-button" type="button">▶ Coup fort</button>
+              <button id="labPulseButton" class="pill-button mini-button" type="button">⚡ Pulse</button>
+              <button id="labRushButton" class="pill-button mini-button" type="button">🍬 Rush</button>
+              <button id="labTimeButton" class="pill-button mini-button" type="button">⏱ +30s</button>
+            </div>
+            <div id="labDetail" class="lab-copy">Boîte à outils locale pour éprouver les systèmes sans repartir de zéro.</div>
           </section>
         </aside>
 
@@ -1130,27 +1168,7 @@
             </div>
           </div>
 
-          <p class="footer-note">Jeu autonome en un HTML · smoke tests via npm test</p>
-        </section>
-
-        <aside class="side-panel">
-          <section class="panel info-card">
-            <h3>Comment jouer</h3>
-            <p>Aligne trois prismes identiques ou plus. Les lignes de 4 et 5 créent des bonus de ligne/colonne. Les cascades multiplient ton score.</p>
-            <ul class="bullet-list">
-              <li>Souris : glisse ou clique deux cases adjacentes.</li>
-              <li>Tactile : glisse directement dans la direction voulue.</li>
-              <li>Clavier : flèches pour naviguer, Entrée pour sélectionner, Espace pour pause.</li>
-              <li>Auto-mélange si aucun coup possible.</li>
-              <li>Après 5s d'inactivité : le scanner suggère le meilleur coup.</li>
-              <li>Quand la Pulse atteint 100%, vise une forme pour purger tout son type.</li>
-              <li>Les cascades et les gros coups remplissent Candy Rush et ajoutent des bonus pendant l'euphorie.</li>
-            </ul>
-          </section>
-
-          <section class="panel status-card">
-            <h3>Pulse log</h3>
-            <p>Progression et qualité de tes réactions en chaîne.</p>
+          <section class="panel play-meta-panel">
             <div class="status-grid">
               <div class="mini-stat">
                 <strong>Meilleur combo</strong>
@@ -1169,63 +1187,72 @@
                 <span id="stateValue">Prêt</span>
               </div>
             </div>
-            <div class="flow-panel">
-              <div class="flow-header">
-                <strong>Overdrive</strong>
-                <span id="flowValue">×1.00</span>
+
+            <div class="play-system-grid">
+              <div class="flow-panel">
+                <div class="flow-header">
+                  <strong>Overdrive</strong>
+                  <span id="flowValue">×1.00</span>
+                </div>
+                <div class="flow-progress" aria-hidden="true">
+                  <div id="flowBar" class="flow-progress-fill"></div>
+                </div>
+                <div id="flowCopy" class="flow-copy">Aligne vite tes ouvertures pour déclencher une fenêtre de score amplifié.</div>
               </div>
-              <div class="flow-progress" aria-hidden="true">
-                <div id="flowBar" class="flow-progress-fill"></div>
+              <div class="rush-panel">
+                <div class="rush-header">
+                  <strong>Candy Rush</strong>
+                  <span id="rushValue">0%</span>
+                </div>
+                <div class="rush-progress" aria-hidden="true">
+                  <div id="rushBar" class="rush-progress-fill"></div>
+                </div>
+                <div id="rushCopy" class="rush-copy">Les longues cascades sucrent la jauge. À pleine charge, la grille part en euphorie.</div>
               </div>
-              <div id="flowCopy" class="flow-copy">Aligne vite tes ouvertures pour déclencher une fenêtre de score amplifié.</div>
             </div>
-            <div class="rush-panel">
-              <div class="rush-header">
-                <strong>Candy Rush</strong>
-                <span id="rushValue">0%</span>
-              </div>
-              <div class="rush-progress" aria-hidden="true">
-                <div id="rushBar" class="rush-progress-fill"></div>
-              </div>
-              <div id="rushCopy" class="rush-copy">Les longues cascades sucrent la jauge. À pleine charge, la grille part en euphorie.</div>
-            </div>
-            <div class="lab-card">
-              <h4>Lab rapide</h4>
-              <div class="lab-actions">
-                <button id="labMoveButton" class="pill-button mini-button" type="button">▶ Coup fort</button>
-                <button id="labPulseButton" class="pill-button mini-button" type="button">⚡ Pulse</button>
-                <button id="labRushButton" class="pill-button mini-button" type="button">🍬 Rush</button>
-                <button id="labTimeButton" class="pill-button mini-button" type="button">⏱ +30s</button>
-              </div>
-              <div id="labDetail" class="lab-copy">Boîte à outils locale pour éprouver les systèmes sans repartir de zéro.</div>
-            </div>
+
             <div id="statusMessage" class="status-message">Appuie sur "Lancer la partie" pour commencer.</div>
-            <div class="mission-card">
-              <h4>Mission active</h4>
-              <p id="missionTitle" class="mission-title">Démarre une partie pour recevoir un objectif tactique.</p>
-              <p id="missionDetail" class="mission-detail">Chaque mission réussie ajoute score, temps et charge de Pulse.</p>
-              <div class="mission-progress" aria-hidden="true">
-                <div id="missionBar" class="mission-progress-fill"></div>
+
+            <div class="play-card-grid">
+              <div class="mission-card">
+                <h4>Mission active</h4>
+                <p id="missionTitle" class="mission-title">Démarre une partie pour recevoir un objectif tactique.</p>
+                <p id="missionDetail" class="mission-detail">Chaque mission réussie ajoute score, temps et charge de Pulse.</p>
+                <div class="mission-progress" aria-hidden="true">
+                  <div id="missionBar" class="mission-progress-fill"></div>
+                </div>
+                <div id="missionReward" class="mission-reward">Récompense: --</div>
               </div>
-              <div id="missionReward" class="mission-reward">Récompense: --</div>
-            </div>
-            <div class="directive-card">
-              <h4>Directive</h4>
-              <p id="directiveTitle" class="directive-title">Aucune directive active.</p>
-              <p id="directiveDetail" class="directive-detail">Passe un niveau pour déclencher une nouvelle règle de secteur.</p>
-            </div>
-            <div class="directive-card focus-card">
-              <h4>Famille en vedette</h4>
-              <p id="focusTitle" class="directive-title">Aucune famille ciblée.</p>
-              <p id="focusDetail" class="directive-detail">Les prismes mis en avant rapportent plus et rechargent mieux les systèmes.</p>
-            </div>
-            <div class="directive-card protocol-card">
-              <h4>Protocole d'urgence</h4>
-              <p id="protocolTitle" class="directive-title">Charge de secours indisponible.</p>
-              <p id="protocolDetail" class="directive-detail">Quand le temps devient critique, une stabilisation peut sauver le run.</p>
+              <div class="directive-card">
+                <h4>Directive</h4>
+                <p id="directiveTitle" class="directive-title">Aucune directive active.</p>
+                <p id="directiveDetail" class="directive-detail">Passe un niveau pour déclencher une nouvelle règle de secteur.</p>
+              </div>
+              <div class="directive-card focus-card">
+                <h4>Famille en vedette</h4>
+                <p id="focusTitle" class="directive-title">Aucune famille ciblée.</p>
+                <p id="focusDetail" class="directive-detail">Les prismes mis en avant rapportent plus et rechargent mieux les systèmes.</p>
+              </div>
+              <div class="directive-card protocol-card">
+                <h4>Protocole d'urgence</h4>
+                <p id="protocolTitle" class="directive-title">Charge de secours indisponible.</p>
+                <p id="protocolDetail" class="directive-detail">Quand le temps devient critique, une stabilisation peut sauver le run.</p>
+              </div>
             </div>
           </section>
-        </aside>
+
+          <div class="archive-cache" hidden aria-hidden="true">
+            <div id="archiveSummary" class="archive-summary">Jeux: 0 · Missions: 0 · Pulses: 0</div>
+            <ul id="achievementList" class="achievement-list" aria-label="Succès débloqués">
+              <li class="achievement-entry">
+                <span class="achievement-label">Chargement...</span>
+                <span class="achievement-detail">Lecture des archives locales.</span>
+              </li>
+            </ul>
+          </div>
+
+          <p class="footer-note">Jeu autonome en un HTML · smoke tests via npm test</p>
+        </section>
       </section>
     </main>
 
