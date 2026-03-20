@@ -1804,6 +1804,7 @@
             this.flowCharge = 0;
             this.flowActive = 0;
             this.lastActionTime = 0;
+            this.hoverCell = null;
             this.activeMission = null;
             this.missionsCompleted = 0;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
@@ -2103,6 +2104,7 @@
             this.canvas.addEventListener("pointermove", e => this.onPointerMove(e));
             this.canvas.addEventListener("pointerup", e => this.onPointerUp(e));
             this.canvas.addEventListener("pointercancel", () => this.resetPointer());
+            this.canvas.addEventListener("pointerleave", () => { this.hoverCell = null; this.resetPointer(); });
             window.addEventListener("keydown", e => this.onKeyDown(e));
           }
 
@@ -2128,6 +2130,7 @@
             this.pendingSwap = null; this.comboChain = 0;
             this.pulseCharge = 0; this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0; this.lastActionTime = 0;
+            this.hoverCell = null;
             this.missionsCompleted = 0; this.activeMission = this.createMission();
             this.statusText = "Fais ton premier échange pour déclencher la réaction.";
             this.stateLabel = "En jeu";
@@ -2154,6 +2157,7 @@
             this.stateLabel = "Fin"; this.statusText = "Temps écoulé. Relance pour une nouvelle grille.";
             this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0;
+            this.hoverCell = null;
             this.board.selectedCell = null; this.resetPointer(); this.audio.playGameOver();
             this.triggerShake(10, 0.5);
             this.triggerFlash(255, 80, 80, 0.9);
@@ -2256,9 +2260,25 @@
           }
 
           onKeyDown(e) {
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H"].includes(e.key)) e.preventDefault();
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "Escape"].includes(e.key)) e.preventDefault();
             if (e.key === " ") {
               this.togglePause();
+              return;
+            }
+            if (e.key === "Escape") {
+              if (this.pulseMode) {
+                this.pulseMode = false;
+                this.stateLabel = "En jeu";
+                this.statusText = "Pulse annulée.";
+                this.updateUi();
+                return;
+              }
+              if (this.board.selectedCell) {
+                this.board.selectedCell = null;
+                this.stateLabel = "En jeu";
+                this.statusText = "Sélection annulée.";
+                this.updateUi();
+              }
               return;
             }
             if (e.key === "h" || e.key === "H") {
@@ -2284,9 +2304,10 @@
           }
 
           onPointerMove(e) {
+            const pt = this.ptFromEvent(e);
+            this.hoverCell = this.canInput() ? this.board.cellFromPoint(pt.x, pt.y) : null;
             if (!this.inputDrag.active || this.inputDrag.pointerId !== e.pointerId || !this.canInput()) return;
             if (this.pulseMode) return;
-            const pt = this.ptFromEvent(e);
             const dx = pt.x - this.inputDrag.startPoint.x, dy = pt.y - this.inputDrag.startPoint.y;
             const thresh = this.board.layout.cellSize * 0.25;
             if (Math.abs(dx) < thresh && Math.abs(dy) < thresh) return;
@@ -2313,6 +2334,16 @@
             return { x: e.clientX - rect.left, y: e.clientY - rect.top };
           }
 
+          getPulseTargets(cell) {
+            const origin = this.board.grid[cell.row]?.[cell.col];
+            if (!origin) return [];
+            const targets = [];
+            this.board.forEach(tile => {
+              if (!tile.removing && tile.kind === origin.kind) targets.push({ row: tile.row, col: tile.col });
+            });
+            return targets;
+          }
+
           handleTap(cell) {
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
             if (this.pulseMode) { this.firePulse(cell); return; }
@@ -2332,10 +2363,7 @@
             const origin = this.board.grid[cell.row]?.[cell.col];
             if (!origin) return;
 
-            const targets = [];
-            this.board.forEach(tile => {
-              if (!tile.removing && tile.kind === origin.kind) targets.push({ row: tile.row, col: tile.col });
-            });
+            const targets = this.getPulseTargets(cell);
             if (!targets.length) return;
 
             this.board.selectedCell = null;
@@ -2702,6 +2730,49 @@
               invalidSwapPulse: this.invalidSwapPulse,
               urgency: this.hasBegun && this.phase !== "gameover" ? clamp((12 - this.timeLeft) / 12, 0, 1) : 0
             });
+
+            if (this.hintCells.length === 2) {
+              const first = this.board.getCellCenter(this.hintCells[0].row, this.hintCells[0].col);
+              const second = this.board.getCellCenter(this.hintCells[1].row, this.hintCells[1].col);
+              this.ctx.save();
+              this.ctx.strokeStyle = "rgba(68,223,255,0.42)";
+              this.ctx.lineWidth = 4;
+              this.ctx.setLineDash([10, 8]);
+              this.ctx.shadowBlur = 18;
+              this.ctx.shadowColor = "rgba(68,223,255,0.34)";
+              this.ctx.beginPath();
+              this.ctx.moveTo(first.x, first.y);
+              this.ctx.lineTo(second.x, second.y);
+              this.ctx.stroke();
+              this.ctx.restore();
+            }
+
+            if (this.pulseMode) {
+              const previewCell = this.hoverCell || this.board.selectedCell;
+              if (previewCell) {
+                const targets = this.getPulseTargets(previewCell);
+                const { boardX, boardY, cellSize } = this.board.layout;
+                this.ctx.save();
+                targets.forEach(target => {
+                  rrPath(this.ctx, boardX + target.col * cellSize + 4, boardY + target.row * cellSize + 4, cellSize - 8, cellSize - 8, cellSize * 0.24);
+                  this.ctx.strokeStyle = "rgba(140,247,255,0.34)";
+                  this.ctx.lineWidth = 2;
+                  this.ctx.stroke();
+                });
+                this.ctx.restore();
+
+                const center = this.board.getCellCenter(previewCell.row, previewCell.col);
+                this.ctx.save();
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillStyle = "rgba(220,251,255,0.95)";
+                this.ctx.font = "700 15px 'Orbitron','Segoe UI',sans-serif";
+                this.ctx.shadowBlur = 18;
+                this.ctx.shadowColor = "rgba(68,223,255,0.38)";
+                this.ctx.fillText(`${targets.length} cibles`, center.x, center.y - cellSize * 0.72);
+                this.ctx.restore();
+              }
+            }
 
             // Particles & celebrations
             this.particles.draw(this.ctx);
