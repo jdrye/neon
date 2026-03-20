@@ -893,7 +893,7 @@
         </div>
         <div class="control-row">
           <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
-          <button id="hintButton" class="pill-button" type="button">💡 Indice</button>
+          <button id="hintButton" class="pill-button" type="button">🔍 Scanner</button>
           <button id="rerollButton" class="pill-button" type="button" disabled>🌀 Reroll 0</button>
           <button id="pulseButton" class="pill-button" type="button" aria-pressed="false" disabled>⚡ Pulse 0%</button>
           <button id="pauseButton" class="pill-button" type="button" aria-pressed="false">⏸ Pause</button>
@@ -1026,7 +1026,7 @@
               <li>Tactile : glisse directement dans la direction voulue.</li>
               <li>Clavier : flèches pour naviguer, Entrée pour sélectionner, Espace pour pause.</li>
               <li>Auto-mélange si aucun coup possible.</li>
-              <li>Après 5s d'inactivité : un indice s'affiche.</li>
+              <li>Après 5s d'inactivité : le scanner suggère le meilleur coup.</li>
               <li>Quand la Pulse atteint 100%, vise une forme pour purger tout son type.</li>
             </ul>
           </section>
@@ -1422,8 +1422,46 @@
           getKindsMatrix() { return this.grid.map(row => row.map(t => t.kind)); }
           hasMoves() { return this.matrixHasMoves(this.getKindsMatrix()); }
 
-          findHintMove() {
+          getMatchSummary(m) {
+            let cells = 0;
+            let longest = 0;
+            let lines = 0;
+            const seen = new Set();
+            for (let r = 0; r < this.rows; r++) {
+              let s = 0;
+              while (s < this.cols) {
+                let e = s + 1;
+                while (e < this.cols && m[r][e] === m[r][s]) e++;
+                const len = e - s;
+                if (len >= 3) {
+                  lines++;
+                  longest = Math.max(longest, len);
+                  for (let c = s; c < e; c++) seen.add(`${r}:${c}`);
+                }
+                s = e;
+              }
+            }
+            for (let c = 0; c < this.cols; c++) {
+              let s = 0;
+              while (s < this.rows) {
+                let e = s + 1;
+                while (e < this.rows && m[e][c] === m[s][c]) e++;
+                const len = e - s;
+                if (len >= 3) {
+                  lines++;
+                  longest = Math.max(longest, len);
+                  for (let r = s; r < e; r++) seen.add(`${r}:${c}`);
+                }
+                s = e;
+              }
+            }
+            cells = seen.size;
+            return { cells, longest, lines };
+          }
+
+          findHintMove(focusKind = null) {
             const m = this.getKindsMatrix();
+            let best = null;
             for (let r = 0; r < this.rows; r++) {
               for (let c = 0; c < this.cols; c++) {
                 for (const d of [{r:0,c:1},{r:1,c:0}]) {
@@ -1431,11 +1469,21 @@
                   if (!this.inBounds(nr, nc)) continue;
                   const cl = m.map(l => l.slice());
                   [cl[r][c], cl[nr][nc]] = [cl[nr][nc], cl[r][c]];
-                  if (this.matrixHasMatch(cl)) return [{row:r,col:c},{row:nr,col:nc}];
+                  if (!this.matrixHasMatch(cl)) continue;
+                  const summary = this.getMatchSummary(cl);
+                  const focusHits = focusKind === null ? 0 : [cl[r][c], cl[nr][nc]].filter(kind => kind === focusKind).length;
+                  const score = summary.cells * 10 + summary.longest * 18 + summary.lines * 12 + focusHits * 9;
+                  const candidate = {
+                    cells: [{row:r,col:c},{row:nr,col:nc}],
+                    score,
+                    summary,
+                    focusHits
+                  };
+                  if (!best || candidate.score > best.score) best = candidate;
                 }
               }
             }
-            return [];
+            return best;
           }
 
           shuffleKinds() {
@@ -1979,6 +2027,7 @@
 
             // Hint
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            this.hintInsight = "";
             this.paused = false;
 
             // Combo indicator timer
@@ -2065,10 +2114,12 @@
             const boostTime = Math.min(120 - this.timeLeft, 6 + Math.min(4, this.level));
             this.timeLeft += Math.max(0, boostTime);
             this.addPulseCharge(18 + this.level * 2, { allowReadyEffect: false });
-            this.hintCells = this.board.findHintMove();
+            const analysis = this.board.findHintMove(this.focusKind);
+            this.hintCells = analysis ? analysis.cells : [];
             this.hintShown = this.hintCells.length > 0;
+            this.hintInsight = analysis ? this.describeHint(analysis) : "";
             this.stateLabel = "Sauvetage";
-            this.statusText = `Protocole d'urgence: +${Math.round(boostTime)}s, temps ralenti et trajectoire stabilisée.`;
+            this.statusText = `Protocole d'urgence: +${Math.round(boostTime)}s, temps ralenti et trajectoire stabilisée.${this.hintInsight ? " " + this.hintInsight : ""}`;
             this.triggerShake(6, 0.22);
             this.triggerFlash(255, 124, 92, 0.34);
             this.showLevelBanner("Urgence");
@@ -2208,6 +2259,16 @@
             }
 
             return { scoreDelta, timeDelta, pulseDelta, flowDelta, summary };
+          }
+
+          describeHint(analysis) {
+            if (!analysis) return "";
+            const parts = [];
+            if (analysis.summary.longest >= 5) parts.push("Ligne de 5 détectée.");
+            else if (analysis.summary.longest === 4) parts.push("Ligne de 4 détectée.");
+            else parts.push(`Ouverture à ${analysis.summary.cells} prismes.`);
+            if (analysis.focusHits > 0) parts.push("Le coup sert aussi la famille en vedette.");
+            return `Scanner: ${parts.join(" ")}`;
           }
 
           performTacticalReroll() {
@@ -2556,6 +2617,7 @@
             this.shake = { x:0, y:0, duration:0, amount:0 };
             this.flashAmt = 0;
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            this.hintInsight = "";
             this.paused = false;
             this.comboIndicatorTimer = 0;
             this.levelBannerTimer = 0;
@@ -2677,14 +2739,16 @@
             if (!this.hasBegun || this.phase === "gameover") return;
             this.pulseMode = false;
             this.hintTimer = 0;
-            this.hintCells = this.board.findHintMove();
+            const analysis = this.board.findHintMove(this.focusKind);
+            this.hintCells = analysis ? analysis.cells : [];
             this.hintShown = this.hintCells.length > 0;
+            this.hintInsight = analysis ? this.describeHint(analysis) : "";
             if (this.hintCells.length > 0) {
-              this.stateLabel = "Indice";
-              this.statusText = "Indice affiché: tente ce mouvement pour ouvrir une cascade.";
+              this.stateLabel = "Scanner";
+              this.statusText = this.hintInsight || "Scanner affiché: tente ce mouvement pour ouvrir une cascade.";
               this.audio.playHint();
             } else {
-              this.statusText = "Pas d'indice immédiat, un mélange arrive.";
+              this.statusText = "Scanner vide: aucun coup fort détecté, un mélange arrive.";
             }
             this.updateUi();
           }
@@ -2708,6 +2772,7 @@
             this.hintTimer = 0;
             this.hintCells = [];
             this.hintShown = false;
+            this.hintInsight = "";
             this.stateLabel = this.pulseMode ? "Pulse" : "Sélection";
             this.statusText = this.pulseMode
               ? "Pulse armée au clavier. Vise une famille puis valide avec Entrée."
@@ -2805,7 +2870,7 @@
           }
 
           handleTap(cell) {
-            this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            this.hintTimer = 0; this.hintCells = []; this.hintShown = false; this.hintInsight = "";
             if (this.pulseMode) { this.firePulse(cell); return; }
             if (!this.board.selectedCell) {
               this.board.selectedCell = cell;
@@ -2890,7 +2955,7 @@
           trySwap(a, b) {
             if (!this.canInput() || !this.board.areAdj(a, b)) return;
             this.board.selectedCell = null;
-            this.hintTimer = 0; this.hintCells = []; this.hintShown = false;
+            this.hintTimer = 0; this.hintCells = []; this.hintShown = false; this.hintInsight = "";
             this.lastMoveAnchor = { row: (a.row+b.row)/2, col: (a.col+b.col)/2 };
             this.pendingSwap = { first: {row:a.row,col:a.col}, second: {row:b.row,col:b.col} };
             this.board.swapTiles(a, b);
@@ -3101,8 +3166,10 @@
             if (!this.canInput()) { this.hintTimer = 0; return; }
             this.hintTimer += dt;
             if (this.hintTimer > 5 && !this.hintShown) {
-              this.hintCells = this.board.findHintMove();
+              const analysis = this.board.findHintMove(this.focusKind);
+              this.hintCells = analysis ? analysis.cells : [];
               this.hintShown = true;
+              this.hintInsight = analysis ? this.describeHint(analysis) : "";
               if (this.hintCells.length > 0) this.audio.playHint();
             }
           }
