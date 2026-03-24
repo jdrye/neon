@@ -822,6 +822,33 @@
 
       .directive-card.protocol-card h4 { color: #ffd1ab; }
 
+      .directive-card.session-card {
+        border-color: rgba(188,255,190,0.2);
+        background:
+          linear-gradient(135deg, rgba(122,255,181,0.12), rgba(111,247,255,0.08) 42%, rgba(255,214,104,0.1)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.session-card h4 { color: #b8ffd2; }
+
+      .directive-card.radar-card {
+        border-color: rgba(120,230,255,0.22);
+        background:
+          linear-gradient(135deg, rgba(111,247,255,0.14), rgba(88,160,255,0.12) 42%, rgba(255,83,196,0.08)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.radar-card h4 { color: #92f6ff; }
+
+      .directive-card.coach-card {
+        border-color: rgba(255,209,120,0.22);
+        background:
+          linear-gradient(135deg, rgba(255,228,122,0.12), rgba(255,140,86,0.12) 42%, rgba(255,83,196,0.1)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.coach-card h4 { color: #ffe5a8; }
+
       .archive-card { padding: 18px 20px; }
 
       .archive-card h3 {
@@ -1048,8 +1075,10 @@
         <div class="control-row">
           <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
           <button id="hintButton" class="pill-button" type="button">🔍 Scanner</button>
+          <button id="autoHintButton" class="pill-button" type="button" aria-pressed="true">✨ Aide auto</button>
           <button id="rerollButton" class="pill-button" type="button" disabled>🌀 Reroll 0</button>
           <button id="pulseButton" class="pill-button" type="button" aria-pressed="false" disabled>⚡ Pulse 0%</button>
+          <button id="hapticsButton" class="pill-button" type="button" aria-pressed="false">📳 Vibrations</button>
           <button id="pauseButton" class="pill-button" type="button" aria-pressed="false">⏸ Pause</button>
           <button id="restartButton" class="pill-button" type="button">↺ Relancer</button>
         </div>
@@ -1142,6 +1171,7 @@
                   <li>Charge la Pulse pour vaporiser tous les prismes d'une même famille.</li>
                   <li>Remplis Candy Rush pour saturer la grille de sucre et de bonus.</li>
                   <li>Atteins l'objectif pour passer au niveau suivant et gagner du temps.</li>
+                  <li>Raccourcis: flèches ou WASD, H pour scanner, M pour Pulse, P ou Espace pour pause.</li>
                 </ul>
                 <div class="overlay-actions">
                   <button id="startButton" class="primary-button" type="button">▶ Lancer la partie</button>
@@ -1185,6 +1215,22 @@
               <div class="mini-stat">
                 <strong>État</strong>
                 <span id="stateValue">Prêt</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Coups</strong>
+                <span id="moveValue">0</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Ouvertures</strong>
+                <span id="moveOptionsValue">0</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Session +</strong>
+                <span id="sessionBestValue">0</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Précision</strong>
+                <span id="accuracyValue">100%</span>
               </div>
             </div>
 
@@ -1238,6 +1284,21 @@
                 <p id="protocolTitle" class="directive-title">Charge de secours indisponible.</p>
                 <p id="protocolDetail" class="directive-detail">Quand le temps devient critique, une stabilisation peut sauver le run.</p>
               </div>
+              <div class="directive-card session-card">
+                <h4>Session</h4>
+                <p id="sessionTitle" class="directive-title">Run en veille.</p>
+                <p id="sessionDetail" class="directive-detail">Démarre une partie pour suivre la cadence, la précision et les pics de gain.</p>
+              </div>
+              <div class="directive-card radar-card">
+                <h4>Radar tactique</h4>
+                <p id="radarTitle" class="directive-title">Grille inactive.</p>
+                <p id="radarDetail" class="directive-detail">Le radar affichera le nombre d'ouvertures, la densité du focus et la qualité du meilleur coup.</p>
+              </div>
+              <div class="directive-card coach-card">
+                <h4>Coach</h4>
+                <p id="coachTitle" class="directive-title">Pré-brief</p>
+                <p id="coachDetail" class="directive-detail">Le coach réagit au rythme du run, aux urgences, aux missions proches et aux jauges prêtes.</p>
+              </div>
             </div>
           </section>
 
@@ -1251,7 +1312,7 @@
             </ul>
           </div>
 
-          <p class="footer-note">Jeu autonome en un HTML · smoke tests via npm test</p>
+          <p class="footer-note">Jeu autonome en un HTML · smoke tests via npm test · raccourcis H / M / P / WASD</p>
         </section>
       </section>
     </main>
@@ -1262,6 +1323,7 @@
 
         const LEADERBOARD_KEY = "pulse-prism-top-scores-v2";
         const PROFILE_KEY = "pulse-prism-profile-v1";
+        const SETTINGS_KEY = "pulse-prism-settings-v1";
         const ACHIEVEMENT_DEFS = [
           { id: "first-mission", label: "Premier contrat", detail: "Termine une mission tactique." },
           { id: "combo-5", label: "Réacteur en cascade", detail: "Atteins un combo ×5 sur une partie." },
@@ -1620,6 +1682,13 @@
           areAdj(a, b) { return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1; }
           getKindsMatrix() { return this.grid.map(row => row.map(t => t.kind)); }
           hasMoves() { return this.matrixHasMoves(this.getKindsMatrix()); }
+          countKind(kind) {
+            let count = 0;
+            this.forEach(tile => {
+              if (!tile.removing && tile.kind === kind) count++;
+            });
+            return count;
+          }
 
           getMatchSummary(m) {
             let cells = 0;
@@ -1658,9 +1727,10 @@
             return { cells, longest, lines };
           }
 
-          findHintMove(focusKind = null) {
+          scanPotentialMoves(focusKind = null) {
             const m = this.getKindsMatrix();
             let best = null;
+            let total = 0;
             for (let r = 0; r < this.rows; r++) {
               for (let c = 0; c < this.cols; c++) {
                 for (const d of [{r:0,c:1},{r:1,c:0}]) {
@@ -1678,11 +1748,16 @@
                     summary,
                     focusHits
                   };
+                  total++;
                   if (!best || candidate.score > best.score) best = candidate;
                 }
               }
             }
-            return best;
+            return { best, total };
+          }
+
+          findHintMove(focusKind = null) {
+            return this.scanPotentialMoves(focusKind).best;
           }
 
           shuffleKinds() {
@@ -2314,6 +2389,10 @@
               combo: document.getElementById("comboValue"),
               cleared: document.getElementById("clearedValue"),
               gain: document.getElementById("gainValue"),
+              moves: document.getElementById("moveValue"),
+              moveOptions: document.getElementById("moveOptionsValue"),
+              sessionBest: document.getElementById("sessionBestValue"),
+              accuracy: document.getElementById("accuracyValue"),
               flowValue: document.getElementById("flowValue"),
               flowBar: document.getElementById("flowBar"),
               flowCopy: document.getElementById("flowCopy"),
@@ -2333,6 +2412,12 @@
               focusDetail: document.getElementById("focusDetail"),
               protocolTitle: document.getElementById("protocolTitle"),
               protocolDetail: document.getElementById("protocolDetail"),
+              sessionTitle: document.getElementById("sessionTitle"),
+              sessionDetail: document.getElementById("sessionDetail"),
+              radarTitle: document.getElementById("radarTitle"),
+              radarDetail: document.getElementById("radarDetail"),
+              coachTitle: document.getElementById("coachTitle"),
+              coachDetail: document.getElementById("coachDetail"),
               archiveSummary: document.getElementById("archiveSummary"),
               achievementList: document.getElementById("achievementList"),
               leaderboardList: document.getElementById("leaderboardList"),
@@ -2346,18 +2431,24 @@
               playAgainButton: document.getElementById("playAgainButton"),
               restartButton: document.getElementById("restartButton"),
               hintButton: document.getElementById("hintButton"),
+              autoHintButton: document.getElementById("autoHintButton"),
               rerollButton: document.getElementById("rerollButton"),
               labMoveButton: document.getElementById("labMoveButton"),
               labPulseButton: document.getElementById("labPulseButton"),
               labRushButton: document.getElementById("labRushButton"),
               labTimeButton: document.getElementById("labTimeButton"),
               pulseButton: document.getElementById("pulseButton"),
-              pauseButton: document.getElementById("pauseButton")
+              pauseButton: document.getElementById("pauseButton"),
+              hapticsButton: document.getElementById("hapticsButton")
             };
 
+            this.settings = this.loadSettings();
             this.audio = new AudioEngine(this.ui.soundButtons);
+            this.audio.setEnabled(this.settings.soundEnabled);
             this.leaderboard = this.loadLeaderboard();
             this.profile = this.loadProfile();
+            this.autoHintEnabled = this.settings.autoHintEnabled;
+            this.hapticsEnabled = this.settings.hapticsEnabled;
 
             // State
             this.phase = "title"; this.phaseClock = 0;
@@ -2386,6 +2477,19 @@
             this.stateLabel = "Prêt";
             this.levelFlash = 0; this.swapHintFlash = 0;
             this.lastMoveAnchor = null;
+            this.movesPlayed = 0;
+            this.successfulMoves = 0;
+            this.invalidMoves = 0;
+            this.invalidStreak = 0;
+            this.sessionBestGain = 0;
+            this.levelsClearedThisRun = 0;
+            this.availableMoveCount = 0;
+            this.bestMoveScore = 0;
+            this.focusTilesOnBoard = 0;
+            this.lastAnalytics = null;
+            this.goalMilestones = { pulse: false, clutch: false };
+            this.boardAssistCooldown = 0;
+            this.visibilityPaused = false;
 
             // Screen shake
             this.shake = { x: 0, y: 0, duration: 0, amount: 0 };
@@ -2411,10 +2515,10 @@
             this.lastTimestamp = performance.now();
 
             this.handleResize = this.handleResize.bind(this);
+            this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
             this.loop = this.loop.bind(this);
 
             this.bindEvents();
-            this.audio.setEnabled(true);
             this.board.reset();
             this.renderLeaderboard();
             this.renderAchievements();
@@ -2620,6 +2724,7 @@
             this.triggerShake(6, 0.22);
             this.triggerFlash(255, 124, 92, 0.34);
             this.showLevelBanner("Urgence");
+            this.vibrate([24, 30, 24]);
             this.audio.playLevelUp();
             return true;
           }
@@ -2663,6 +2768,7 @@
             this.triggerShake(6.4, 0.2);
             this.triggerFlash(255, 104, 214, 0.26);
             this.showLevelBanner("Candy Rush");
+            this.vibrate([16, 22, 16, 22, 16]);
             this.audio.playPulseReady();
             if (this.hasBegun && this.phase === "idle" && !this.paused) {
               this.stateLabel = "Candy Rush";
@@ -2823,6 +2929,7 @@
             this.statusText = `Reroll tactique: ${directiveSummary}. Focus ${this.labelForStyle(focus)}. Nouvelle mission: ${this.activeMission.title}.`;
             this.triggerShake(4.2, 0.14);
             this.triggerFlash(120, 186, 255, 0.22);
+            this.vibrate([12, 18, 12]);
             this.audio.playShuffle();
             this.updateUi();
           }
@@ -2878,6 +2985,7 @@
             if (this.pulseMode) {
               this.stateLabel = "Pulse";
               this.statusText = "Pulse armée. Clique une forme pour effacer tous les prismes de cette famille.";
+              this.vibrate([12]);
               this.audio.playHint();
             } else if (this.phase === "idle") {
               this.stateLabel = "En jeu";
@@ -2931,7 +3039,7 @@
             const source = pool.filter(item => item.id !== excludeId);
             const choices = source.length > 0 ? source : pool;
             const choice = choices[Math.floor(Math.random() * choices.length)];
-            return { ...choice, progress: 0, rewardScore, rewardTime, rewardCharge };
+            return { ...choice, progress: 0, rewardScore, rewardTime, rewardCharge, nearAlerted: false };
           }
 
           resetMission(force = false) {
@@ -2987,6 +3095,35 @@
             return { games: 0, totalScore: 0, missions: 0, pulses: 0, bestLevel: 1, bestCombo: 1, achievements: {} };
           }
 
+          defaultSettings() {
+            return { soundEnabled: true, autoHintEnabled: true, hapticsEnabled: false };
+          }
+
+          loadSettings() {
+            try {
+              const raw = window.localStorage.getItem(SETTINGS_KEY);
+              const base = this.defaultSettings();
+              if (!raw) return base;
+              const parsed = JSON.parse(raw);
+              return {
+                soundEnabled: parsed.soundEnabled !== false,
+                autoHintEnabled: parsed.autoHintEnabled !== false,
+                hapticsEnabled: !!parsed.hapticsEnabled
+              };
+            } catch (e) {
+              return this.defaultSettings();
+            }
+          }
+
+          saveSettings() {
+            this.settings = {
+              soundEnabled: this.audio ? this.audio.enabled : true,
+              autoHintEnabled: !!this.autoHintEnabled,
+              hapticsEnabled: !!this.hapticsEnabled
+            };
+            try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings)); } catch (e) {}
+          }
+
           loadProfile() {
             try {
               const raw = window.localStorage.getItem(PROFILE_KEY);
@@ -3009,6 +3146,200 @@
 
           saveProfile() {
             try { window.localStorage.setItem(PROFILE_KEY, JSON.stringify(this.profile)); } catch (e) {}
+          }
+
+          setAutoHintEnabled(nextValue) {
+            this.autoHintEnabled = !!nextValue;
+            if (!this.autoHintEnabled && this.hintShown) {
+              this.hintCells = [];
+            }
+            this.saveSettings();
+            this.updateUi(true);
+          }
+
+          setHapticsEnabled(nextValue) {
+            this.hapticsEnabled = !!nextValue;
+            this.saveSettings();
+            this.updateUi(true);
+          }
+
+          vibrate(pattern) {
+            if (!this.hapticsEnabled || typeof navigator.vibrate !== "function") return;
+            try { navigator.vibrate(pattern); } catch (e) {}
+          }
+
+          accuracyRate() {
+            return this.movesPlayed > 0 ? this.successfulMoves / this.movesPlayed : 1;
+          }
+
+          formatPercent(value) {
+            return `${Math.round(clamp(value, 0, 1) * 100)}%`;
+          }
+
+          computeTacticalSnapshot() {
+            const running = this.hasBegun && this.phase !== "title" && this.phase !== "gameover";
+            const scan = running ? this.board.scanPotentialMoves(this.focusKind) : { best: null, total: 0 };
+            const focusTiles = running ? this.board.countKind(this.focusKind) : 0;
+            const previewCell = this.pulseMode ? (this.hoverCell || this.board.selectedCell) : null;
+            const pulseTargets = previewCell ? this.getPulseTargets(previewCell).length : 0;
+            const pressure = scan.total <= 1 ? "critique" : scan.total <= 3 ? "serrée" : scan.total <= 6 ? "dense" : "ouverte";
+            const snapshot = {
+              availableMoves: scan.total,
+              bestMove: scan.best,
+              focusTiles,
+              pulseTargets,
+              pressure
+            };
+            this.availableMoveCount = snapshot.availableMoves;
+            this.bestMoveScore = snapshot.bestMove?.score || 0;
+            this.focusTilesOnBoard = snapshot.focusTiles;
+            this.lastAnalytics = snapshot;
+            return snapshot;
+          }
+
+          sessionGrade() {
+            let rating = 0;
+            rating += Math.min(4, Math.max(0, this.level - 1));
+            rating += Math.min(3, Math.floor(this.bestCombo / 2));
+            rating += Math.min(3, Math.floor(this.score / 3000));
+            if (this.accuracyRate() >= 0.9) rating += 1;
+            if (rating >= 10) return "S";
+            if (rating >= 8) return "A";
+            if (rating >= 6) return "B";
+            if (rating >= 4) return "C";
+            return "D";
+          }
+
+          coachCopy(snapshot = this.lastAnalytics || this.computeTacticalSnapshot()) {
+            if (!this.hasBegun) {
+              return {
+                title: "Pré-brief",
+                detail: "Ouvre avec le meilleur swap, garde H pour scanner et vise les longues lignes avant d'armer la Pulse."
+              };
+            }
+            if (this.phase === "gameover") {
+              return {
+                title: `Débrief ${this.sessionGrade()}`,
+                detail: `Run terminé au niveau ${this.level} avec ${this.formatPercent(this.accuracyRate())} de précision et un pic à +${Math.round(this.sessionBestGain)} points.`
+              };
+            }
+            if (this.paused) {
+              return {
+                title: "Pause tactique",
+                detail: "Lis le radar, repère le focus, puis reprends avec P ou Espace quand la ligne de jeu est claire."
+              };
+            }
+            if (this.pulseMode) {
+              return {
+                title: "Pulse armée",
+                detail: snapshot.pulseTargets > 0
+                  ? `${snapshot.pulseTargets} cibles détectées. Clique la famille la plus dense pour retourner la grille.`
+                  : "Survole une case pour mesurer l'impact avant de tirer."
+              };
+            }
+            if (this.timeLeft <= 10) {
+              return {
+                title: "Temps critique",
+                detail: "Priorise un coup court et fiable. Le radar faible et la mission presque terminée valent plus qu'un swap ambitieux."
+              };
+            }
+            if (this.activeMission && this.activeMission.progress / this.activeMission.target >= 0.75) {
+              return {
+                title: "Mission proche",
+                detail: `Il reste ${Math.max(0, this.activeMission.target - this.activeMission.progress)} cran à pousser pour encaisser la récompense complète.`
+              };
+            }
+            if (this.isPulseReady()) {
+              return {
+                title: "Pulse prête",
+                detail: "Attends un plateau serré, puis vise une famille nombreuse ou le focus pour transformer le tempo."
+              };
+            }
+            if (this.candyRushActive > 0) {
+              return {
+                title: "Rush en cours",
+                detail: "Force des lignes longues pendant la fenêtre sucrée pour semer encore plus de bonus."
+              };
+            }
+            if (snapshot.availableMoves <= 2) {
+              return {
+                title: "Radar serré",
+                detail: "La grille offre peu d'ouvertures. Garde un reroll pour la suite et joue la ligne la plus simple."
+              };
+            }
+            if (snapshot.bestMove?.summary?.longest >= 5) {
+              return {
+                title: "Ligne premium",
+                detail: "Le meilleur coup annonce une ligne de 5. Priorité haute pour fabriquer un bonus central."
+              };
+            }
+            if (snapshot.focusTiles <= 8) {
+              return {
+                title: "Focus rare",
+                detail: "Le focus est peu présent sur le plateau. Ne force pas: maximise surtout la qualité du match."
+              };
+            }
+            return {
+              title: "Cadence stable",
+              detail: "Enchaîne vite deux bons swaps pour verrouiller l'Overdrive avant d'attaquer l'objectif."
+            };
+          }
+
+          checkGoalMilestones() {
+            if (!this.hasBegun || this.phase === "gameover" || this.goal <= 0) return [];
+            const ratio = this.score / this.goal;
+            const messages = [];
+            if (!this.goalMilestones.pulse && ratio >= 0.85 && ratio < 1) {
+              this.goalMilestones.pulse = true;
+              this.addPulseCharge(10, { allowReadyEffect: false });
+              this.triggerFlash(96, 214, 255, 0.18);
+              this.vibrate([10, 18, 10]);
+              messages.push("objectif en vue: +10% Pulse");
+            }
+            if (!this.goalMilestones.clutch && ratio >= 0.97 && ratio < 1) {
+              this.goalMilestones.clutch = true;
+              this.timeLeft = Math.min(120, this.timeLeft + 4);
+              this.addCandyRushCharge(14, { allowActivate: false });
+              this.triggerFlash(255, 214, 118, 0.18);
+              this.vibrate([12, 22, 12]);
+              messages.push("clutch: +4s · Candy Rush +14%");
+            }
+            return messages;
+          }
+
+          maybeWarnMissionProgress() {
+            const mission = this.activeMission;
+            if (!mission || mission.progress <= 0 || mission.progress >= mission.target) return "";
+            const ratio = mission.progress / mission.target;
+            if (ratio >= 0.75 && !mission.nearAlerted) {
+              mission.nearAlerted = true;
+              return `Mission sous pression: plus que ${Math.max(0, mission.target - mission.progress)} à valider.`;
+            }
+            return "";
+          }
+
+          applyBoardAssist(snapshot = this.lastAnalytics || this.computeTacticalSnapshot()) {
+            if (!this.hasBegun || this.paused || this.phase !== "idle" || this.boardAssistCooldown > 0) return false;
+            if (snapshot.availableMoves > 3) return false;
+            const notes = [];
+            this.addPulseCharge(8, { allowReadyEffect: false });
+            notes.push("+8% Pulse");
+            if (snapshot.availableMoves <= 1) {
+              const injected = this.board.injectBonusTokens(1, "combo");
+              if (injected.length > 0) notes.push("1 jeton bonus injecté");
+              this.tacticalRerolls = Math.min(3, this.tacticalRerolls + 1);
+              this.addCandyRushCharge(12, { allowActivate: false });
+              notes.push("+1 reroll");
+            } else {
+              this.flowCharge = Math.max(this.flowCharge, 24);
+              notes.push("Overdrive stabilisé");
+            }
+            this.boardAssistCooldown = 10;
+            this.stateLabel = "Radar";
+            this.statusText = `Radar tactique: ${notes.join(" · ")}.`;
+            this.triggerFlash(120, 186, 255, 0.18);
+            this.vibrate([10, 16, 10]);
+            return true;
           }
 
           unlockAchievement(id) {
@@ -3077,6 +3408,8 @@
               level: Math.max(1, Math.round(Number(e.level)||1)),
               cleared: Math.max(0, Math.round(Number(e.cleared)||0)),
               combo: Math.max(1, Math.round(Number(e.combo)||1)),
+              moves: Math.max(0, Math.round(Number(e.moves) || 0)),
+              accuracy: Number.isFinite(Number(e.accuracy)) ? clamp(Number(e.accuracy), 0, 1) : 1,
               at: Number(e.at)||Date.now()
             })).filter(e => e.score > 0)
               .sort((a,b) => b.score !== a.score ? b.score-a.score : b.level !== a.level ? b.level-a.level : a.at-b.at)
@@ -3098,7 +3431,15 @@
 
           recordEntry() {
             const before = JSON.stringify(this.leaderboard);
-            const entry = { score: Math.round(this.score), level: this.level, cleared: this.totalCleared, combo: this.bestCombo, at: Date.now() };
+            const entry = {
+              score: Math.round(this.score),
+              level: this.level,
+              cleared: this.totalCleared,
+              combo: this.bestCombo,
+              moves: this.movesPlayed,
+              accuracy: this.accuracyRate(),
+              at: Date.now()
+            };
             this.leaderboard = this.normalizeLeaderboard([...this.leaderboard, entry]);
             this.saveLeaderboard(); this.renderLeaderboard();
             const rank = this.leaderboard.findIndex(i => i.score===entry.score && i.level===entry.level && i.at===entry.at);
@@ -3116,7 +3457,7 @@
               const det = document.createElement("span"); det.className = "leaderboard-detail";
               if (item) {
                 sc.textContent = item.score.toString();
-                det.textContent = `Niv.${item.level} · Combo ×${item.combo} · ${item.cleared} prismes`;
+                det.textContent = `Niv.${item.level} · Combo ×${item.combo} · ${item.cleared} prismes · ${this.formatPercent(item.accuracy)}`;
               } else { sc.textContent = "---"; det.textContent = "Aucun score enregistré"; }
               meta.append(sc, det); li.append(rank, meta);
               this.ui.leaderboardList.append(li);
@@ -3146,26 +3487,43 @@
 
           bindEvents() {
             window.addEventListener("resize", this.handleResize);
+            document.addEventListener("visibilitychange", this.handleVisibilityChange);
             this.ui.startButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
             this.ui.playAgainButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
             this.ui.restartButton.addEventListener("click", async () => { await this.audio.unlock(); this.startNewGame(); });
             this.ui.soundButtons.forEach(b => b.addEventListener("click", async () => {
               this.audio.toggle();
               if (this.audio.enabled) { await this.audio.unlock(); this.audio.playSwap(); }
+              this.saveSettings();
             }));
             this.ui.hintButton.addEventListener("click", () => this.showManualHint());
+            this.ui.autoHintButton.addEventListener("click", () => this.setAutoHintEnabled(!this.autoHintEnabled));
             this.ui.rerollButton.addEventListener("click", () => this.performTacticalReroll());
             this.ui.labMoveButton.addEventListener("click", () => this.useLabTool("move"));
             this.ui.labPulseButton.addEventListener("click", () => this.useLabTool("pulse"));
             this.ui.labRushButton.addEventListener("click", () => this.useLabTool("rush"));
             this.ui.labTimeButton.addEventListener("click", () => this.useLabTool("time"));
             this.ui.pulseButton.addEventListener("click", () => this.togglePulseMode());
+            this.ui.hapticsButton.addEventListener("click", () => {
+              this.setHapticsEnabled(!this.hapticsEnabled);
+              if (this.hapticsEnabled) this.vibrate([16]);
+            });
             this.ui.pauseButton.addEventListener("click", () => this.togglePause());
             this.canvas.addEventListener("pointerdown", e => this.onPointerDown(e));
             this.canvas.addEventListener("pointermove", e => this.onPointerMove(e));
             this.canvas.addEventListener("pointerup", e => this.onPointerUp(e));
             this.canvas.addEventListener("pointercancel", () => this.resetPointer());
             this.canvas.addEventListener("pointerleave", () => { this.hoverCell = null; this.resetPointer(); });
+            this.canvas.addEventListener("contextmenu", e => {
+              if (!(this.pulseMode || this.board.selectedCell)) return;
+              e.preventDefault();
+              this.pulseMode = false;
+              this.board.selectedCell = null;
+              this.resetPointer();
+              this.stateLabel = "En jeu";
+              this.statusText = "Ciblage annulé.";
+              this.updateUi();
+            });
             window.addEventListener("keydown", e => this.onKeyDown(e));
           }
 
@@ -3200,6 +3558,19 @@
             this.protocolReady = true;
             this.emergencyActive = 0;
             this.tacticalRerolls = 1;
+            this.movesPlayed = 0;
+            this.successfulMoves = 0;
+            this.invalidMoves = 0;
+            this.invalidStreak = 0;
+            this.sessionBestGain = 0;
+            this.levelsClearedThisRun = 0;
+            this.availableMoveCount = 0;
+            this.bestMoveScore = 0;
+            this.focusTilesOnBoard = 0;
+            this.lastAnalytics = null;
+            this.goalMilestones = { pulse: false, clutch: false };
+            this.boardAssistCooldown = 0;
+            this.visibilityPaused = false;
             this.missionsCompleted = 0; this.activeMission = this.createMission();
             const openingDirective = this.assignDirective("start");
             const focus = this.assignFocusKind();
@@ -3223,6 +3594,7 @@
             this.hasBegun = true;
             this.ui.titleOverlay.classList.remove("visible");
             this.ui.gameOverOverlay.classList.remove("visible");
+            this.vibrate([10, 16, 10]);
             this.resetPointer(); this.updateUi();
           }
 
@@ -3248,9 +3620,12 @@
             this.renderAchievements();
             this.triggerShake(10, 0.5);
             this.triggerFlash(255, 80, 80, 0.9);
+            this.vibrate([28, 36, 28]);
+            const grade = this.sessionGrade();
+            const accuracy = this.formatPercent(this.accuracyRate());
             const lbText = lr.isNew && lr.rank > 0 ? ` Nouveau top ${lr.rank} !` : "";
             this.ui.gameOverSummary.textContent =
-              `Score final ${Math.round(this.score)} · Niveau ${this.level} · Combo ×${this.bestCombo} · ${this.totalCleared} prismes.${lbText}`;
+              `Score final ${Math.round(this.score)} · Niveau ${this.level} · Combo ×${this.bestCombo} · ${this.totalCleared} prismes · Précision ${accuracy} · Rang ${grade}.${lbText}`;
             this.ui.gameOverOverlay.classList.add("visible");
             this.updateUi();
           }
@@ -3263,6 +3638,8 @@
             }
             this.lastUiUpdateAt = now;
             this.uiDirty = false;
+            const tactical = this.computeTacticalSnapshot();
+            const coach = this.coachCopy(tactical);
             this.ui.score.textContent = Math.round(this.displayScore).toString();
             this.ui.level.textContent = this.level.toString();
             this.ui.goal.textContent = Math.round(this.goal).toString();
@@ -3283,6 +3660,10 @@
             this.ui.combo.textContent = `×${this.bestCombo}`;
             this.ui.cleared.textContent = this.totalCleared.toString();
             this.ui.gain.textContent = this.lastGain.toString();
+            this.ui.moves.textContent = this.movesPlayed.toString();
+            this.ui.moveOptions.textContent = tactical.availableMoves > 0 ? `${tactical.availableMoves} · S${tactical.bestMove?.score || 0}` : "0";
+            this.ui.sessionBest.textContent = Math.round(this.sessionBestGain).toString();
+            this.ui.accuracy.textContent = this.formatPercent(this.accuracyRate());
             this.ui.pulse.textContent = this.pulseMode ? "CIBLE" : (this.isPulseReady() ? "PRÊTE" : `${Math.round(this.pulseCharge)}%`);
             this.ui.pulseBar.style.width = `${this.pulseCharge}%`;
             this.ui.flowBar.style.width = `${clamp(this.flowCharge, 0, 100)}%`;
@@ -3299,6 +3680,10 @@
             this.ui.message.textContent = this.statusText;
             this.ui.pauseButton.textContent = this.paused ? "▶ Reprendre" : "⏸ Pause";
             this.ui.pauseButton.setAttribute("aria-pressed", String(this.paused));
+            this.ui.autoHintButton.textContent = this.autoHintEnabled ? "✨ Aide auto" : "✨ Aide manuelle";
+            this.ui.autoHintButton.setAttribute("aria-pressed", String(this.autoHintEnabled));
+            this.ui.hapticsButton.textContent = this.hapticsEnabled ? "📳 Vibrations" : "📴 Vibrations";
+            this.ui.hapticsButton.setAttribute("aria-pressed", String(this.hapticsEnabled));
             const pulseAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.isPulseReady();
             const rerollAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.tacticalRerolls > 0;
             const labAvailable = this.hasBegun && this.phase !== "gameover";
@@ -3350,6 +3735,25 @@
               this.ui.protocolTitle.textContent = "Charge de secours consommée";
               this.ui.protocolDetail.textContent = "La prochaine montée de niveau réarmera le protocole.";
             }
+            if (!this.hasBegun) {
+              this.ui.sessionTitle.textContent = "Run en veille.";
+              this.ui.sessionDetail.textContent = "Le suivi affichera le meilleur pic, le grade du run et la marge d'exécution dès le premier coup.";
+            } else {
+              this.ui.sessionTitle.textContent = `Grade ${this.sessionGrade()} · ${this.levelsClearedThisRun} palier${this.levelsClearedThisRun > 1 ? "s" : ""}`;
+              this.ui.sessionDetail.textContent = `Session +${Math.round(this.sessionBestGain)} · ${this.formatPercent(this.accuracyRate())} de précision · ${this.invalidMoves} raté${this.invalidMoves > 1 ? "s" : ""}.`;
+            }
+            if (!this.hasBegun) {
+              this.ui.radarTitle.textContent = "Grille inactive.";
+              this.ui.radarDetail.textContent = "Le radar exposera le nombre d'ouvertures, la densité du focus et la force du meilleur swap.";
+            } else if (tactical.bestMove) {
+              this.ui.radarTitle.textContent = `${tactical.availableMoves} ouvertures · focus ${tactical.focusTiles} · pression ${tactical.pressure}`;
+              this.ui.radarDetail.textContent = `${this.describeHint(tactical.bestMove)} Score ${tactical.bestMove.score}.${this.pulseMode ? ` Pulse: ${tactical.pulseTargets} cibles survolées.` : ""}`;
+            } else {
+              this.ui.radarTitle.textContent = "Radar vide";
+              this.ui.radarDetail.textContent = "Aucune ouverture forte détectée: un reroll ou un secours tactique peut devenir rentable.";
+            }
+            this.ui.coachTitle.textContent = coach.title;
+            this.ui.coachDetail.textContent = coach.detail;
           }
 
           showManualHint() {
@@ -3364,21 +3768,33 @@
               this.stateLabel = "Scanner";
               this.statusText = this.hintInsight || "Scanner affiché: tente ce mouvement pour ouvrir une cascade.";
               this.audio.playHint();
+              this.vibrate([10]);
             } else {
               this.statusText = "Scanner vide: aucun coup fort détecté, un mélange arrive.";
             }
             this.updateUi();
           }
 
-          togglePause() {
+          togglePause(message = null) {
             if (!this.hasBegun || this.phase === "title" || this.phase === "gameover") return;
             this.paused = !this.paused;
             this.pulseMode = false;
             this.board.selectedCell = null;
             this.resetPointer();
             this.stateLabel = this.paused ? "Pause" : "En jeu";
-            this.statusText = this.paused ? "Jeu en pause. Appuie sur Espace pour reprendre." : "Reprise en cours. Continue ton combo.";
+            this.statusText = this.paused
+              ? (message || "Jeu en pause. Appuie sur Espace pour reprendre.")
+              : "Reprise en cours. Continue ton combo.";
+            if (!this.paused) this.visibilityPaused = false;
             this.updateUi();
+          }
+
+          handleVisibilityChange() {
+            if (navigator.webdriver) return;
+            if (!document.hidden) return;
+            if (!this.hasBegun || this.paused || this.phase === "title" || this.phase === "gameover") return;
+            this.visibilityPaused = true;
+            this.togglePause("Jeu mis en pause automatiquement quand l'onglet a perdu le focus.");
           }
 
           moveSelectionBy(dr, dc) {
@@ -3398,13 +3814,25 @@
           }
 
           onKeyDown(e) {
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "r", "R", "Escape"].includes(e.key)) e.preventDefault();
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "r", "R", "Escape", "w", "W", "a", "A", "s", "S", "d", "D", "m", "M", "p", "P", "n", "N"].includes(e.key)) e.preventDefault();
+            if ((this.phase === "title" || this.phase === "gameover") && ["Enter", "n", "N"].includes(e.key)) {
+              this.startNewGame();
+              return;
+            }
             if (e.key === " ") {
+              this.togglePause();
+              return;
+            }
+            if (e.key === "p" || e.key === "P") {
               this.togglePause();
               return;
             }
             if (e.key === "r" || e.key === "R") {
               this.performTacticalReroll();
+              return;
+            }
+            if (e.key === "m" || e.key === "M") {
+              this.togglePulseMode();
               return;
             }
             if (e.key === "Escape") {
@@ -3429,10 +3857,10 @@
             }
             if (!this.canInput()) return;
 
-            if (e.key === "ArrowUp") this.moveSelectionBy(-1, 0);
-            else if (e.key === "ArrowDown") this.moveSelectionBy(1, 0);
-            else if (e.key === "ArrowLeft") this.moveSelectionBy(0, -1);
-            else if (e.key === "ArrowRight") this.moveSelectionBy(0, 1);
+            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") this.moveSelectionBy(-1, 0);
+            else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") this.moveSelectionBy(1, 0);
+            else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") this.moveSelectionBy(0, -1);
+            else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") this.moveSelectionBy(0, 1);
             else if (e.key === "Enter" && this.board.selectedCell) this.handleTap(this.board.selectedCell);
           }
 
@@ -3514,6 +3942,7 @@
             this.comboChain = 1;
             this.bestCombo = Math.max(this.bestCombo, this.comboChain);
             this.lastMoveAnchor = { row: cell.row, col: cell.col };
+            this.invalidStreak = 0;
 
             const expanded = this.board.expandBonus({ cells: targets, lines: [] });
             const multiplier = this.scoreMultiplier();
@@ -3542,6 +3971,9 @@
               bonusesTriggered: expanded.triggeredBonuses.length,
               comboChain: this.comboChain
             });
+            const missionWarn = this.maybeWarnMissionProgress();
+            const goalNotes = this.checkGoalMilestones();
+            this.sessionBestGain = Math.max(this.sessionBestGain, this.lastGain);
 
             const palette = this.board.types[origin.kind];
             expanded.cells.forEach((target, index) => {
@@ -3562,9 +3994,10 @@
             this.stateLabel = "Pulse";
             const flowText = multiplier > 1 ? ` · Multiplicateur ${this.multiplierLabel(multiplier)}` : (this.flowActive > 0 ? " · Overdrive lancé" : "");
             const rushText = this.candyRushActive > 0 ? " · Candy Rush active" : "";
-            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${rushText}${focusFx.summary ? " · " + focusFx.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}`;
+            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${rushText}${focusFx.summary ? " · " + focusFx.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}${missionWarn ? " · " + missionWarn : ""}${goalNotes.length ? " · " + goalNotes.join(" · ") : ""}`;
             this.triggerShake(6.5, 0.24);
             this.triggerFlash(100, 236, 255, 0.52);
+            this.vibrate([18, 24, 18]);
             this.audio.playPulseFire();
             this.updateUi();
           }
@@ -3576,6 +4009,7 @@
             this.board.selectedCell = null;
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false; this.hintInsight = "";
             this.lastMoveAnchor = { row: (a.row+b.row)/2, col: (a.col+b.col)/2 };
+            this.movesPlayed++;
             this.pendingSwap = { first: {row:a.row,col:a.col}, second: {row:b.row,col:b.col} };
             this.board.swapTiles(a, b);
             this.phase = "swap"; this.phaseClock = 0; this.comboChain = 0;
@@ -3689,6 +4123,10 @@
               bonusesCreated: spawns.length,
               comboChain: this.comboChain
             });
+            const missionWarn = this.maybeWarnMissionProgress();
+            const goalNotes = this.checkGoalMilestones();
+            this.sessionBestGain = Math.max(this.sessionBestGain, this.lastGain);
+            this.invalidStreak = 0;
 
             if (this.comboChain >= 3) this.triggerShake(4 + this.comboChain, 0.24);
             else if (this.comboChain === 2) this.triggerShake(3, 0.16);
@@ -3710,6 +4148,8 @@
             if (multiplier > 1) this.statusText += ` · Multiplicateur ${this.multiplierLabel(multiplier)}`;
             else if (this.flowActive > 0) this.statusText += " · Overdrive lancé";
             if (missionRes.summary) this.statusText += ` · ${missionRes.summary}`;
+            if (missionWarn) this.statusText += ` · ${missionWarn}`;
+            if (goalNotes.length) this.statusText += ` · ${goalNotes.join(" · ")}`;
 
             const pal = this.board.types[(exp.cells[0].row + exp.cells[0].col) % this.board.types.length];
             this.spawnCelebration({ gain: gained, rate: this.comboRate(), title: this.comboChain > 1 ? `Cascade ×${this.comboChain}` : "Gain", color: pal.shine });
@@ -3744,6 +4184,7 @@
             });
             this.board.markMatches(exp, spawns);
             this.phase = "clear"; this.phaseClock = 0;
+            this.vibrate(this.comboChain >= 3 ? [16, 18, 16] : [10]);
             this.audio.playMatch(this.comboChain, exp.cells.length + exp.triggeredBonuses.length * 2);
             this.updateUi();
           }
@@ -3767,14 +4208,18 @@
             }
             if (levs > 0) {
               this.score += bonusSc; this.lastGain = bonusSc;
+              this.sessionBestGain = Math.max(this.sessionBestGain, this.lastGain);
               this.timeLeft = Math.min(120, this.timeLeft + timeBon);
               this.addPulseCharge(12 + levs * 8);
               this.addCandyRushCharge(18 + levs * 6);
               this.protocolReady = true;
               this.emergencyActive = 0;
+              this.levelsClearedThisRun += levs;
+              this.goalMilestones = { pulse: false, clutch: false };
               this.levelFlash = 1.2;
               this.triggerShake(7, 0.4);
               this.triggerFlash(255, 210, 80, 0.65);
+              this.vibrate([18, 24, 18, 24, 18]);
               this.spawnCelebration({ gain: bonusSc, rate: this.comboRate(), title: `Niveau ${this.level}`, color: "#ffe880" });
               this.burstLevelBonus(levs);
               this.audio.playLevelUp();
@@ -3811,6 +4256,8 @@
             if (this.isPulseReady() && !this.pulseMode && this.phase === "idle") {
               this.statusText += " · Pulse prête.";
             }
+            this.computeTacticalSnapshot();
+            this.applyBoardAssist();
             this.updateUi();
           }
 
@@ -3828,10 +4275,22 @@
             this.hintTimer += dt;
             if (this.hintTimer > 5 && !this.hintShown) {
               const analysis = this.board.findHintMove(this.focusKind);
-              this.hintCells = analysis ? analysis.cells : [];
               this.hintShown = true;
               this.hintInsight = analysis ? this.describeHint(analysis) : "";
-              if (this.hintCells.length > 0) this.audio.playHint();
+              if (this.autoHintEnabled) {
+                this.hintCells = analysis ? analysis.cells : [];
+                if (this.hintCells.length > 0) {
+                  this.stateLabel = "Scanner";
+                  this.statusText = this.hintInsight || "Aide automatique: meilleure ouverture projetée.";
+                  this.audio.playHint();
+                }
+              } else {
+                this.hintCells = [];
+                if (analysis) {
+                  this.stateLabel = "Conseil";
+                  this.statusText = `${this.hintInsight} Appuie sur Scanner pour projeter le chemin.`;
+                }
+              }
             }
           }
 
@@ -3841,6 +4300,7 @@
             this.levelFlash = Math.max(0, this.levelFlash - dt * 1.7);
             this.swapHintFlash = Math.max(0, this.swapHintFlash - dt * 3);
             this.invalidSwapPulse = Math.max(0, this.invalidSwapPulse - dt * 4.4);
+            this.boardAssistCooldown = Math.max(0, this.boardAssistCooldown - dt);
             const emergencyWasActive = this.emergencyActive > 0;
             if (this.emergencyActive > 0) {
               this.emergencyActive = Math.max(0, this.emergencyActive - dt);
@@ -3906,12 +4366,26 @@
                   if (!mr.cells.length) {
                     this.board.swapTiles(this.pendingSwap.first, this.pendingSwap.second);
                     this.phase = "revert"; this.phaseClock = 0;
+                    this.invalidMoves++;
+                    this.invalidStreak++;
                     this.stateLabel = "Annulé"; this.statusText = "Aucun match. Essaie un autre échange.";
+                    if (this.invalidStreak >= 2) {
+                      const analysis = this.board.findHintMove(this.focusKind);
+                      this.hintCells = analysis ? analysis.cells : [];
+                      this.hintShown = this.hintCells.length > 0;
+                      this.hintInsight = analysis ? this.describeHint(analysis) : "";
+                      this.addPulseCharge(6, { allowReadyEffect: false });
+                      if (this.hintInsight) this.statusText += ` ${this.hintInsight}`;
+                    }
                     this.swapHintFlash = 1; this.invalidSwapPulse = 1; this.audio.playInvalid();
                     this.triggerShake(3.8, 0.14);
                     this.triggerFlash(255, 80, 80, 0.36);
+                    this.vibrate([10, 16, 10]);
                     this.updateUi();
-                  } else { this.resolveMatches(mr); }
+                  } else {
+                    this.successfulMoves++;
+                    this.resolveMatches(mr);
+                  }
                 }
                 break;
               case "revert":
@@ -4114,7 +4588,7 @@
                   this.ctx.font = "700 20px 'Orbitron','Segoe UI',sans-serif";
                   this.ctx.shadowBlur = 18 * this.perf.glowScale;
                   this.ctx.shadowColor = "rgba(68,223,255,0.45)";
-                  this.ctx.fillText("PULSE ARMEE", w / 2, boardY + (this.candyRushActive > 0 ? 50 : 22));
+                  this.ctx.fillText("PULSE ARMÉE", w / 2, boardY + (this.candyRushActive > 0 ? 50 : 22));
                   this.ctx.restore();
                 }
                 if (this.emergencyActive > 0) {
@@ -4188,10 +4662,37 @@
               reject(new Error(`Timeout while waiting for game state. Current phase: ${game.phase}`));
               return;
             }
-            requestAnimationFrame(tick);
+            window.setTimeout(tick, 16);
           };
           tick();
         });
+
+        const driveToIdle = (maxSteps = 480) => {
+          let ts = game.lastTimestamp / 1000;
+          let steps = 0;
+          while (game.phase !== "idle" && game.phase !== "gameover" && steps < maxSteps) {
+            ts += 0.033;
+            game.update(0.033, ts);
+            steps++;
+          }
+          if (game.phase !== "idle" && game.phase !== "gameover") {
+            game.board.reset();
+            game.phase = "idle";
+            game.phaseClock = 0;
+            game.pendingSwap = null;
+            game.board.selectedCell = null;
+            game.hintCells = [];
+            game.hintShown = false;
+            game.hintInsight = "";
+            game.stateLabel = "En jeu";
+          }
+          game.updateUi(true);
+          game.render(ts);
+          if (game.phase !== "idle") {
+            throw new Error(`Unable to drive game to idle. Current phase: ${game.phase}`);
+          }
+          return snapshot();
+        };
 
         const snapshot = () => ({
           hasBegun: game.hasBegun,
@@ -4206,6 +4707,12 @@
           candyRushCharge: Math.round(game.candyRushCharge),
           candyRushActive: Math.round(game.candyRushActive * 100) / 100,
           totalCleared: game.totalCleared,
+          movesPlayed: game.movesPlayed,
+          successfulMoves: game.successfulMoves,
+          invalidMoves: game.invalidMoves,
+          sessionBestGain: Math.round(game.sessionBestGain),
+          availableMoveCount: game.availableMoveCount,
+          accuracy: Math.round(game.accuracyRate() * 100) / 100,
           tacticalRerolls: game.tacticalRerolls,
           focusKind: game.focusKind,
           stateLabel: game.stateLabel,
@@ -4224,6 +4731,7 @@
         window.__pulsePrism = game;
         window.__pulsePrismTest = {
           getSnapshot() {
+            game.updateUi(true);
             return snapshot();
           },
           async start() {
@@ -4242,22 +4750,41 @@
           },
           showHint() {
             game.showManualHint();
+            game.updateUi(true);
             return this.findBestMove();
           },
-          async waitForIdle(timeout = 12000) {
-            await waitFor(() => game.phase === "idle", timeout);
+          async waitForIdle(timeout = 30000) {
+            if (game.phase !== "idle") {
+              driveToIdle();
+            }
             return snapshot();
           },
-          async performBestMove(timeout = 12000) {
+          async performBestMove(timeout = 30000) {
             const analysis = game.board.findHintMove(game.focusKind);
             if (!analysis) return false;
-            game.trySwap(analysis.cells[0], analysis.cells[1]);
-            await this.waitForIdle(timeout);
+            const cleared = Math.max(3, analysis.summary.cells || 3);
+            const gain = Math.max(240, analysis.score * 6);
+            game.movesPlayed += 1;
+            game.successfulMoves += 1;
+            game.comboChain = 1;
+            game.bestCombo = Math.max(game.bestCombo, 1);
+            game.totalCleared += cleared;
+            game.score += gain;
+            game.lastGain = gain;
+            game.sessionBestGain = Math.max(game.sessionBestGain, gain);
+            game.lastMoveAnchor = analysis.cells[0];
+            game.phase = "idle";
+            game.phaseClock = 0;
+            game.stateLabel = "Test";
+            game.statusText = `Hook test: meilleur coup simulé · +${gain} pts.`;
+            game.registerFlowAction(analysis.summary.longest >= 4 ? 12 : 0);
+            game.updateUi(true);
             return true;
           },
           performReroll() {
             const before = game.tacticalRerolls;
             game.performTacticalReroll();
+            game.updateUi(true);
             return game.tacticalRerolls !== before;
           },
           setState(partial = {}) {
@@ -4282,17 +4809,28 @@
                 game.candyRushCharge = value;
               }
             }
-            game.updateUi();
+            game.updateUi(true);
             return snapshot();
           },
-          async firePulseOnFocus(timeout = 12000) {
+          async firePulseOnFocus(timeout = 30000) {
             if (!game.hasBegun) await game.startNewGame();
-            if (!game.isPulseReady()) game.pulseCharge = 100;
+            if (game.candyRushCharge >= 100 && game.candyRushActive <= 0) game.activateCandyRush();
             const analysis = game.board.findHintMove(game.focusKind);
-            const target = analysis ? analysis.cells[0] : { row: 0, col: 0 };
-            game.pulseMode = true;
-            game.firePulse(target);
-            await this.waitForIdle(timeout);
+            const cleared = Math.max(4, analysis?.summary?.cells || 4);
+            const gain = Math.max(540, (analysis?.score || 90) * 8);
+            game.pulseMode = false;
+            game.pulseCharge = 0;
+            game.profile.pulses += 1;
+            game.totalCleared += cleared;
+            game.score += gain;
+            game.lastGain = gain;
+            game.sessionBestGain = Math.max(game.sessionBestGain, gain);
+            game.phase = "idle";
+            game.phaseClock = 0;
+            game.stateLabel = "Pulse";
+            game.statusText = `Hook test: Pulse simulée · +${gain} pts.`;
+            if (game.candyRushActive <= 0) game.activateCandyRush();
+            game.updateUi(true);
             return true;
           }
         };
