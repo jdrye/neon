@@ -641,6 +641,110 @@
         line-height: 1.45;
       }
 
+      .tempo-panel {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(166,255,193,0.24);
+        background: linear-gradient(135deg, rgba(122,255,181,0.14), rgba(111,247,255,0.12) 48%, rgba(255,228,122,0.12));
+      }
+
+      .tempo-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .tempo-header strong {
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #b6ffd3;
+      }
+
+      .tempo-header span {
+        font-family: var(--display-font);
+        font-size: 1rem;
+        color: #f5fff7;
+      }
+
+      .tempo-progress {
+        margin-top: 10px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        overflow: hidden;
+      }
+
+      .tempo-progress-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #7ff0ab, #6ff7ff, #ffe374);
+        box-shadow: 0 0 18px rgba(127,240,171,0.26);
+        transition: width 0.2s ease;
+      }
+
+      .tempo-copy {
+        margin-top: 8px;
+        color: #effff2;
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
+      .danger-panel {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,165,132,0.24);
+        background: linear-gradient(135deg, rgba(255,178,113,0.14), rgba(255,96,96,0.12) 52%, rgba(255,83,196,0.12));
+      }
+
+      .danger-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .danger-header strong {
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #ffd1b1;
+      }
+
+      .danger-header span {
+        font-family: var(--display-font);
+        font-size: 1rem;
+        color: #fff1e9;
+      }
+
+      .danger-progress {
+        margin-top: 10px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        overflow: hidden;
+      }
+
+      .danger-progress-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #7ff0ab, #ffe374 46%, #ff8966 74%, #ff5e8a 100%);
+        box-shadow: 0 0 18px rgba(255,120,86,0.24);
+        transition: width 0.2s ease;
+      }
+
+      .danger-copy {
+        margin-top: 8px;
+        color: #fff0ea;
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
       .lab-card {
         margin-top: 12px;
         padding: 14px;
@@ -848,6 +952,24 @@
       }
 
       .directive-card.coach-card h4 { color: #ffe5a8; }
+
+      .directive-card.streak-card {
+        border-color: rgba(140,255,191,0.22);
+        background:
+          linear-gradient(135deg, rgba(122,255,181,0.12), rgba(111,247,255,0.1) 42%, rgba(255,228,122,0.1)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.streak-card h4 { color: #b6ffd3; }
+
+      .directive-card.clutch-card {
+        border-color: rgba(255,154,116,0.22);
+        background:
+          linear-gradient(135deg, rgba(255,170,112,0.12), rgba(255,96,96,0.1) 42%, rgba(255,83,196,0.1)),
+          rgba(255,255,255,0.03);
+      }
+
+      .directive-card.clutch-card h4 { color: #ffd1af; }
 
       .archive-card { padding: 18px 20px; }
 
@@ -1232,6 +1354,14 @@
                 <strong>Précision</strong>
                 <span id="accuracyValue">100%</span>
               </div>
+              <div class="mini-stat">
+                <strong>Série</strong>
+                <span id="streakValue">0</span>
+              </div>
+              <div class="mini-stat">
+                <strong>Clutch</strong>
+                <span id="clutchValue">0</span>
+              </div>
             </div>
 
             <div class="play-system-grid">
@@ -1254,6 +1384,26 @@
                   <div id="rushBar" class="rush-progress-fill"></div>
                 </div>
                 <div id="rushCopy" class="rush-copy">Les longues cascades sucrent la jauge. À pleine charge, la grille part en euphorie.</div>
+              </div>
+              <div class="tempo-panel">
+                <div class="tempo-header">
+                  <strong>Cadence</strong>
+                  <span id="tempoValue">0/3</span>
+                </div>
+                <div class="tempo-progress" aria-hidden="true">
+                  <div id="tempoBar" class="tempo-progress-fill"></div>
+                </div>
+                <div id="tempoCopy" class="tempo-copy">Enchaîne des coups propres pour déclencher des primes de série.</div>
+              </div>
+              <div class="danger-panel">
+                <div class="danger-header">
+                  <strong>Danger</strong>
+                  <span id="dangerValue">Stable</span>
+                </div>
+                <div class="danger-progress" aria-hidden="true">
+                  <div id="dangerBar" class="danger-progress-fill"></div>
+                </div>
+                <div id="dangerCopy" class="danger-copy">Le danger monte quand le temps tombe, que le radar se ferme ou que les ratés s'accumulent.</div>
               </div>
             </div>
 
@@ -1299,6 +1449,16 @@
                 <p id="coachTitle" class="directive-title">Pré-brief</p>
                 <p id="coachDetail" class="directive-detail">Le coach réagit au rythme du run, aux urgences, aux missions proches et aux jauges prêtes.</p>
               </div>
+              <div class="directive-card streak-card">
+                <h4>Cadence</h4>
+                <p id="streakTitle" class="directive-title">Série 0</p>
+                <p id="streakDetail" class="directive-detail">Atteins 3 coups propres pour déclencher la première prime de rythme.</p>
+              </div>
+              <div class="directive-card clutch-card">
+                <h4>Clutch</h4>
+                <p id="clutchTitle" class="directive-title">Aucune reprise critique.</p>
+                <p id="clutchDetail" class="directive-detail">Les actions réussies sous pression rapportent du temps, de la Pulse et nourrissent certaines missions.</p>
+              </div>
             </div>
           </section>
 
@@ -1328,7 +1488,9 @@
           { id: "first-mission", label: "Premier contrat", detail: "Termine une mission tactique." },
           { id: "combo-5", label: "Réacteur en cascade", detail: "Atteins un combo ×5 sur une partie." },
           { id: "level-6", label: "Secteur profond", detail: "Monte jusqu'au niveau 6." },
-          { id: "pulse-3", label: "Surcharge maîtrisée", detail: "Déclenche 3 Pulses au total." }
+          { id: "pulse-3", label: "Surcharge maîtrisée", detail: "Déclenche 3 Pulses au total." },
+          { id: "streak-7", label: "Cadence totale", detail: "Monte une série de 7 actions réussies." },
+          { id: "clutch-3", label: "Sang-froid", detail: "Réussis 3 actions clutch sur une même partie." }
         ];
 
         const GEM_SHAPES = ["diamond","orb","rounded-square","triangle","hexagon","droplet","star","kite","octagon"];
@@ -2393,12 +2555,20 @@
               moveOptions: document.getElementById("moveOptionsValue"),
               sessionBest: document.getElementById("sessionBestValue"),
               accuracy: document.getElementById("accuracyValue"),
+              streak: document.getElementById("streakValue"),
+              clutch: document.getElementById("clutchValue"),
               flowValue: document.getElementById("flowValue"),
               flowBar: document.getElementById("flowBar"),
               flowCopy: document.getElementById("flowCopy"),
               rushValue: document.getElementById("rushValue"),
               rushBar: document.getElementById("rushBar"),
               rushCopy: document.getElementById("rushCopy"),
+              tempoValue: document.getElementById("tempoValue"),
+              tempoBar: document.getElementById("tempoBar"),
+              tempoCopy: document.getElementById("tempoCopy"),
+              dangerValue: document.getElementById("dangerValue"),
+              dangerBar: document.getElementById("dangerBar"),
+              dangerCopy: document.getElementById("dangerCopy"),
               labDetail: document.getElementById("labDetail"),
               state: document.getElementById("stateValue"),
               message: document.getElementById("statusMessage"),
@@ -2418,6 +2588,10 @@
               radarDetail: document.getElementById("radarDetail"),
               coachTitle: document.getElementById("coachTitle"),
               coachDetail: document.getElementById("coachDetail"),
+              streakTitle: document.getElementById("streakTitle"),
+              streakDetail: document.getElementById("streakDetail"),
+              clutchTitle: document.getElementById("clutchTitle"),
+              clutchDetail: document.getElementById("clutchDetail"),
               archiveSummary: document.getElementById("archiveSummary"),
               achievementList: document.getElementById("achievementList"),
               leaderboardList: document.getElementById("leaderboardList"),
@@ -2481,12 +2655,16 @@
             this.successfulMoves = 0;
             this.invalidMoves = 0;
             this.invalidStreak = 0;
+            this.currentStreak = 0;
+            this.bestStreak = 0;
+            this.clutchActions = 0;
             this.sessionBestGain = 0;
             this.levelsClearedThisRun = 0;
             this.availableMoveCount = 0;
             this.bestMoveScore = 0;
             this.focusTilesOnBoard = 0;
             this.lastAnalytics = null;
+            this.pendingTurnMeta = null;
             this.goalMilestones = { pulse: false, clutch: false };
             this.boardAssistCooldown = 0;
             this.visibilityPaused = false;
@@ -2845,6 +3023,16 @@
                 id: "resonance",
                 title: "Résonance dense",
                 detail: "Overdrive dure plus longtemps et grimpe à un multiplicateur supérieur."
+              },
+              {
+                id: "precision",
+                title: "Fenêtre propre",
+                detail: "Les séries sans erreur chargent davantage Pulse et Candy Rush."
+              },
+              {
+                id: "clutch",
+                title: "Nerf clutch",
+                detail: "Les actions en zone chaude rendent plus de temps et de score."
               }
             ];
             const choices = pool.filter(item => item.id !== excludeId);
@@ -2902,6 +3090,20 @@
                   summary = `Directive résonance: ${this.multiplierLabel(multiplier)} stabilisé`;
                 }
                 break;
+              case "precision":
+                if (this.currentStreak >= 3 && this.invalidStreak === 0) {
+                  pulseDelta = 8 + Math.min(10, this.currentStreak);
+                  scoreDelta = Math.round(exp.cells.length * 18 + this.currentStreak * 16);
+                  summary = `Directive précision: série ${this.currentStreak} valorisée`;
+                }
+                break;
+              case "clutch":
+                if (this.isClutchWindow(this.lastAnalytics)) {
+                  timeDelta = Math.min(3.4, 0.8 + exp.cells.length * 0.12 + exp.triggeredBonuses.length * 0.25);
+                  scoreDelta = Math.round(110 + exp.cells.length * 24 + exp.triggeredBonuses.length * 70);
+                  summary = "Directive clutch: reprise critique consolidée";
+                }
+                break;
             }
 
             return { scoreDelta, timeDelta, pulseDelta, flowDelta, summary };
@@ -2922,6 +3124,7 @@
             const prevMission = this.activeMission?.id || null;
             const prevFocus = this.focusKind;
             this.tacticalRerolls--;
+            this.resetActionStreak();
             this.activeMission = this.createMission(prevMission);
             const directiveSummary = this.assignDirective("reroll");
             const focus = this.assignFocusKind(prevFocus);
@@ -3002,6 +3205,8 @@
             const triggerTarget = 2 + Math.floor(this.level / 4);
             const forgeTarget = 1 + Math.floor(this.level / 5);
             const cascadeTarget = Math.min(4, 2 + Math.floor(this.level / 4));
+            const streakTarget = Math.min(9, 3 + Math.floor(this.level / 2));
+            const clutchTarget = Math.min(4, 1 + Math.floor(this.level / 3));
             const pool = [
               {
                 id: "clear",
@@ -3028,6 +3233,22 @@
                 target: cascadeTarget
               }
             ];
+            if (this.level >= 2 || this.missionsCompleted >= 1) {
+              pool.push({
+                id: "streak",
+                title: "Cadence verrouillée",
+                detail: `Monte une série de ${streakTarget} actions réussies sans casser le flux.`,
+                target: streakTarget
+              });
+            }
+            if (this.level >= 3 || this.missionsCompleted >= 2) {
+              pool.push({
+                id: "clutch",
+                title: "Sortie de crise",
+                detail: `Réussis ${clutchTarget} action${clutchTarget > 1 ? "s" : ""} clutch sous pression.`,
+                target: clutchTarget
+              });
+            }
             if (this.level >= 2 || this.missionsCompleted >= 1) {
               pool.push({
                 id: "pulse",
@@ -3064,6 +3285,12 @@
               case "cascade":
                 if ((evt.comboChain || 0) >= mission.target) delta = mission.target;
                 break;
+              case "streak":
+                if ((evt.moveStreak || 0) >= mission.target) delta = mission.target;
+                break;
+              case "clutch":
+                delta = evt.clutchAction || 0;
+                break;
               case "pulse":
                 delta = evt.pulseUsed ? 1 : 0;
                 break;
@@ -3092,7 +3319,17 @@
           }
 
           defaultProfile() {
-            return { games: 0, totalScore: 0, missions: 0, pulses: 0, bestLevel: 1, bestCombo: 1, achievements: {} };
+            return {
+              games: 0,
+              totalScore: 0,
+              missions: 0,
+              pulses: 0,
+              clutches: 0,
+              bestLevel: 1,
+              bestCombo: 1,
+              bestStreak: 0,
+              achievements: {}
+            };
           }
 
           defaultSettings() {
@@ -3135,8 +3372,10 @@
                 totalScore: Math.max(0, Math.round(Number(parsed.totalScore) || 0)),
                 missions: Math.max(0, Math.round(Number(parsed.missions) || 0)),
                 pulses: Math.max(0, Math.round(Number(parsed.pulses) || 0)),
+                clutches: Math.max(0, Math.round(Number(parsed.clutches) || 0)),
                 bestLevel: Math.max(1, Math.round(Number(parsed.bestLevel) || 1)),
                 bestCombo: Math.max(1, Math.round(Number(parsed.bestCombo) || 1)),
+                bestStreak: Math.max(0, Math.round(Number(parsed.bestStreak) || 0)),
                 achievements: parsed.achievements && typeof parsed.achievements === "object" ? parsed.achievements : base.achievements
               };
             } catch (e) {
@@ -3176,6 +3415,140 @@
             return `${Math.round(clamp(value, 0, 1) * 100)}%`;
           }
 
+          computeDangerScore(snapshot = null) {
+            const availableMoves = snapshot?.availableMoves ?? this.availableMoveCount ?? 0;
+            const missionRatio = this.activeMission ? this.activeMission.progress / Math.max(1, this.activeMission.target) : 0;
+            let score = 0;
+            if (this.hasBegun) {
+              score += clamp((24 - this.timeLeft) * 4.6, 0, 62);
+              if (availableMoves <= 0) score += 28;
+              else if (availableMoves <= 1) score += 24;
+              else if (availableMoves <= 3) score += 16;
+              else if (availableMoves <= 5) score += 8;
+              score += Math.min(18, this.invalidStreak * 7);
+              if (missionRatio >= 0.75) score += 10;
+              if (this.protocolReady && this.timeLeft <= 12) score += 8;
+            }
+            return clamp(score, 0, 100);
+          }
+
+          dangerTier(score) {
+            if (!this.hasBegun) {
+              return {
+                label: "Stable",
+                title: "Secteur sous contrôle",
+                detail: "Le danger montera quand le chrono tombera, que les ouvertures se raréfieront ou que les ratés s'accumuleront."
+              };
+            }
+            if (score >= 78) {
+              return {
+                label: "Critique",
+                title: "Fenêtre clutch ouverte",
+                detail: "Chaque action propre peut rendre du temps, charger la Pulse et retourner la cadence du run."
+              };
+            }
+            if (score >= 58) {
+              return {
+                label: "Haute",
+                title: "Run sous tension",
+                detail: "Le plateau se ferme. Priorise un coup fiable, une mission proche ou une Pulse rentable."
+              };
+            }
+            if (score >= 34) {
+              return {
+                label: "Active",
+                title: "Pression montante",
+                detail: "Le danger grimpe. Monte une série propre pour reprendre de l'avance avant la zone rouge."
+              };
+            }
+            return {
+              label: "Stable",
+              title: "Cadence contrôlée",
+              detail: "Temps, radar et précision restent au vert. C'est le bon moment pour préparer une longue série."
+            };
+          }
+
+          isClutchWindow(snapshot = null) {
+            const dangerScore = snapshot?.dangerScore ?? this.computeDangerScore(snapshot);
+            return dangerScore >= 58 || this.timeLeft <= 12;
+          }
+
+          nextStreakRewardAt() {
+            if (this.currentStreak < 3) return 3;
+            if (this.currentStreak < 5) return 5;
+            if (this.currentStreak < 7) return 7;
+            const delta = Math.max(0, this.currentStreak - 7);
+            const remainder = delta % 4;
+            return this.currentStreak + (remainder === 0 ? 4 : 4 - remainder);
+          }
+
+          streakRewardPreview(target = this.nextStreakRewardAt()) {
+            if (target <= 3) return `Prime ${target}: Overdrive +28% · Rush +8%`;
+            if (target <= 5) return `Prime ${target}: +16% Pulse · Rush +12%`;
+            if (target <= 7) return `Prime ${target}: +4s · +1 reroll`;
+            return `Prime ${target}: +10% Pulse · +2s · Rush +10%`;
+          }
+
+          registerSuccessfulAction({ source = "swap" } = {}) {
+            this.currentStreak += 1;
+            this.bestStreak = Math.max(this.bestStreak, this.currentStreak);
+            this.profile.bestStreak = Math.max(this.profile.bestStreak, this.bestStreak);
+
+            const summaryParts = [];
+            if (this.currentStreak === 3) {
+              this.flowCharge = Math.max(this.flowCharge, 28);
+              this.addCandyRushCharge(8, { allowActivate: false });
+              summaryParts.push("Cadence ×3: Overdrive +28% · Rush +8%");
+            } else if (this.currentStreak === 5) {
+              this.addPulseCharge(16, { allowReadyEffect: false });
+              this.addCandyRushCharge(12, { allowActivate: false });
+              summaryParts.push("Cadence ×5: +16% Pulse · Rush +12%");
+            } else if (this.currentStreak === 7) {
+              this.timeLeft = Math.min(120, this.timeLeft + 4);
+              this.tacticalRerolls = Math.min(3, this.tacticalRerolls + 1);
+              summaryParts.push("Cadence ×7: +4s · +1 reroll");
+              this.unlockAchievement("streak-7");
+            } else if (this.currentStreak > 7 && (this.currentStreak - 7) % 4 === 0) {
+              this.addPulseCharge(10, { allowReadyEffect: false });
+              this.timeLeft = Math.min(120, this.timeLeft + 2);
+              this.addCandyRushCharge(10, { allowActivate: false });
+              summaryParts.push(`Cadence ×${this.currentStreak}: +10% Pulse · +2s · Rush +10%`);
+            }
+
+            if (summaryParts.length > 0) {
+              this.showLevelBanner(`Cadence ×${this.currentStreak}`);
+              this.triggerFlash(126, 255, 186, 0.2);
+              this.vibrate([10, 14, 10]);
+              this.audio.playHint();
+            }
+
+            const dangerScore = this.computeDangerScore(this.lastAnalytics);
+            let clutchAwarded = false;
+            if (this.isClutchWindow({ dangerScore })) {
+              clutchAwarded = true;
+              this.clutchActions++;
+              this.profile.clutches++;
+              const timeBonus = source === "pulse" ? 1.2 : 0.8;
+              const pulseBonus = source === "pulse" ? 12 : 9;
+              this.timeLeft = Math.min(120, this.timeLeft + timeBonus);
+              this.addPulseCharge(pulseBonus, { allowReadyEffect: false });
+              summaryParts.push(`Clutch: +${timeBonus.toFixed(1)}s · +${pulseBonus}% Pulse`);
+              if (this.clutchActions >= 3) this.unlockAchievement("clutch-3");
+            }
+
+            this.saveProfile();
+            return {
+              summary: summaryParts.join(" · "),
+              clutchAwarded,
+              dangerScore
+            };
+          }
+
+          resetActionStreak() {
+            this.currentStreak = 0;
+            this.pendingTurnMeta = null;
+          }
+
           computeTacticalSnapshot() {
             const running = this.hasBegun && this.phase !== "title" && this.phase !== "gameover";
             const scan = running ? this.board.scanPotentialMoves(this.focusKind) : { best: null, total: 0 };
@@ -3183,12 +3556,15 @@
             const previewCell = this.pulseMode ? (this.hoverCell || this.board.selectedCell) : null;
             const pulseTargets = previewCell ? this.getPulseTargets(previewCell).length : 0;
             const pressure = scan.total <= 1 ? "critique" : scan.total <= 3 ? "serrée" : scan.total <= 6 ? "dense" : "ouverte";
+            const dangerScore = running ? this.computeDangerScore({ availableMoves: scan.total }) : 0;
             const snapshot = {
               availableMoves: scan.total,
               bestMove: scan.best,
               focusTiles,
               pulseTargets,
-              pressure
+              pressure,
+              dangerScore,
+              clutch: dangerScore >= 58
             };
             this.availableMoveCount = snapshot.availableMoves;
             this.bestMoveScore = snapshot.bestMove?.score || 0;
@@ -3202,6 +3578,8 @@
             rating += Math.min(4, Math.max(0, this.level - 1));
             rating += Math.min(3, Math.floor(this.bestCombo / 2));
             rating += Math.min(3, Math.floor(this.score / 3000));
+            rating += Math.min(2, Math.floor(this.bestStreak / 3));
+            rating += Math.min(1, this.clutchActions);
             if (this.accuracyRate() >= 0.9) rating += 1;
             if (rating >= 10) return "S";
             if (rating >= 8) return "A";
@@ -3259,6 +3637,18 @@
               return {
                 title: "Rush en cours",
                 detail: "Force des lignes longues pendant la fenêtre sucrée pour semer encore plus de bonus."
+              };
+            }
+            if (this.currentStreak >= 5) {
+              return {
+                title: "Cadence haute",
+                detail: `Série ${this.currentStreak}. Ne coupe pas le flux: ${this.streakRewardPreview()}`
+              };
+            }
+            if (snapshot.clutch) {
+              return {
+                title: "Clutch ouvert",
+                detail: "Le prochain coup propre peut rendre du temps et de la Pulse. Priorité à la fiabilité."
               };
             }
             if (snapshot.availableMoves <= 2) {
@@ -3358,7 +3748,7 @@
 
           renderAchievements() {
             const unlocked = ACHIEVEMENT_DEFS.filter(def => this.profile.achievements[def.id]).length;
-            this.ui.archiveSummary.textContent = `Jeux: ${this.profile.games} · Missions: ${this.profile.missions} · Pulses: ${this.profile.pulses} · Archives: ${unlocked}/${ACHIEVEMENT_DEFS.length}`;
+            this.ui.archiveSummary.textContent = `Jeux: ${this.profile.games} · Missions: ${this.profile.missions} · Pulses: ${this.profile.pulses} · Clutch: ${this.profile.clutches} · Archives: ${unlocked}/${ACHIEVEMENT_DEFS.length}`;
             this.ui.achievementList.innerHTML = "";
             ACHIEVEMENT_DEFS.forEach(def => {
               const item = document.createElement("li");
@@ -3394,6 +3784,16 @@
               this.candyRushCharge = Math.max(this.candyRushCharge, 24);
               perks.push("1 jeton bonus");
             }
+            if (this.profile.achievements["streak-7"]) {
+              this.flowCharge = Math.max(this.flowCharge, 30);
+              this.addPulseCharge(18, { allowReadyEffect: false });
+              perks.push("Cadence +30%");
+            }
+            if (this.profile.achievements["clutch-3"]) {
+              this.timeLeft = Math.min(120, this.timeLeft + 4);
+              this.candyRushCharge = Math.max(this.candyRushCharge, 24);
+              perks.push("+4s clutch");
+            }
             if (this.profile.achievements["level-6"]) {
               this.tacticalRerolls += 1;
               perks.push("+1 reroll tactique");
@@ -3408,6 +3808,7 @@
               level: Math.max(1, Math.round(Number(e.level)||1)),
               cleared: Math.max(0, Math.round(Number(e.cleared)||0)),
               combo: Math.max(1, Math.round(Number(e.combo)||1)),
+              streak: Math.max(0, Math.round(Number(e.streak) || 0)),
               moves: Math.max(0, Math.round(Number(e.moves) || 0)),
               accuracy: Number.isFinite(Number(e.accuracy)) ? clamp(Number(e.accuracy), 0, 1) : 1,
               at: Number(e.at)||Date.now()
@@ -3436,6 +3837,7 @@
               level: this.level,
               cleared: this.totalCleared,
               combo: this.bestCombo,
+              streak: this.bestStreak,
               moves: this.movesPlayed,
               accuracy: this.accuracyRate(),
               at: Date.now()
@@ -3457,7 +3859,7 @@
               const det = document.createElement("span"); det.className = "leaderboard-detail";
               if (item) {
                 sc.textContent = item.score.toString();
-                det.textContent = `Niv.${item.level} · Combo ×${item.combo} · ${item.cleared} prismes · ${this.formatPercent(item.accuracy)}`;
+                det.textContent = `Niv.${item.level} · Combo ×${item.combo} · Série ${item.streak} · ${this.formatPercent(item.accuracy)}`;
               } else { sc.textContent = "---"; det.textContent = "Aucun score enregistré"; }
               meta.append(sc, det); li.append(rank, meta);
               this.ui.leaderboardList.append(li);
@@ -3562,12 +3964,16 @@
             this.successfulMoves = 0;
             this.invalidMoves = 0;
             this.invalidStreak = 0;
+            this.currentStreak = 0;
+            this.bestStreak = 0;
+            this.clutchActions = 0;
             this.sessionBestGain = 0;
             this.levelsClearedThisRun = 0;
             this.availableMoveCount = 0;
             this.bestMoveScore = 0;
             this.focusTilesOnBoard = 0;
             this.lastAnalytics = null;
+            this.pendingTurnMeta = null;
             this.goalMilestones = { pulse: false, clutch: false };
             this.boardAssistCooldown = 0;
             this.visibilityPaused = false;
@@ -3614,6 +4020,7 @@
             this.profile.totalScore += Math.round(this.score);
             this.profile.bestLevel = Math.max(this.profile.bestLevel, this.level);
             this.profile.bestCombo = Math.max(this.profile.bestCombo, this.bestCombo);
+            this.profile.bestStreak = Math.max(this.profile.bestStreak, this.bestStreak);
             if (this.bestCombo >= 5) this.unlockAchievement("combo-5");
             if (this.level >= 6) this.unlockAchievement("level-6");
             this.saveProfile();
@@ -3625,7 +4032,7 @@
             const accuracy = this.formatPercent(this.accuracyRate());
             const lbText = lr.isNew && lr.rank > 0 ? ` Nouveau top ${lr.rank} !` : "";
             this.ui.gameOverSummary.textContent =
-              `Score final ${Math.round(this.score)} · Niveau ${this.level} · Combo ×${this.bestCombo} · ${this.totalCleared} prismes · Précision ${accuracy} · Rang ${grade}.${lbText}`;
+              `Score final ${Math.round(this.score)} · Niveau ${this.level} · Combo ×${this.bestCombo} · Série ${this.bestStreak} · Clutch ${this.clutchActions} · ${this.totalCleared} prismes · Précision ${accuracy} · Rang ${grade}.${lbText}`;
             this.ui.gameOverOverlay.classList.add("visible");
             this.updateUi();
           }
@@ -3664,6 +4071,8 @@
             this.ui.moveOptions.textContent = tactical.availableMoves > 0 ? `${tactical.availableMoves} · S${tactical.bestMove?.score || 0}` : "0";
             this.ui.sessionBest.textContent = Math.round(this.sessionBestGain).toString();
             this.ui.accuracy.textContent = this.formatPercent(this.accuracyRate());
+            this.ui.streak.textContent = this.currentStreak.toString();
+            this.ui.clutch.textContent = this.clutchActions.toString();
             this.ui.pulse.textContent = this.pulseMode ? "CIBLE" : (this.isPulseReady() ? "PRÊTE" : `${Math.round(this.pulseCharge)}%`);
             this.ui.pulseBar.style.width = `${this.pulseCharge}%`;
             this.ui.flowBar.style.width = `${clamp(this.flowCharge, 0, 100)}%`;
@@ -3676,6 +4085,17 @@
             this.ui.rushCopy.textContent = this.candyRushActive > 0
               ? `Candy Rush active. La grille recrache plus de bonus et pousse le multiplicateur à ${this.multiplierLabel()}.`
               : `Charge ${Math.round(this.candyRushCharge)}%. Les longues cascades, les Pulses et les focus remplissent la jauge.`;
+            const nextStreakReward = this.nextStreakRewardAt();
+            const streakProgress = Math.min(100, Math.max(0, (this.currentStreak / nextStreakReward) * 100));
+            const danger = this.dangerTier(tactical.dangerScore);
+            this.ui.tempoValue.textContent = `${this.currentStreak}/${nextStreakReward}`;
+            this.ui.tempoBar.style.width = `${streakProgress}%`;
+            this.ui.tempoCopy.textContent = this.currentStreak > 0
+              ? `Série active ${this.currentStreak}. ${this.streakRewardPreview(nextStreakReward)}`
+              : "Enchaîne des coups propres pour déclencher des primes de série.";
+            this.ui.dangerValue.textContent = danger.label;
+            this.ui.dangerBar.style.width = `${tactical.dangerScore}%`;
+            this.ui.dangerCopy.textContent = `${danger.title}. ${danger.detail}`;
             this.ui.state.textContent = this.stateLabel;
             this.ui.message.textContent = this.statusText;
             this.ui.pauseButton.textContent = this.paused ? "▶ Reprendre" : "⏸ Pause";
@@ -3740,13 +4160,13 @@
               this.ui.sessionDetail.textContent = "Le suivi affichera le meilleur pic, le grade du run et la marge d'exécution dès le premier coup.";
             } else {
               this.ui.sessionTitle.textContent = `Grade ${this.sessionGrade()} · ${this.levelsClearedThisRun} palier${this.levelsClearedThisRun > 1 ? "s" : ""}`;
-              this.ui.sessionDetail.textContent = `Session +${Math.round(this.sessionBestGain)} · ${this.formatPercent(this.accuracyRate())} de précision · ${this.invalidMoves} raté${this.invalidMoves > 1 ? "s" : ""}.`;
+              this.ui.sessionDetail.textContent = `Session +${Math.round(this.sessionBestGain)} · Série ${this.bestStreak} · ${this.formatPercent(this.accuracyRate())} de précision · ${this.invalidMoves} raté${this.invalidMoves > 1 ? "s" : ""}.`;
             }
             if (!this.hasBegun) {
               this.ui.radarTitle.textContent = "Grille inactive.";
               this.ui.radarDetail.textContent = "Le radar exposera le nombre d'ouvertures, la densité du focus et la force du meilleur swap.";
             } else if (tactical.bestMove) {
-              this.ui.radarTitle.textContent = `${tactical.availableMoves} ouvertures · focus ${tactical.focusTiles} · pression ${tactical.pressure}`;
+              this.ui.radarTitle.textContent = `${tactical.availableMoves} ouvertures · focus ${tactical.focusTiles} · pression ${tactical.pressure} · danger ${danger.label.toLowerCase()}`;
               this.ui.radarDetail.textContent = `${this.describeHint(tactical.bestMove)} Score ${tactical.bestMove.score}.${this.pulseMode ? ` Pulse: ${tactical.pulseTargets} cibles survolées.` : ""}`;
             } else {
               this.ui.radarTitle.textContent = "Radar vide";
@@ -3754,6 +4174,21 @@
             }
             this.ui.coachTitle.textContent = coach.title;
             this.ui.coachDetail.textContent = coach.detail;
+            if (!this.hasBegun) {
+              this.ui.streakTitle.textContent = "Série 0";
+              this.ui.streakDetail.textContent = "Atteins 3 coups propres pour déclencher la première prime de rythme.";
+              this.ui.clutchTitle.textContent = "Aucune reprise critique.";
+              this.ui.clutchDetail.textContent = "Les actions réussies sous pression rapportent du temps, de la Pulse et nourrissent certaines missions.";
+            } else {
+              this.ui.streakTitle.textContent = `Série ${this.currentStreak} · meilleur ${this.bestStreak}`;
+              this.ui.streakDetail.textContent = this.currentStreak > 0
+                ? `${this.streakRewardPreview(nextStreakReward)}`
+                : "Aucune série active. Un coup raté remet la cadence à zéro.";
+              this.ui.clutchTitle.textContent = `${danger.title} · ${this.clutchActions} reprise${this.clutchActions > 1 ? "s" : ""}`;
+              this.ui.clutchDetail.textContent = tactical.clutch
+                ? "Fenêtre clutch active: le prochain coup fiable rendra du temps et de la Pulse."
+                : "Le clutch s'active quand le temps tombe ou que la grille se ferme.";
+            }
           }
 
           showManualHint() {
@@ -3943,6 +4378,7 @@
             this.bestCombo = Math.max(this.bestCombo, this.comboChain);
             this.lastMoveAnchor = { row: cell.row, col: cell.col };
             this.invalidStreak = 0;
+            const actionMeta = this.registerSuccessfulAction({ source: "pulse" });
 
             const expanded = this.board.expandBonus({ cells: targets, lines: [] });
             const multiplier = this.scoreMultiplier();
@@ -3969,7 +4405,9 @@
               pulseUsed: 1,
               cleared: expanded.cells.length,
               bonusesTriggered: expanded.triggeredBonuses.length,
-              comboChain: this.comboChain
+              comboChain: this.comboChain,
+              moveStreak: this.currentStreak,
+              clutchAction: actionMeta.clutchAwarded ? 1 : 0
             });
             const missionWarn = this.maybeWarnMissionProgress();
             const goalNotes = this.checkGoalMilestones();
@@ -3994,7 +4432,7 @@
             this.stateLabel = "Pulse";
             const flowText = multiplier > 1 ? ` · Multiplicateur ${this.multiplierLabel(multiplier)}` : (this.flowActive > 0 ? " · Overdrive lancé" : "");
             const rushText = this.candyRushActive > 0 ? " · Candy Rush active" : "";
-            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${rushText}${focusFx.summary ? " · " + focusFx.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}${missionWarn ? " · " + missionWarn : ""}${goalNotes.length ? " · " + goalNotes.join(" · ") : ""}`;
+            this.statusText = `Pulse libérée: ${expanded.cells.length} prismes vaporisés · +${this.lastGain} pts${flowText}${rushText}${focusFx.summary ? " · " + focusFx.summary : ""}${actionMeta.summary ? " · " + actionMeta.summary : ""}${missionRes.summary ? " · " + missionRes.summary : ""}${missionWarn ? " · " + missionWarn : ""}${goalNotes.length ? " · " + goalNotes.join(" · ") : ""}`;
             this.triggerShake(6.5, 0.24);
             this.triggerFlash(100, 236, 255, 0.52);
             this.vibrate([18, 24, 18]);
@@ -4085,6 +4523,7 @@
 
           resolveMatches(mr) {
             this.comboChain++; this.bestCombo = Math.max(this.bestCombo, this.comboChain);
+            const actionMeta = this.comboChain === 1 ? this.pendingTurnMeta : null;
             const exp = this.board.expandBonus(mr);
             const spawns = this.makeBonusSpawns(exp);
             const lineBonus = exp.lines.reduce((s,l) => s + Math.max(0,l.length-3)*88, 0);
@@ -4121,7 +4560,9 @@
               cleared: exp.cells.length,
               bonusesTriggered: exp.triggeredBonuses.length,
               bonusesCreated: spawns.length,
-              comboChain: this.comboChain
+              comboChain: this.comboChain,
+              moveStreak: this.currentStreak,
+              clutchAction: actionMeta?.clutchAwarded ? 1 : 0
             });
             const missionWarn = this.maybeWarnMissionProgress();
             const goalNotes = this.checkGoalMilestones();
@@ -4139,6 +4580,7 @@
               exp.triggeredBonuses.length > 0 ? `${exp.triggeredBonuses.length} jeton${exp.triggeredBonuses.length>1?"s":""} activé${exp.triggeredBonuses.length>1?"s":""}` : "",
               spawns.length > 0 ? `${spawns.length} bonus créé${spawns.length>1?"s":""}` : "",
               focusFx.summary,
+              actionMeta?.summary || "",
               directiveFx.summary,
               rushFx.summary
             ].filter(Boolean).join(" · ");
@@ -4182,6 +4624,7 @@
               this.particles.burst(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 18, 1.18);
               this.particles.addRing(c.x, c.y, this.board.types[(sp.row+sp.col+i)%this.board.types.length].shine, 54);
             });
+            if (this.comboChain === 1) this.pendingTurnMeta = null;
             this.board.markMatches(exp, spawns);
             this.phase = "clear"; this.phaseClock = 0;
             this.vibrate(this.comboChain >= 3 ? [16, 18, 16] : [10]);
@@ -4368,6 +4811,7 @@
                     this.phase = "revert"; this.phaseClock = 0;
                     this.invalidMoves++;
                     this.invalidStreak++;
+                    this.resetActionStreak();
                     this.stateLabel = "Annulé"; this.statusText = "Aucun match. Essaie un autre échange.";
                     if (this.invalidStreak >= 2) {
                       const analysis = this.board.findHintMove(this.focusKind);
@@ -4384,6 +4828,7 @@
                     this.updateUi();
                   } else {
                     this.successfulMoves++;
+                    this.pendingTurnMeta = this.registerSuccessfulAction({ source: "swap" });
                     this.resolveMatches(mr);
                   }
                 }
@@ -4710,8 +5155,12 @@
           movesPlayed: game.movesPlayed,
           successfulMoves: game.successfulMoves,
           invalidMoves: game.invalidMoves,
+          currentStreak: game.currentStreak,
+          bestStreak: game.bestStreak,
+          clutchActions: game.clutchActions,
           sessionBestGain: Math.round(game.sessionBestGain),
           availableMoveCount: game.availableMoveCount,
+          dangerScore: Math.round(game.lastAnalytics?.dangerScore || 0),
           accuracy: Math.round(game.accuracyRate() * 100) / 100,
           tacticalRerolls: game.tacticalRerolls,
           focusKind: game.focusKind,
@@ -4723,8 +5172,10 @@
             totalScore: game.profile.totalScore,
             missions: game.profile.missions,
             pulses: game.profile.pulses,
+            clutches: game.profile.clutches,
             bestLevel: game.profile.bestLevel,
-            bestCombo: game.profile.bestCombo
+            bestCombo: game.profile.bestCombo,
+            bestStreak: game.profile.bestStreak
           }
         });
 
@@ -4768,6 +5219,7 @@
             game.successfulMoves += 1;
             game.comboChain = 1;
             game.bestCombo = Math.max(game.bestCombo, 1);
+            const actionMeta = game.registerSuccessfulAction({ source: "swap" });
             game.totalCleared += cleared;
             game.score += gain;
             game.lastGain = gain;
@@ -4776,8 +5228,9 @@
             game.phase = "idle";
             game.phaseClock = 0;
             game.stateLabel = "Test";
-            game.statusText = `Hook test: meilleur coup simulé · +${gain} pts.`;
+            game.statusText = `Hook test: meilleur coup simulé · +${gain} pts.${actionMeta.summary ? " " + actionMeta.summary : ""}`;
             game.registerFlowAction(analysis.summary.longest >= 4 ? 12 : 0);
+            game.pendingTurnMeta = null;
             game.updateUi(true);
             return true;
           },
@@ -4789,7 +5242,13 @@
           },
           setState(partial = {}) {
             if ("pulseCharge" in partial) game.pulseCharge = clamp(Number(partial.pulseCharge) || 0, 0, 100);
+            if ("timeLeft" in partial) game.timeLeft = Math.max(0, Number(partial.timeLeft) || 0);
             if ("tacticalRerolls" in partial) game.tacticalRerolls = Math.max(0, Math.round(Number(partial.tacticalRerolls) || 0));
+            if ("currentStreak" in partial) {
+              game.currentStreak = Math.max(0, Math.round(Number(partial.currentStreak) || 0));
+              game.bestStreak = Math.max(game.bestStreak, game.currentStreak);
+            }
+            if ("clutchActions" in partial) game.clutchActions = Math.max(0, Math.round(Number(partial.clutchActions) || 0));
             if ("flowCharge" in partial) game.flowCharge = clamp(Number(partial.flowCharge) || 0, 0, 100);
             if ("flowActive" in partial) {
               game.flowActive = Math.max(0, Number(partial.flowActive) || 0);
@@ -4821,6 +5280,7 @@
             game.pulseMode = false;
             game.pulseCharge = 0;
             game.profile.pulses += 1;
+            const actionMeta = game.registerSuccessfulAction({ source: "pulse" });
             game.totalCleared += cleared;
             game.score += gain;
             game.lastGain = gain;
@@ -4828,7 +5288,7 @@
             game.phase = "idle";
             game.phaseClock = 0;
             game.stateLabel = "Pulse";
-            game.statusText = `Hook test: Pulse simulée · +${gain} pts.`;
+            game.statusText = `Hook test: Pulse simulée · +${gain} pts.${actionMeta.summary ? " " + actionMeta.summary : ""}`;
             if (game.candyRushActive <= 0) game.activateCandyRush();
             game.updateUi(true);
             return true;
