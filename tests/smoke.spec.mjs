@@ -29,7 +29,24 @@ test("smoke: the game starts, plays a move, and exposes test hooks", async ({ pa
   expect(firstRun.played).toBeTruthy();
   expect(firstRun.after.score).toBeGreaterThan(firstRun.before.score);
   expect(firstRun.after.totalCleared).toBeGreaterThan(0);
+  expect(firstRun.after.currentStreak).toBeGreaterThanOrEqual(1);
   expect(firstRun.hint?.cells?.length).toBe(2);
+  await expect(page.locator("#tempoValue")).toContainText("1/");
+  await expect(page.locator("#streakValue")).toContainText(String(firstRun.after.currentStreak));
+
+  const streakRun = await page.evaluate(async () => {
+    const api = window.__pulsePrismTest;
+    for (let i = 0; i < 4; i++) {
+      await api.performBestMove();
+    }
+    return api.getSnapshot();
+  });
+
+  expect(streakRun.currentStreak).toBeGreaterThanOrEqual(5);
+  expect(streakRun.bestStreak).toBeGreaterThanOrEqual(5);
+  expect(streakRun.profile.bestStreak).toBeGreaterThanOrEqual(5);
+  await expect(page.locator("#streakTitle")).toContainText("Série");
+  await expect(page.locator("#tempoCopy")).toContainText("Prime");
 
   const timeBeforeLab = Number(await page.locator("#timeValue").textContent());
   await expect(page.locator("#labMoveButton")).toBeEnabled();
@@ -42,20 +59,28 @@ test("smoke: the game starts, plays a move, and exposes test hooks", async ({ pa
 
   const systemsRun = await page.evaluate(async () => {
     const api = window.__pulsePrismTest;
-    api.setState({ tacticalRerolls: 2, pulseCharge: 100, candyRushCharge: 100 });
+    api.setState({ tacticalRerolls: 2, pulseCharge: 100, candyRushCharge: 100, timeLeft: 7 });
     const before = api.getSnapshot();
     const rerollOk = api.performReroll();
+    const afterReroll = api.getSnapshot();
+    api.setState({ pulseCharge: 100, timeLeft: 7 });
+    const beforePulse = api.getSnapshot();
     const pulseOk = await api.firePulseOnFocus();
     const after = api.getSnapshot();
-    return { before, after, rerollOk, pulseOk };
+    return { before, afterReroll, beforePulse, after, rerollOk, pulseOk };
   });
 
   expect(systemsRun.rerollOk).toBeTruthy();
   expect(systemsRun.pulseOk).toBeTruthy();
+  expect(systemsRun.afterReroll.currentStreak).toBe(0);
   expect(systemsRun.after.score).toBeGreaterThan(systemsRun.before.score);
   expect(systemsRun.after.profile.pulses).toBeGreaterThanOrEqual(systemsRun.before.profile.pulses);
+  expect(systemsRun.after.clutchActions).toBeGreaterThan(systemsRun.beforePulse.clutchActions);
+  expect(systemsRun.after.profile.clutches).toBeGreaterThan(systemsRun.beforePulse.profile.clutches);
   expect(await page.locator("#flowValue").textContent()).toMatch(/×/);
   await expect(page.locator("#rushValue")).not.toHaveText("");
+  await expect(page.locator("#dangerValue")).not.toContainText("Stable");
+  await expect(page.locator("#clutchValue")).toContainText(String(systemsRun.after.clutchActions));
 
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
