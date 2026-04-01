@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Pulse Prism Match-3</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Fredoka:wght@400;500;600;700&family=Orbitron:wght@500;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@500;700;800&family=Space+Grotesk:wght@400;500;700&family=Syncopate:wght@400;700&display=swap');
 
       :root {
         --bg-1: #160722;
@@ -1184,21 +1184,788 @@
           transition-duration: 0ms !important;
         }
       }
+
+      /* ── REFONTE COMMAND DECK ── */
+      :root {
+        --bg-1: #071018;
+        --bg-2: #102134;
+        --bg-3: #0e1727;
+        --panel: rgba(10, 19, 31, 0.9);
+        --panel-strong: rgba(5, 11, 18, 0.95);
+        --line: rgba(140, 224, 255, 0.18);
+        --line-bright: rgba(210, 255, 113, 0.64);
+        --text: #f5fbff;
+        --muted: #8fb5c9;
+        --accent: #62c7ff;
+        --accent-2: #d8ff72;
+        --accent-3: #ff9869;
+        --glow: rgba(98, 199, 255, 0.3);
+        --ok: #98ffa5;
+        --danger: #ff7878;
+        --shadow: 0 40px 100px rgba(0, 0, 0, 0.35);
+        --panel-glow: 0 0 0 1px rgba(255,255,255,0.03), 0 24px 70px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+        --display-font: 'Syncopate', 'Orbitron', sans-serif;
+        --ui-font: 'Space Grotesk', sans-serif;
+      }
+
+      html, body {
+        background: var(--bg-1);
+        color: var(--text);
+        font-family: var(--ui-font);
+      }
+
+      body::before {
+        background:
+          radial-gradient(circle at 8% 18%, rgba(98,199,255,0.2) 0%, transparent 28%),
+          radial-gradient(circle at 86% 12%, rgba(216,255,114,0.16) 0%, transparent 24%),
+          radial-gradient(circle at 75% 78%, rgba(255,152,105,0.16) 0%, transparent 28%),
+          radial-gradient(circle at 28% 82%, rgba(124,170,255,0.16) 0%, transparent 24%),
+          linear-gradient(145deg, #08111a 0%, #0c1826 34%, #0a1320 68%, #050b12 100%);
+        animation: signal-breath 16s ease-in-out infinite alternate;
+      }
+
+      body::after {
+        background:
+          linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+          radial-gradient(circle at 15% 22%, rgba(98,199,255,0.22) 0 2px, transparent 3px),
+          radial-gradient(circle at 68% 34%, rgba(216,255,114,0.18) 0 2px, transparent 3px),
+          radial-gradient(circle at 82% 72%, rgba(255,152,105,0.18) 0 2px, transparent 3px);
+        background-size: 84px 84px, 84px 84px, 190px 190px, 240px 240px, 210px 210px;
+        opacity: 0.22;
+        mix-blend-mode: screen;
+      }
+
+      @keyframes signal-breath {
+        0% { opacity: 0.9; transform: scale(1); }
+        100% { opacity: 1; transform: scale(1.02); }
+      }
+
+      .app-shell {
+        width: min(1380px, calc(100vw - 24px));
+        padding: 18px 0 34px;
+      }
+
+      .top-bar {
+        display: grid;
+        grid-template-columns: minmax(300px, 1.1fr) minmax(420px, 0.9fr);
+        gap: 18px;
+        margin-bottom: 18px;
+        padding: 24px;
+        border-radius: 34px;
+        border: 1px solid rgba(143, 181, 201, 0.18);
+        background:
+          linear-gradient(140deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+          radial-gradient(circle at top right, rgba(98,199,255,0.16), transparent 28%),
+          radial-gradient(circle at bottom left, rgba(216,255,114,0.1), transparent 24%),
+          var(--panel);
+        box-shadow: var(--panel-glow), 0 0 0 1px rgba(0,0,0,0.35) inset;
+        backdrop-filter: blur(16px);
+      }
+
+      .top-bar::before {
+        content: '';
+        position: absolute;
+        inset: 14px;
+        border-radius: 22px;
+        border: 1px solid rgba(143, 181, 201, 0.08);
+        pointer-events: none;
+      }
+
+      .top-bar::after {
+        top: auto;
+        left: 24px;
+        right: 24px;
+        bottom: 14px;
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(216,255,114,0), rgba(216,255,114,0.85), rgba(98,199,255,0.85), rgba(255,152,105,0.85), rgba(255,152,105,0));
+        animation: command-scan 5s linear infinite;
+      }
+
+      @keyframes command-scan {
+        0% { transform: translateX(-18%); opacity: 0.7; }
+        50% { opacity: 1; }
+        100% { transform: translateX(18%); opacity: 0.7; }
+      }
+
+      .brand-lockup {
+        gap: 10px;
+        max-width: 42rem;
+      }
+
+      .eyebrow {
+        color: #8fdfff;
+        font-size: 0.72rem;
+        letter-spacing: 0.3em;
+      }
+
+      h1 {
+        font-size: clamp(2.3rem, 4.2vw, 4rem);
+        line-height: 0.9;
+        letter-spacing: 0.14em;
+        background: linear-gradient(125deg, #f5fbff 0%, #d8ff72 26%, #62c7ff 58%, #ff9869 100%);
+        filter: drop-shadow(0 0 12px rgba(98,199,255,0.22));
+      }
+
+      .tagline {
+        max-width: 38rem;
+        color: #aac4d3;
+        font-size: 1rem;
+        line-height: 1.55;
+        letter-spacing: 0.02em;
+        text-shadow: none;
+      }
+
+      .control-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-content: start;
+        justify-content: stretch;
+        gap: 10px;
+      }
+
+      .pill-button, .primary-button {
+        border-radius: 16px;
+        font-family: var(--ui-font);
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .pill-button {
+        min-height: 48px;
+        padding: 0.9rem 1rem;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+          linear-gradient(140deg, rgba(98,199,255,0.12), rgba(255,152,105,0.08) 52%, rgba(216,255,114,0.12));
+        border: 1px solid rgba(143, 181, 201, 0.18);
+        color: #edf7ff;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 26px rgba(0,0,0,0.22);
+      }
+
+      .pill-button:hover, .pill-button:focus-visible {
+        transform: translateY(-2px);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.28), 0 0 0 1px rgba(98,199,255,0.4);
+        border-color: rgba(98,199,255,0.45);
+      }
+
+      .pill-button[aria-pressed="true"] {
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03)),
+          linear-gradient(140deg, rgba(216,255,114,0.14), rgba(98,199,255,0.16));
+        border-color: rgba(216,255,114,0.45);
+        color: #f8ffdd;
+      }
+
+      .primary-button {
+        min-height: 54px;
+        padding: 1rem 1.4rem;
+        background: linear-gradient(135deg, #d8ff72 0%, #62c7ff 48%, #ff9869 100%);
+        color: #08131d;
+        box-shadow: 0 16px 32px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.08) inset;
+      }
+
+      .primary-button:hover, .primary-button:focus-visible {
+        box-shadow: 0 18px 36px rgba(0,0,0,0.26), 0 0 0 1px rgba(216,255,114,0.38) inset;
+      }
+
+      .layout {
+        grid-template-columns: minmax(290px, 320px) minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .left-panel {
+        gap: 18px;
+        position: sticky;
+        top: 18px;
+        align-self: start;
+      }
+
+      .panel {
+        border-radius: 30px;
+        border: 1px solid rgba(143, 181, 201, 0.16);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+          linear-gradient(145deg, rgba(13,22,34,0.96), rgba(8,15,24,0.94));
+        box-shadow: var(--panel-glow);
+        backdrop-filter: blur(14px);
+      }
+
+      .panel::before {
+        left: 18px;
+        right: 18px;
+        background: linear-gradient(90deg, transparent, rgba(98,199,255,0.45), rgba(216,255,114,0.3), transparent);
+      }
+
+      .panel::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(135deg, rgba(98,199,255,0.05), transparent 38%, rgba(216,255,114,0.04) 72%, transparent);
+      }
+
+      .leaderboard-card,
+      .lab-card,
+      .play-panel,
+      .play-meta-panel,
+      .archive-card {
+        padding: 20px;
+      }
+
+      .leaderboard-card h3,
+      .archive-card h3 {
+        margin: 0 0 8px;
+        font-size: 1.28rem;
+        letter-spacing: 0.08em;
+        color: #f2fbff;
+      }
+
+      .leaderboard-card p,
+      .archive-card p,
+      .lab-copy {
+        color: #9bb7c9;
+        font-size: 0.9rem;
+        line-height: 1.55;
+      }
+
+      .leaderboard-list {
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .leaderboard-entry {
+        border-radius: 18px;
+        padding: 12px 14px;
+        background: linear-gradient(145deg, rgba(17,31,47,0.9), rgba(9,17,28,0.84));
+        border: 1px solid rgba(143,181,201,0.1);
+      }
+
+      .leaderboard-entry:first-child {
+        border-color: rgba(216,255,114,0.28);
+        background: linear-gradient(145deg, rgba(31,39,16,0.94), rgba(12,23,28,0.9));
+      }
+
+      .leaderboard-rank {
+        width: 2.3rem;
+        height: 2.3rem;
+        background: rgba(98,199,255,0.12);
+        border-color: rgba(98,199,255,0.24);
+        color: #c6f3ff;
+      }
+
+      .leaderboard-entry:first-child .leaderboard-rank {
+        background: linear-gradient(135deg, rgba(216,255,114,0.28), rgba(98,199,255,0.18));
+        color: #eaffb8;
+      }
+
+      .leaderboard-score {
+        color: #f4fbff;
+        font-size: 1.12rem;
+      }
+
+      .leaderboard-detail {
+        color: #8eaabd;
+      }
+
+      .lab-card h4 {
+        margin: 0 0 12px;
+        font-size: 0.76rem;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: #dff7ff;
+      }
+
+      .lab-actions {
+        gap: 10px;
+      }
+
+      .mini-button {
+        min-height: 44px;
+      }
+
+      .play-panel {
+        border-radius: 34px;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+          radial-gradient(circle at top left, rgba(98,199,255,0.08), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(216,255,114,0.06), transparent 26%),
+          linear-gradient(150deg, rgba(9,18,28,0.98), rgba(6,11,18,0.96));
+      }
+
+      .hud {
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .hud > .stat-card:nth-child(1) { grid-column: span 4; }
+      .hud > .stat-card:nth-child(2),
+      .hud > .stat-card:nth-child(3),
+      .hud > .stat-card:nth-child(4),
+      .hud > .stat-card:nth-child(5) { grid-column: span 2; }
+
+      .stat-card {
+        min-height: 96px;
+        padding: 14px 16px 18px;
+        border-radius: 24px;
+        border: 1px solid rgba(143,181,201,0.12);
+        background: linear-gradient(145deg, rgba(20,35,50,0.94), rgba(8,15,24,0.88));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 14px 28px rgba(0,0,0,0.22);
+      }
+
+      .stat-card::after {
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+        height: 4px;
+        border-radius: 999px;
+        opacity: 1;
+      }
+
+      .stat-card.danger {
+        border-color: rgba(255,120,120,0.38);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 32px rgba(75,0,0,0.18);
+      }
+
+      .stat-label {
+        margin-bottom: 8px;
+        color: #8fb5c9;
+        font-size: 0.64rem;
+        letter-spacing: 0.24em;
+      }
+
+      .stat-value {
+        color: #f5fbff;
+        font-size: clamp(1.3rem, 2.4vw, 2.2rem);
+      }
+
+      .goal-progress,
+      .charge-progress {
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+        height: 5px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 999px;
+      }
+
+      .goal-progress-fill {
+        background: linear-gradient(90deg, #d8ff72, #62c7ff);
+        box-shadow: 0 0 14px rgba(98,199,255,0.28);
+      }
+
+      .charge-progress-fill {
+        background: linear-gradient(90deg, #62c7ff, #ff9869, #d8ff72);
+        box-shadow: 0 0 14px rgba(98,199,255,0.28);
+      }
+
+      .board-frame {
+        border-radius: 36px;
+        border: 1px solid rgba(143,181,201,0.16);
+        background:
+          radial-gradient(circle at 50% 16%, rgba(216,255,114,0.14), transparent 18%),
+          radial-gradient(circle at 14% 18%, rgba(98,199,255,0.12), transparent 18%),
+          linear-gradient(180deg, rgba(13,24,36,0.92), rgba(4,9,14,0.98));
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 28px 70px rgba(0,0,0,0.34), inset 0 0 48px rgba(0,0,0,0.35);
+        isolation: isolate;
+      }
+
+      .board-frame::before {
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.07), transparent 22%),
+          radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 54%, rgba(0,0,0,0.26) 100%);
+        opacity: 0.8;
+      }
+
+      .board-frame::after {
+        background:
+          linear-gradient(90deg, transparent 0%, rgba(98,199,255,0.12) 48%, transparent 100%),
+          repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 64px),
+          repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 64px);
+        animation: stage-sweep 8s linear infinite;
+      }
+
+      @keyframes stage-sweep {
+        0% { transform: translateX(-14%); opacity: 0.48; }
+        50% { opacity: 0.9; }
+        100% { transform: translateX(14%); opacity: 0.48; }
+      }
+
+      #gameCanvas {
+        filter: saturate(1.04) contrast(1.02);
+      }
+
+      .combo-indicator {
+        top: 18px;
+        left: 18px;
+        transform: none;
+        padding: 8px 14px;
+        border-radius: 14px;
+        background: rgba(7,16,24,0.86);
+        border-color: rgba(216,255,114,0.24);
+        color: #efffc5;
+        font-size: 0.82rem;
+        box-shadow: 0 14px 26px rgba(0,0,0,0.22);
+      }
+
+      .level-banner {
+        left: 20px;
+        top: auto;
+        bottom: 20px;
+        transform: scale(0.94);
+        padding: 12px 18px;
+        border-radius: 18px;
+        border-color: rgba(216,255,114,0.28);
+        background: linear-gradient(135deg, rgba(216,255,114,0.22), rgba(98,199,255,0.26), rgba(255,152,105,0.2));
+        color: #f4fbff;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.24);
+      }
+
+      .level-banner.show {
+        transform: scale(1);
+      }
+
+      .board-overlay {
+        background: rgba(4, 11, 18, 0.78);
+        backdrop-filter: blur(10px);
+      }
+
+      .overlay-card {
+        width: min(100%, 560px);
+        padding: clamp(24px, 4vw, 34px);
+        border-radius: 32px;
+        border: 1px solid rgba(143,181,201,0.18);
+        background:
+          linear-gradient(160deg, rgba(14,24,36,0.98), rgba(8,14,22,0.98)),
+          radial-gradient(circle at top right, rgba(98,199,255,0.12), transparent 28%),
+          radial-gradient(circle at bottom left, rgba(216,255,114,0.08), transparent 22%);
+        box-shadow: 0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+
+      .overlay-card::before {
+        background: linear-gradient(90deg, transparent, rgba(98,199,255,0.46), rgba(216,255,114,0.34), rgba(255,152,105,0.46), transparent);
+      }
+
+      .overlay-card h2 {
+        margin: 0 0 12px;
+        font-size: clamp(2rem, 4vw, 3.2rem);
+        line-height: 0.94;
+        letter-spacing: 0.08em;
+        background: linear-gradient(130deg, #f5fbff 0%, #d8ff72 36%, #62c7ff 70%, #ff9869 100%);
+      }
+
+      .overlay-card p {
+        color: #a8c1d2;
+        font-size: 0.96rem;
+        line-height: 1.65;
+      }
+
+      .instruction-list,
+      .bullet-list {
+        margin: 0 0 18px;
+        padding-left: 1.1rem;
+        color: #deeff8;
+        line-height: 1.55;
+        font-size: 0.9rem;
+      }
+
+      .instruction-list li,
+      .bullet-list li {
+        margin-bottom: 0.55rem;
+      }
+
+      .play-meta-panel {
+        margin-top: 18px;
+        border-radius: 30px;
+      }
+
+      .status-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .mini-stat {
+        min-height: 76px;
+        padding: 14px;
+        border-radius: 20px;
+        background: linear-gradient(145deg, rgba(17,31,47,0.92), rgba(8,15,24,0.86));
+        border: 1px solid rgba(143,181,201,0.1);
+      }
+
+      .mini-stat strong {
+        margin-bottom: 8px;
+        font-size: 0.62rem;
+        letter-spacing: 0.24em;
+        color: #84aac0;
+      }
+
+      .mini-stat span {
+        color: #f5fbff;
+        font-size: 1.1rem;
+      }
+
+      .status-message {
+        margin-top: 16px;
+        min-height: 58px;
+        padding: 15px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(98,199,255,0.16);
+        background: linear-gradient(135deg, rgba(98,199,255,0.08), rgba(216,255,114,0.08) 55%, rgba(255,152,105,0.08));
+        color: #edf8ff;
+        font-size: 0.92rem;
+      }
+
+      .play-system-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .flow-panel,
+      .rush-panel,
+      .tempo-panel,
+      .danger-panel {
+        margin-top: 0;
+        min-height: 144px;
+        padding: 14px 16px 16px;
+        border-radius: 22px;
+        border-width: 1px;
+      }
+
+      .flow-header strong,
+      .rush-header strong,
+      .tempo-header strong,
+      .danger-header strong {
+        font-size: 0.68rem;
+        letter-spacing: 0.24em;
+      }
+
+      .flow-copy,
+      .rush-copy,
+      .tempo-copy,
+      .danger-copy {
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+
+      .play-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .play-card-grid .mission-card {
+        grid-column: 1 / -1;
+      }
+
+      .mission-card,
+      .directive-card {
+        margin-top: 0;
+        padding: 16px;
+        border-radius: 22px;
+      }
+
+      .mission-card {
+        padding: 18px;
+      }
+
+      .mission-card h4,
+      .directive-card h4 {
+        font-size: 0.68rem;
+        letter-spacing: 0.24em;
+      }
+
+      .mission-title,
+      .directive-title {
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+
+      .mission-detail,
+      .directive-detail,
+      .mission-reward {
+        line-height: 1.55;
+      }
+
+      .archive-cache {
+        display: block;
+        margin-top: 18px;
+      }
+
+      .archive-summary {
+        margin-top: 0;
+        margin-bottom: 14px;
+        color: #e8ffb9;
+        font-size: 0.82rem;
+        letter-spacing: 0.05em;
+      }
+
+      .achievement-list {
+        gap: 10px;
+      }
+
+      .achievement-entry {
+        border-radius: 18px;
+        padding: 12px 14px;
+        background: linear-gradient(145deg, rgba(17,31,47,0.9), rgba(8,15,24,0.84));
+        border: 1px solid rgba(143,181,201,0.1);
+      }
+
+      .achievement-entry.unlocked {
+        background: linear-gradient(145deg, rgba(31,39,16,0.92), rgba(10,20,25,0.9));
+        border-color: rgba(216,255,114,0.24);
+      }
+
+      .achievement-label {
+        color: #f2fbff;
+      }
+
+      .achievement-detail {
+        color: #8eaabd;
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        color: #6f8a9d;
+        font-size: 0.74rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 1220px) {
+        .top-bar {
+          grid-template-columns: 1fr;
+        }
+
+        .left-panel {
+          position: static;
+        }
+
+        .status-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .play-system-grid,
+        .play-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .control-row {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .hud {
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .hud > .stat-card:nth-child(1) {
+          grid-column: span 6;
+        }
+
+        .hud > .stat-card:nth-child(2),
+        .hud > .stat-card:nth-child(3),
+        .hud > .stat-card:nth-child(4),
+        .hud > .stat-card:nth-child(5) {
+          grid-column: span 3;
+        }
+
+        .status-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 720px) {
+        .app-shell {
+          width: calc(100vw - 12px);
+          padding: 10px 0 22px;
+        }
+
+        .top-bar,
+        .panel,
+        .play-panel,
+        .play-meta-panel,
+        .overlay-card {
+          border-radius: 24px;
+        }
+
+        .top-bar,
+        .leaderboard-card,
+        .lab-card,
+        .play-panel,
+        .play-meta-panel,
+        .archive-card {
+          padding: 16px;
+        }
+
+        .control-row {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .hud {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .hud > .stat-card:nth-child(1) {
+          grid-column: span 2;
+        }
+
+        .hud > .stat-card:nth-child(2),
+        .hud > .stat-card:nth-child(3),
+        .hud > .stat-card:nth-child(4),
+        .hud > .stat-card:nth-child(5) {
+          grid-column: span 1;
+        }
+
+        .status-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .play-system-grid,
+        .play-card-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .board-overlay {
+          padding: 14px;
+        }
+
+        .combo-indicator {
+          left: 12px;
+          top: 12px;
+          padding: 7px 12px;
+        }
+
+        .level-banner {
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          text-align: center;
+        }
+      }
     </style>
   </head>
   <body>
     <main class="app-shell">
       <header class="top-bar">
         <div class="brand-lockup">
-          <span class="eyebrow">Match-3 Canvas · Neon Candy Solo</span>
+          <span class="eyebrow">Arcade Command Deck · Match-3 Tactique</span>
           <h1>Pulse Prism</h1>
-          <p class="tagline">Aligne des bonbons néon, allume les boosts, garde le rythme.</p>
+          <p class="tagline">Refonte complète: plus lisible, plus nerveux, plus orienté plateau.</p>
         </div>
         <div class="control-row">
           <button id="soundToggle" class="pill-button" type="button" aria-pressed="true">🔊 Son actif</button>
           <button id="hintButton" class="pill-button" type="button">🔍 Scanner</button>
           <button id="autoHintButton" class="pill-button" type="button" aria-pressed="true">✨ Aide auto</button>
           <button id="rerollButton" class="pill-button" type="button" disabled>🌀 Reroll 0</button>
+          <button id="echoButton" class="pill-button" type="button" disabled>↶ Echo 0</button>
           <button id="pulseButton" class="pill-button" type="button" aria-pressed="false" disabled>⚡ Pulse 0%</button>
           <button id="hapticsButton" class="pill-button" type="button" aria-pressed="false">📳 Vibrations</button>
           <button id="pauseButton" class="pill-button" type="button" aria-pressed="false">⏸ Pause</button>
@@ -1209,41 +1976,41 @@
       <section class="layout">
         <aside class="left-panel">
           <section class="panel leaderboard-card">
-            <h3>Top 3</h3>
-            <p>Scores locaux conservés dans ce navigateur.</p>
+            <h3>Archives de Run</h3>
+            <p>Les meilleurs runs locaux restent chargés dans la console de secteur.</p>
             <ol id="leaderboardList" class="leaderboard-list" aria-label="Meilleurs scores">
               <li class="leaderboard-entry">
                 <span class="leaderboard-rank">1</span>
                 <div class="leaderboard-meta">
                   <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistré</span>
+                  <span class="leaderboard-detail">Archive vide</span>
                 </div>
               </li>
               <li class="leaderboard-entry">
                 <span class="leaderboard-rank">2</span>
                 <div class="leaderboard-meta">
                   <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistré</span>
+                  <span class="leaderboard-detail">Archive vide</span>
                 </div>
               </li>
               <li class="leaderboard-entry">
                 <span class="leaderboard-rank">3</span>
                 <div class="leaderboard-meta">
                   <strong class="leaderboard-score">---</strong>
-                  <span class="leaderboard-detail">Aucun score enregistré</span>
+                  <span class="leaderboard-detail">Archive vide</span>
                 </div>
               </li>
             </ol>
           </section>
           <section class="panel lab-card">
-            <h4>Lab rapide</h4>
+            <h4>Console tactique</h4>
             <div class="lab-actions">
               <button id="labMoveButton" class="pill-button mini-button" type="button">▶ Coup fort</button>
               <button id="labPulseButton" class="pill-button mini-button" type="button">⚡ Pulse</button>
               <button id="labRushButton" class="pill-button mini-button" type="button">🍬 Rush</button>
               <button id="labTimeButton" class="pill-button mini-button" type="button">⏱ +30s</button>
             </div>
-            <div id="labDetail" class="lab-copy">Boîte à outils locale pour éprouver les systèmes sans repartir de zéro.</div>
+            <div id="labDetail" class="lab-copy">Outils d’injection rapide pour éprouver les systèmes sans redémarrer le run.</div>
           </section>
         </aside>
 
@@ -1284,34 +2051,35 @@
 
             <div id="titleOverlay" class="board-overlay visible">
               <div class="overlay-card">
-                <p class="eyebrow">Match-3 canvas</p>
-                <h2>Fais craquer la grille.</h2>
-                <p>Échange deux bonbons-prismes voisins pour aligner au moins trois formes identiques et déclencher des réactions en chaîne.</p>
+                <p class="eyebrow">Mise en route du secteur</p>
+                <h2>Prends le contrôle du flux.</h2>
+                <p>Échange deux prismes adjacents pour ouvrir des chaînes, charger les systèmes et garder la chambre sous tension.</p>
                 <ul class="instruction-list">
-                  <li>Glisse un prisme ou touche deux cases adjacentes.</li>
-                  <li>Les cascades et les bonus rapportent plus — enchaîne.</li>
-                  <li>Charge la Pulse pour vaporiser tous les prismes d'une même famille.</li>
-                  <li>Remplis Candy Rush pour saturer la grille de sucre et de bonus.</li>
-                  <li>Atteins l'objectif pour passer au niveau suivant et gagner du temps.</li>
-                  <li>Raccourcis: flèches ou WASD, H pour scanner, M pour Pulse, P ou Espace pour pause.</li>
+                  <li>Glisse un prisme ou sélectionne deux cases voisines pour engager le swap.</li>
+                  <li>Les longues cascades fabriquent des bonus et stabilisent l’Overdrive.</li>
+                  <li>La Pulse efface toute une famille quand la charge atteint 100%.</li>
+                  <li>Candy Rush accélère les gains et rend la grille beaucoup plus explosive.</li>
+                  <li>Echo annule le dernier engagement fort si tu veux reprendre la ligne.</li>
+                  <li>Atteins chaque objectif avant rupture du chrono pour monter de secteur.</li>
+                  <li>Raccourcis: flèches ou WASD, H scanner, U Echo, M Pulse, P ou Espace pause.</li>
                 </ul>
                 <div class="overlay-actions">
                   <button id="startButton" class="primary-button" type="button">▶ Lancer la partie</button>
-                  <button id="titleSoundButton" class="pill-button" type="button">Basculer le son</button>
+                  <button id="titleSoundButton" class="pill-button" type="button">Basculer l’audio</button>
                 </div>
               </div>
             </div>
 
             <div id="gameOverOverlay" class="board-overlay">
               <div class="overlay-card">
-                <p class="eyebrow">Fin de partie</p>
-                <h2>La pluie sucrée retombe.</h2>
-                <p id="gameOverSummary">Tu as tenu la grille jusqu'au dernier battement.</p>
+                <p class="eyebrow">Run interrompu</p>
+                <h2>Le secteur retombe en silence.</h2>
+                <p id="gameOverSummary">Le run a tenu jusqu’au dernier battement de la chambre.</p>
                 <ul class="bullet-list">
-                  <li>Un bon timing sur les cascades change tout.</li>
-                  <li>Utilise les jetons bonus pour effacer des lignes entières.</li>
-                  <li>Une Pulse bien placée peut renverser la grille.</li>
-                  <li>Le chrono remonte à chaque objectif atteint.</li>
+                  <li>Une lecture propre du radar vaut souvent plus qu’un coup agressif.</li>
+                  <li>Les bonus centraux ouvrent les meilleures reprises de contrôle.</li>
+                  <li>Une Pulse bien placée peut renverser un run perdu.</li>
+                  <li>Chaque objectif validé recharge le tempo et la marge tactique.</li>
                 </ul>
                 <div class="overlay-actions">
                   <button id="playAgainButton" class="primary-button" type="button">▶ Rejouer</button>
@@ -1412,7 +2180,7 @@
             <div class="play-card-grid">
               <div class="mission-card">
                 <h4>Mission active</h4>
-                <p id="missionTitle" class="mission-title">Démarre une partie pour recevoir un objectif tactique.</p>
+                <p id="missionTitle" class="mission-title">Lance un run pour charger un objectif tactique.</p>
                 <p id="missionDetail" class="mission-detail">Chaque mission réussie ajoute score, temps et charge de Pulse.</p>
                 <div class="mission-progress" aria-hidden="true">
                   <div id="missionBar" class="mission-progress-fill"></div>
@@ -1436,17 +2204,17 @@
               </div>
               <div class="directive-card session-card">
                 <h4>Session</h4>
-                <p id="sessionTitle" class="directive-title">Run en veille.</p>
+                <p id="sessionTitle" class="directive-title">Console en veille.</p>
                 <p id="sessionDetail" class="directive-detail">Démarre une partie pour suivre la cadence, la précision et les pics de gain.</p>
               </div>
               <div class="directive-card radar-card">
                 <h4>Radar tactique</h4>
-                <p id="radarTitle" class="directive-title">Grille inactive.</p>
+                <p id="radarTitle" class="directive-title">Radar inactif.</p>
                 <p id="radarDetail" class="directive-detail">Le radar affichera le nombre d'ouvertures, la densité du focus et la qualité du meilleur coup.</p>
               </div>
               <div class="directive-card coach-card">
                 <h4>Coach</h4>
-                <p id="coachTitle" class="directive-title">Pré-brief</p>
+                <p id="coachTitle" class="directive-title">Briefing</p>
                 <p id="coachDetail" class="directive-detail">Le coach réagit au rythme du run, aux urgences, aux missions proches et aux jauges prêtes.</p>
               </div>
               <div class="directive-card streak-card">
@@ -1462,7 +2230,9 @@
             </div>
           </section>
 
-          <div class="archive-cache" hidden aria-hidden="true">
+          <section class="panel archive-card archive-cache">
+            <h3>Archives de Secteur</h3>
+            <p>Succès débloqués, activité cumulée et progression persistante du poste local.</p>
             <div id="archiveSummary" class="archive-summary">Jeux: 0 · Missions: 0 · Pulses: 0</div>
             <ul id="achievementList" class="achievement-list" aria-label="Succès débloqués">
               <li class="achievement-entry">
@@ -1470,9 +2240,9 @@
                 <span class="achievement-detail">Lecture des archives locales.</span>
               </li>
             </ul>
-          </div>
+          </section>
 
-          <p class="footer-note">Jeu autonome en un HTML · smoke tests via npm test · raccourcis H / M / P / WASD</p>
+          <p class="footer-note">Pulse Prism · refonte command deck · smoke tests via npm test · raccourcis H / U / M / P / WASD</p>
         </section>
       </section>
     </main>
@@ -1498,6 +2268,12 @@
         const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
         const lerp = (a, b, t) => a + (b - a) * t;
         const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
+        const deepCopy = value => {
+          if (value === null || value === undefined) return value;
+          return typeof structuredClone === "function"
+            ? structuredClone(value)
+            : JSON.parse(JSON.stringify(value));
+        };
 
         function makeCanvas(width, height) {
           if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(width, height);
@@ -2607,6 +3383,7 @@
               hintButton: document.getElementById("hintButton"),
               autoHintButton: document.getElementById("autoHintButton"),
               rerollButton: document.getElementById("rerollButton"),
+              echoButton: document.getElementById("echoButton"),
               labMoveButton: document.getElementById("labMoveButton"),
               labPulseButton: document.getElementById("labPulseButton"),
               labRushButton: document.getElementById("labRushButton"),
@@ -2647,6 +3424,7 @@
             this.protocolReady = true;
             this.emergencyActive = 0;
             this.tacticalRerolls = 0;
+            this.rewindCharges = 0;
             this.statusText = 'Appuie sur "Lancer la partie" pour commencer.';
             this.stateLabel = "Prêt";
             this.levelFlash = 0; this.swapHintFlash = 0;
@@ -2668,6 +3446,7 @@
             this.goalMilestones = { pulse: false, clutch: false };
             this.boardAssistCooldown = 0;
             this.visibilityPaused = false;
+            this.lastTurnSnapshot = null;
 
             // Screen shake
             this.shake = { x: 0, y: 0, duration: 0, amount: 0 };
@@ -3119,8 +3898,197 @@
             return `Scanner: ${parts.join(" ")}`;
           }
 
+          maxEchoCharges() { return 2; }
+
+          snapshotBoardState() {
+            return {
+              selectedCell: this.board.selectedCell ? { ...this.board.selectedCell } : null,
+              grid: this.board.grid.map(row => row.map(tile => ({
+                kind: tile.kind,
+                bonus: tile.bonus || null
+              })))
+            };
+          }
+
+          restoreBoardState(snapshot) {
+            if (!snapshot?.grid) return;
+            this.board.grid = snapshot.grid.map((row, r) => row.map((tile, c) => {
+              const next = this.board.makeTile(r, c, tile.kind);
+              next.bonus = tile.bonus || null;
+              return next;
+            }));
+            this.board.selectedCell = snapshot.selectedCell ? { ...snapshot.selectedCell } : null;
+          }
+
+          captureTurnSnapshot(actionLabel = "action") {
+            if (!this.hasBegun || this.phase === "title" || this.phase === "gameover") return null;
+            this.lastTurnSnapshot = {
+              actionLabel,
+              board: this.snapshotBoardState(),
+              score: this.score,
+              level: this.level,
+              goal: this.goal,
+              timeLeft: this.timeLeft,
+              bestCombo: this.bestCombo,
+              totalCleared: this.totalCleared,
+              lastGain: this.lastGain,
+              pulseCharge: this.pulseCharge,
+              flowCharge: this.flowCharge,
+              flowActive: this.flowActive,
+              lastActionTime: this.lastActionTime,
+              candyRushCharge: this.candyRushCharge,
+              candyRushActive: this.candyRushActive,
+              protocolReady: this.protocolReady,
+              emergencyActive: this.emergencyActive,
+              tacticalRerolls: this.tacticalRerolls,
+              rewindCharges: this.rewindCharges,
+              movesPlayed: this.movesPlayed,
+              successfulMoves: this.successfulMoves,
+              invalidMoves: this.invalidMoves,
+              invalidStreak: this.invalidStreak,
+              currentStreak: this.currentStreak,
+              bestStreak: this.bestStreak,
+              clutchActions: this.clutchActions,
+              sessionBestGain: this.sessionBestGain,
+              levelsClearedThisRun: this.levelsClearedThisRun,
+              availableMoveCount: this.availableMoveCount,
+              bestMoveScore: this.bestMoveScore,
+              focusTilesOnBoard: this.focusTilesOnBoard,
+              missionsCompleted: this.missionsCompleted,
+              activeMission: deepCopy(this.activeMission),
+              currentDirective: deepCopy(this.currentDirective),
+              focusKind: this.focusKind,
+              goalMilestones: deepCopy(this.goalMilestones),
+              boardAssistCooldown: this.boardAssistCooldown,
+              profile: deepCopy(this.profile)
+            };
+            return this.lastTurnSnapshot;
+          }
+
+          restoreTurnSnapshot(snapshot) {
+            if (!snapshot) return false;
+            this.restoreBoardState(snapshot.board);
+            this.phase = "idle";
+            this.phaseClock = 0;
+            this.score = snapshot.score;
+            this.displayScore = snapshot.score;
+            this.level = snapshot.level;
+            this.goal = snapshot.goal;
+            this.timeLeft = snapshot.timeLeft;
+            this.bestCombo = snapshot.bestCombo;
+            this.totalCleared = snapshot.totalCleared;
+            this.lastGain = snapshot.lastGain;
+            this.pendingSwap = null;
+            this.comboChain = 0;
+            this.pulseCharge = snapshot.pulseCharge;
+            this.pulseMode = false;
+            this.flowCharge = snapshot.flowCharge;
+            this.flowActive = snapshot.flowActive;
+            this.lastActionTime = snapshot.lastActionTime;
+            this.candyRushCharge = snapshot.candyRushCharge;
+            this.candyRushActive = snapshot.candyRushActive;
+            this.hoverCell = null;
+            this.protocolReady = snapshot.protocolReady;
+            this.emergencyActive = snapshot.emergencyActive;
+            this.tacticalRerolls = snapshot.tacticalRerolls;
+            this.movesPlayed = snapshot.movesPlayed;
+            this.successfulMoves = snapshot.successfulMoves;
+            this.invalidMoves = snapshot.invalidMoves;
+            this.invalidStreak = snapshot.invalidStreak;
+            this.currentStreak = snapshot.currentStreak;
+            this.bestStreak = snapshot.bestStreak;
+            this.clutchActions = snapshot.clutchActions;
+            this.sessionBestGain = snapshot.sessionBestGain;
+            this.levelsClearedThisRun = snapshot.levelsClearedThisRun;
+            this.availableMoveCount = snapshot.availableMoveCount;
+            this.bestMoveScore = snapshot.bestMoveScore;
+            this.focusTilesOnBoard = snapshot.focusTilesOnBoard;
+            this.lastAnalytics = null;
+            this.pendingTurnMeta = null;
+            this.goalMilestones = deepCopy(snapshot.goalMilestones) || { pulse: false, clutch: false };
+            this.boardAssistCooldown = snapshot.boardAssistCooldown || 0;
+            this.visibilityPaused = false;
+            this.missionsCompleted = snapshot.missionsCompleted;
+            this.activeMission = deepCopy(snapshot.activeMission);
+            this.currentDirective = deepCopy(snapshot.currentDirective);
+            this.focusKind = snapshot.focusKind;
+            this.profile = deepCopy(snapshot.profile) || this.profile;
+            this.lastMoveAnchor = null;
+            this.stateLabel = "Echo";
+            this.hintTimer = 0;
+            this.hintCells = [];
+            this.hintShown = false;
+            this.hintInsight = "";
+            this.paused = false;
+            this.levelFlash = 0;
+            this.swapHintFlash = 0;
+            this.comboIndicatorTimer = 0;
+            this.levelBannerTimer = 0;
+            this.invalidSwapPulse = 0;
+            this.shake = { x: 0, y: 0, duration: 0, amount: 0 };
+            this.flashAmt = 0;
+            this.particles.items = [];
+            this.particles.rings = [];
+            this.particles.beams = [];
+            this.celebrations.items = [];
+            this.ui.comboIndicator.classList.remove("show");
+            this.ui.levelBanner.classList.remove("show");
+            this.ui.titleOverlay.classList.remove("visible");
+            this.ui.gameOverOverlay.classList.remove("visible");
+            this.saveProfile();
+            this.renderAchievements();
+            return true;
+          }
+
+          canRewind() {
+            return this.hasBegun
+              && !this.paused
+              && this.phase === "idle"
+              && !this.ui.gameOverOverlay.classList.contains("visible")
+              && this.rewindCharges > 0
+              && !!this.lastTurnSnapshot;
+          }
+
+          rewindLabel(snapshot = this.lastTurnSnapshot) {
+            switch (snapshot?.actionLabel) {
+              case "swap":
+                return "le dernier échange";
+              case "pulse":
+                return "la dernière Pulse";
+              case "reroll":
+                return "le dernier reroll";
+              case "lab-pulse":
+                return "la Pulse labo";
+              case "lab-rush":
+                return "la Rush labo";
+              case "lab-time":
+                return "l'injection de temps labo";
+              default:
+                return "la dernière action";
+            }
+          }
+
+          rewindLastTurn() {
+            if (!this.canRewind()) return false;
+            const snapshot = this.lastTurnSnapshot;
+            const nextCharges = Math.max(0, (snapshot.rewindCharges ?? this.rewindCharges) - 1);
+            if (!this.restoreTurnSnapshot(snapshot)) return false;
+            this.rewindCharges = nextCharges;
+            this.lastTurnSnapshot = null;
+            this.stateLabel = "Echo";
+            this.statusText = `Echo tactique: retour avant ${this.rewindLabel(snapshot)}. Charge restante: ${this.rewindCharges}.`;
+            this.triggerFlash(118, 236, 255, 0.2);
+            this.triggerShake(3.6, 0.12);
+            this.vibrate([10, 14, 10]);
+            this.audio.playShuffle();
+            this.computeTacticalSnapshot();
+            this.updateUi(true);
+            return true;
+          }
+
           performTacticalReroll() {
             if (!this.canInput() || this.tacticalRerolls <= 0) return;
+            this.captureTurnSnapshot("reroll");
             const prevMission = this.activeMission?.id || null;
             const prevFocus = this.focusKind;
             this.tacticalRerolls--;
@@ -3157,6 +4125,7 @@
               return moved;
             }
             if (this.paused) return false;
+            this.captureTurnSnapshot(`lab-${kind}`);
             switch (kind) {
               case "pulse":
                 this.addPulseCharge(100, { allowReadyEffect: true });
@@ -3485,7 +4454,7 @@
           streakRewardPreview(target = this.nextStreakRewardAt()) {
             if (target <= 3) return `Prime ${target}: Overdrive +28% · Rush +8%`;
             if (target <= 5) return `Prime ${target}: +16% Pulse · Rush +12%`;
-            if (target <= 7) return `Prime ${target}: +4s · +1 reroll`;
+            if (target <= 7) return `Prime ${target}: +4s · +1 reroll · +1 Echo`;
             return `Prime ${target}: +10% Pulse · +2s · Rush +10%`;
           }
 
@@ -3506,7 +4475,8 @@
             } else if (this.currentStreak === 7) {
               this.timeLeft = Math.min(120, this.timeLeft + 4);
               this.tacticalRerolls = Math.min(3, this.tacticalRerolls + 1);
-              summaryParts.push("Cadence ×7: +4s · +1 reroll");
+              this.rewindCharges = Math.min(this.maxEchoCharges(), this.rewindCharges + 1);
+              summaryParts.push("Cadence ×7: +4s · +1 reroll · +1 Echo");
               this.unlockAchievement("streak-7");
             } else if (this.currentStreak > 7 && (this.currentStreak - 7) % 4 === 0) {
               this.addPulseCharge(10, { allowReadyEffect: false });
@@ -3591,8 +4561,8 @@
           coachCopy(snapshot = this.lastAnalytics || this.computeTacticalSnapshot()) {
             if (!this.hasBegun) {
               return {
-                title: "Pré-brief",
-                detail: "Ouvre avec le meilleur swap, garde H pour scanner et vise les longues lignes avant d'armer la Pulse."
+                title: "Briefing",
+                detail: "Ouvre avec le meilleur swap, garde H pour scanner et cherche les longues lignes avant d'armer la Pulse."
               };
             }
             if (this.phase === "gameover") {
@@ -3860,7 +4830,7 @@
               if (item) {
                 sc.textContent = item.score.toString();
                 det.textContent = `Niv.${item.level} · Combo ×${item.combo} · Série ${item.streak} · ${this.formatPercent(item.accuracy)}`;
-              } else { sc.textContent = "---"; det.textContent = "Aucun score enregistré"; }
+              } else { sc.textContent = "---"; det.textContent = "Archive vide"; }
               meta.append(sc, det); li.append(rank, meta);
               this.ui.leaderboardList.append(li);
             }
@@ -3901,6 +4871,7 @@
             this.ui.hintButton.addEventListener("click", () => this.showManualHint());
             this.ui.autoHintButton.addEventListener("click", () => this.setAutoHintEnabled(!this.autoHintEnabled));
             this.ui.rerollButton.addEventListener("click", () => this.performTacticalReroll());
+            this.ui.echoButton.addEventListener("click", () => this.rewindLastTurn());
             this.ui.labMoveButton.addEventListener("click", () => this.useLabTool("move"));
             this.ui.labPulseButton.addEventListener("click", () => this.useLabTool("pulse"));
             this.ui.labRushButton.addEventListener("click", () => this.useLabTool("rush"));
@@ -3960,6 +4931,7 @@
             this.protocolReady = true;
             this.emergencyActive = 0;
             this.tacticalRerolls = 1;
+            this.rewindCharges = 1;
             this.movesPlayed = 0;
             this.successfulMoves = 0;
             this.invalidMoves = 0;
@@ -3977,6 +4949,7 @@
             this.goalMilestones = { pulse: false, clutch: false };
             this.boardAssistCooldown = 0;
             this.visibilityPaused = false;
+            this.lastTurnSnapshot = null;
             this.missionsCompleted = 0; this.activeMission = this.createMission();
             const openingDirective = this.assignDirective("start");
             const focus = this.assignFocusKind();
@@ -4011,6 +4984,7 @@
             this.pulseMode = false;
             this.flowCharge = 0; this.flowActive = 0;
             this.candyRushCharge = 0; this.candyRushActive = 0;
+            this.lastTurnSnapshot = null;
             this.hoverCell = null;
             this.protocolReady = false;
             this.emergencyActive = 0;
@@ -4106,26 +5080,30 @@
             this.ui.hapticsButton.setAttribute("aria-pressed", String(this.hapticsEnabled));
             const pulseAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.isPulseReady();
             const rerollAvailable = this.hasBegun && !this.paused && this.phase === "idle" && this.tacticalRerolls > 0;
+            const echoAvailable = this.canRewind();
             const labAvailable = this.hasBegun && this.phase !== "gameover";
             this.ui.pulseButton.disabled = !(pulseAvailable || this.pulseMode);
             this.ui.pulseButton.setAttribute("aria-pressed", String(this.pulseMode));
             this.ui.pulseButton.textContent = this.pulseMode ? "⚡ Vise la grille" : (this.isPulseReady() ? "⚡ Pulse prête" : `⚡ Pulse ${Math.round(this.pulseCharge)}%`);
             this.ui.rerollButton.disabled = !rerollAvailable;
             this.ui.rerollButton.textContent = `🌀 Reroll ${this.tacticalRerolls}`;
+            this.ui.echoButton.disabled = !echoAvailable;
+            this.ui.echoButton.textContent = `↶ Echo ${this.rewindCharges}`;
+            this.ui.echoButton.setAttribute("aria-pressed", String(echoAvailable));
             this.ui.labMoveButton.disabled = !(labAvailable && !this.paused && this.phase === "idle");
             this.ui.labPulseButton.disabled = !(labAvailable && !this.paused && this.phase === "idle");
             this.ui.labRushButton.disabled = !(labAvailable && !this.paused && this.phase === "idle");
             this.ui.labTimeButton.disabled = !labAvailable;
             this.ui.labDetail.textContent = labAvailable
-              ? "Boîte à outils locale pour éprouver les systèmes sans repartir de zéro."
-              : "Démarre une partie pour activer les outils de labo.";
+              ? "Console d’injection rapide pour tester les systèmes du run sans redémarrer."
+              : "Lance un run pour armer la console tactique.";
             if (this.activeMission) {
               this.ui.missionTitle.textContent = this.activeMission.title;
               this.ui.missionDetail.textContent = `${this.activeMission.detail} · ${this.activeMission.progress}/${this.activeMission.target}`;
               this.ui.missionBar.style.width = `${(this.activeMission.progress / this.activeMission.target) * 100}%`;
               this.ui.missionReward.textContent = `Récompense: +${this.activeMission.rewardScore} pts · +${this.activeMission.rewardTime}s · +${this.activeMission.rewardCharge}% Pulse`;
             } else {
-              this.ui.missionTitle.textContent = "Démarre une partie pour recevoir un objectif tactique.";
+              this.ui.missionTitle.textContent = "Lance un run pour charger un objectif tactique.";
               this.ui.missionDetail.textContent = "Chaque mission réussie ajoute score, temps et charge de Pulse.";
               this.ui.missionBar.style.width = "0%";
               this.ui.missionReward.textContent = "Récompense: --";
@@ -4156,14 +5134,14 @@
               this.ui.protocolDetail.textContent = "La prochaine montée de niveau réarmera le protocole.";
             }
             if (!this.hasBegun) {
-              this.ui.sessionTitle.textContent = "Run en veille.";
+              this.ui.sessionTitle.textContent = "Console en veille.";
               this.ui.sessionDetail.textContent = "Le suivi affichera le meilleur pic, le grade du run et la marge d'exécution dès le premier coup.";
             } else {
               this.ui.sessionTitle.textContent = `Grade ${this.sessionGrade()} · ${this.levelsClearedThisRun} palier${this.levelsClearedThisRun > 1 ? "s" : ""}`;
               this.ui.sessionDetail.textContent = `Session +${Math.round(this.sessionBestGain)} · Série ${this.bestStreak} · ${this.formatPercent(this.accuracyRate())} de précision · ${this.invalidMoves} raté${this.invalidMoves > 1 ? "s" : ""}.`;
             }
             if (!this.hasBegun) {
-              this.ui.radarTitle.textContent = "Grille inactive.";
+              this.ui.radarTitle.textContent = "Radar inactif.";
               this.ui.radarDetail.textContent = "Le radar exposera le nombre d'ouvertures, la densité du focus et la force du meilleur swap.";
             } else if (tactical.bestMove) {
               this.ui.radarTitle.textContent = `${tactical.availableMoves} ouvertures · focus ${tactical.focusTiles} · pression ${tactical.pressure} · danger ${danger.label.toLowerCase()}`;
@@ -4249,7 +5227,7 @@
           }
 
           onKeyDown(e) {
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "r", "R", "Escape", "w", "W", "a", "A", "s", "S", "d", "D", "m", "M", "p", "P", "n", "N"].includes(e.key)) e.preventDefault();
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "h", "H", "r", "R", "u", "U", "Escape", "w", "W", "a", "A", "s", "S", "d", "D", "m", "M", "p", "P", "n", "N"].includes(e.key)) e.preventDefault();
             if ((this.phase === "title" || this.phase === "gameover") && ["Enter", "n", "N"].includes(e.key)) {
               this.startNewGame();
               return;
@@ -4264,6 +5242,10 @@
             }
             if (e.key === "r" || e.key === "R") {
               this.performTacticalReroll();
+              return;
+            }
+            if (e.key === "u" || e.key === "U") {
+              this.rewindLastTurn();
               return;
             }
             if (e.key === "m" || e.key === "M") {
@@ -4371,6 +5353,7 @@
             const targets = this.getPulseTargets(cell);
             if (!targets.length) return;
 
+            this.captureTurnSnapshot("pulse");
             this.board.selectedCell = null;
             this.pulseMode = false;
             this.pulseCharge = 0;
@@ -4444,6 +5427,7 @@
 
           trySwap(a, b) {
             if (!this.canInput() || !this.board.areAdj(a, b)) return;
+            this.captureTurnSnapshot("swap");
             this.board.selectedCell = null;
             this.hintTimer = 0; this.hintCells = []; this.hintShown = false; this.hintInsight = "";
             this.lastMoveAnchor = { row: (a.row+b.row)/2, col: (a.col+b.col)/2 };
@@ -4649,12 +5633,14 @@
               bonusSc += 290 + this.level * 148; timeBon += 17;
               this.goal = Math.round(this.goal * 1.46 + 540);
             }
+            const echoBefore = this.rewindCharges;
             if (levs > 0) {
               this.score += bonusSc; this.lastGain = bonusSc;
               this.sessionBestGain = Math.max(this.sessionBestGain, this.lastGain);
               this.timeLeft = Math.min(120, this.timeLeft + timeBon);
               this.addPulseCharge(12 + levs * 8);
               this.addCandyRushCharge(18 + levs * 6);
+              this.rewindCharges = Math.min(this.maxEchoCharges(), this.rewindCharges + levs);
               this.protocolReady = true;
               this.emergencyActive = 0;
               this.levelsClearedThisRun += levs;
@@ -4669,12 +5655,22 @@
               directiveSummary = this.assignDirective("level");
               focusSummary = `Focus ${this.labelForStyle(this.assignFocusKind(this.focusKind))}`;
             }
-            return { up: levs > 0, levs, bonusSc, timeBon, directiveSummary, focusSummary };
+            return {
+              up: levs > 0,
+              levs,
+              bonusSc,
+              timeBon,
+              directiveSummary,
+              focusSummary,
+              echoGain: Math.max(0, this.rewindCharges - echoBefore)
+            };
           }
 
           afterCascade() {
             const lr = this.advanceLevel();
-            const lvlText = lr.up ? `Objectif atteint · Niveau ${this.level} · +${lr.bonusSc} pts · +${lr.timeBon}s` : "";
+            const lvlText = lr.up
+              ? `Objectif atteint · Niveau ${this.level} · +${lr.bonusSc} pts · +${lr.timeBon}s${lr.echoGain > 0 ? ` · +${lr.echoGain} Echo` : ""}`
+              : "";
             let lvlTokens = [];
             if (!this.board.hasMoves()) {
               this.board.shuffleKinds(); this.phase = "shuffle"; this.phaseClock = 0;
@@ -5163,6 +6159,8 @@
           dangerScore: Math.round(game.lastAnalytics?.dangerScore || 0),
           accuracy: Math.round(game.accuracyRate() * 100) / 100,
           tacticalRerolls: game.tacticalRerolls,
+          rewindCharges: game.rewindCharges,
+          canRewind: game.canRewind(),
           focusKind: game.focusKind,
           stateLabel: game.stateLabel,
           statusText: game.statusText,
@@ -5215,6 +6213,7 @@
             if (!analysis) return false;
             const cleared = Math.max(3, analysis.summary.cells || 3);
             const gain = Math.max(240, analysis.score * 6);
+            game.captureTurnSnapshot("swap");
             game.movesPlayed += 1;
             game.successfulMoves += 1;
             game.comboChain = 1;
@@ -5240,10 +6239,16 @@
             game.updateUi(true);
             return game.tacticalRerolls !== before;
           },
+          performRewind() {
+            const restored = game.rewindLastTurn();
+            game.updateUi(true);
+            return restored;
+          },
           setState(partial = {}) {
             if ("pulseCharge" in partial) game.pulseCharge = clamp(Number(partial.pulseCharge) || 0, 0, 100);
             if ("timeLeft" in partial) game.timeLeft = Math.max(0, Number(partial.timeLeft) || 0);
             if ("tacticalRerolls" in partial) game.tacticalRerolls = Math.max(0, Math.round(Number(partial.tacticalRerolls) || 0));
+            if ("rewindCharges" in partial) game.rewindCharges = Math.max(0, Math.round(Number(partial.rewindCharges) || 0));
             if ("currentStreak" in partial) {
               game.currentStreak = Math.max(0, Math.round(Number(partial.currentStreak) || 0));
               game.bestStreak = Math.max(game.bestStreak, game.currentStreak);
@@ -5277,6 +6282,7 @@
             const analysis = game.board.findHintMove(game.focusKind);
             const cleared = Math.max(4, analysis?.summary?.cells || 4);
             const gain = Math.max(540, (analysis?.score || 90) * 8);
+            game.captureTurnSnapshot("pulse");
             game.pulseMode = false;
             game.pulseCharge = 0;
             game.profile.pulses += 1;

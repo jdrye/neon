@@ -33,6 +33,28 @@ test("smoke: the game starts, plays a move, and exposes test hooks", async ({ pa
   expect(firstRun.hint?.cells?.length).toBe(2);
   await expect(page.locator("#tempoValue")).toContainText("1/");
   await expect(page.locator("#streakValue")).toContainText(String(firstRun.after.currentStreak));
+  await expect(page.locator("#echoButton")).toContainText("Echo");
+
+  const rewindRun = await page.evaluate(async () => {
+    const api = window.__pulsePrismTest;
+    api.setState({ rewindCharges: 1, timeLeft: 54 });
+    const before = api.getSnapshot();
+    const moved = await api.performBestMove();
+    const afterMove = api.getSnapshot();
+    const rewindOk = api.performRewind();
+    const afterRewind = api.getSnapshot();
+    return { before, afterMove, afterRewind, moved, rewindOk };
+  });
+
+  expect(rewindRun.moved).toBeTruthy();
+  expect(rewindRun.afterMove.score).toBeGreaterThan(rewindRun.before.score);
+  expect(rewindRun.afterMove.canRewind).toBeTruthy();
+  expect(rewindRun.rewindOk).toBeTruthy();
+  expect(rewindRun.afterRewind.score).toBe(rewindRun.before.score);
+  expect(rewindRun.afterRewind.totalCleared).toBe(rewindRun.before.totalCleared);
+  expect(rewindRun.afterRewind.movesPlayed).toBe(rewindRun.before.movesPlayed);
+  expect(rewindRun.afterRewind.rewindCharges).toBe(0);
+  expect(rewindRun.afterRewind.canRewind).toBeFalsy();
 
   const streakRun = await page.evaluate(async () => {
     const api = window.__pulsePrismTest;
