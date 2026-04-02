@@ -1,5 +1,5 @@
 {
-  "name": "pulse-prism",
+  "name": "pocket-patience",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -9,12 +9,9 @@
     "preview": "vite preview",
     "test": "playwright test"
   },
-  "dependencies": {
-    "phaser": "^3.90.0"
-  },
   "devDependencies": {
-    "@types/node": "^24.10.0",
     "@playwright/test": "^1.58.2",
+    "@types/node": "^24.10.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"
   }

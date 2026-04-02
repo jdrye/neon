@@ -1,19 +1,19 @@
 import { expect, test } from "@playwright/test";
 
-test("loads the ambitious intro overlay and starts a run", async ({ page }) => {
+test("loads Pocket Patience and starts an expedition", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("intro-overlay")).toBeVisible();
   await expect(
-    page.getByTestId("intro-overlay").getByRole("heading", { name: "Pulse Prism" })
+    page.getByTestId("intro-overlay").getByRole("heading", { name: "Pocket Patience" })
   ).toBeVisible();
-  await expect(page.locator("canvas")).toBeVisible();
 
-  await page.getByTestId("start-button").click();
+  await page.getByTestId("overlay-start-button").click();
 
   await expect(page.getByTestId("intro-overlay")).toBeHidden();
-  await expect(page.getByTestId("objective-title")).toHaveText("Secure the live anchors");
-  await expect(page.getByTestId("sector-value")).toHaveText("1 / 3");
-  await expect(page.getByTestId("loadout-list")).toContainText("Draft upgrades");
-  await expect(page.getByTestId("draft-overlay")).toBeHidden();
+  await expect(page.getByTestId("stock-button")).toBeVisible();
+  await expect(page.getByTestId("tableau-grid")).toBeVisible();
+  await expect(page.getByTestId("foundation-row")).toBeVisible();
+  await expect(page.getByTestId("companion-grid")).toContainText("Dormant");
+  await expect(page.getByTestId("objective-copy")).toContainText("three habitats");
 });

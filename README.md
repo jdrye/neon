@@ -1,6 +1,6 @@
-# Pulse Prism
+# Pocket Patience
 
-Pulse Prism is a short-session neon survival game built with Phaser, TypeScript, and Vite.
+Pocket Patience is an original browser card game between creature collecting and solitaire. You build four biome foundations, evolve pocket companions at habitat milestones, and only need to crown three of them to win the run.
 
 ## Run
 
@@ -21,10 +21,10 @@ npm run build
 npm test
 ```
 
-## Controls
+## Rules
 
-- `WASD` or arrow keys: move
-- `Space`: dash through threats
-- `Shift`: emit a pulse blast
-- `Enter`: start or restart a run
-
+- Build descending tableau runs and ascending habitat foundations by biome.
+- Every habitat evolves one companion at ranks `1`, `7`, and `13`.
+- Ember relaxes empty-column rules, Tide extends redeals, Volt opens tableau stacking.
+- Spend charms to reveal hidden cards or recall the waste back into stock.
+- Win by fully evolving any `3` companions.
