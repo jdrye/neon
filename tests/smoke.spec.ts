@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("loads the intro overlay and starts a run", async ({ page }) => {
+test("loads the ambitious intro overlay and starts a run", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("intro-overlay")).toBeVisible();
@@ -12,7 +12,8 @@ test("loads the intro overlay and starts a run", async ({ page }) => {
   await page.getByTestId("start-button").click();
 
   await expect(page.getByTestId("intro-overlay")).toBeHidden();
-  await expect(page.getByTestId("wave-value")).toHaveText("1");
-  await expect(page.getByTestId("time-value")).toContainText("1:");
-  await expect(page.getByTestId("score-value")).toContainText("0");
+  await expect(page.getByTestId("objective-title")).toHaveText("Secure the live anchors");
+  await expect(page.getByTestId("sector-value")).toHaveText("1 / 3");
+  await expect(page.getByTestId("loadout-list")).toContainText("Draft upgrades");
+  await expect(page.getByTestId("draft-overlay")).toBeHidden();
 });
