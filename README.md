@@ -1,30 +1,28 @@
-# Pocket Patience
+# Neon Relay
 
-Pocket Patience is an original browser card game between creature collecting and solitaire. You build four biome foundations, evolve pocket companions at habitat milestones, and only need to crown three of them to win the run.
+Neon Relay est un jeu d'arcade original et autonome pour navigateur. Le joueur change de voie pour collecter les fragments du réseau, évite les anomalies et utilise une impulsion de proximité pour restaurer trois relais.
 
-## Run
+## Commandes
+
+- `←` / `→` ou `A` / `D` : changer de voie
+- `Espace` : impulsion défensive
+- `P` ou `Échap` : pause
+- Commandes tactiles disponibles sur mobile
+
+## Développement
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Build
+## Vérification
 
 ```bash
 npm run build
-```
-
-## Test
-
-```bash
 npm test
 ```
 
-## Rules
+## GitHub Pages
 
-- Build descending tableau runs and ascending habitat foundations by biome.
-- Every habitat evolves one companion at ranks `1`, `7`, and `13`.
-- Ember relaxes empty-column rules, Tide extends redeals, Volt opens tableau stacking.
-- Spend charms to reveal hidden cards or recall the waste back into stock.
-- Win by fully evolving any `3` companions.
+Le workflow `.github/workflows/pages.yml` construit automatiquement le projet Vite puis publie `dist/` sur GitHub Pages à chaque push sur `main`.

@@ -1,19 +1,22 @@
 import { expect, test } from "@playwright/test";
 
-test("loads Pocket Patience and starts an expedition", async ({ page }) => {
+test("charge Neon Relay et lance une partie", async ({ page }) => {
   await page.goto("/");
-
+  await expect(page).toHaveTitle(/Neon Relay/);
   await expect(page.getByTestId("intro-overlay")).toBeVisible();
-  await expect(
-    page.getByTestId("intro-overlay").getByRole("heading", { name: "Pocket Patience" })
-  ).toBeVisible();
-
-  await page.getByTestId("overlay-start-button").click();
-
+  await expect(page.getByRole("heading", { name: "NEON RELAY" })).toBeVisible();
+  await page.getByTestId("start-button").click();
   await expect(page.getByTestId("intro-overlay")).toBeHidden();
-  await expect(page.getByTestId("stock-button")).toBeVisible();
-  await expect(page.getByTestId("tableau-grid")).toBeVisible();
-  await expect(page.getByTestId("foundation-row")).toBeVisible();
-  await expect(page.getByTestId("companion-grid")).toContainText("Dormant");
-  await expect(page.getByTestId("objective-copy")).toContainText("three habitats");
+  await expect(page.locator("#game-canvas")).toBeVisible();
+  await expect(page.locator("#score")).toHaveText("000000");
+  await expect(page.locator("#lives")).toContainText("◆ ◆ ◆");
+});
+
+test("les commandes clavier déplacent et mettent en pause", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("start-button").click();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("p");
+  await expect(page.locator("#pause-card")).toBeVisible();
+  await expect(page.locator("#pause-button")).toHaveText("REPRENDRE");
 });
