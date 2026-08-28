@@ -1,13 +1,24 @@
-# Neon Relay
+# Neon Rift: Last Beacon
 
-Neon Relay est un jeu d'arcade original et autonome pour navigateur. Le joueur change de voie pour collecter les fragments du réseau, évite les anomalies et utilise une impulsion de proximité pour restaurer trois relais.
+Neon Rift est un roguelite d'arène original pour navigateur. Le joueur pilote le Spectre, défend le dernier phare de la cité pendant cinq vagues, compose son arsenal entre les secteurs et affronte un boss final.
+
+## Systèmes de jeu
+
+- Déplacement libre dans une arène en temps réel
+- Visée automatique avec guidage manuel optionnel à la souris
+- Dash phasé procurant une brève invulnérabilité
+- Éclaireurs, artilleurs, colosses et boss aux comportements distincts
+- Projectiles ennemis, collisions, pickups, multiplicateur et score local
+- Trois améliorations aléatoires proposées entre chaque vague
+- Neuf mutations : dégâts, cadence, projectiles, perforation, vitesse, dash, coque, bouclier et vélocité
+- Commandes tactiles sur mobile
 
 ## Commandes
 
-- `←` / `→` ou `A` / `D` : changer de voie
-- `Espace` : impulsion défensive
+- `WASD`, `ZQSD` ou flèches : déplacement
+- `Espace` : dash phasé
+- Souris : guidage manuel du canon, sinon visée automatique
 - `P` ou `Échap` : pause
-- Commandes tactiles disponibles sur mobile
 
 ## Développement
 
@@ -23,6 +34,4 @@ npm run build
 npm test
 ```
 
-## GitHub Pages
-
-Le workflow `.github/workflows/pages.yml` construit automatiquement le projet Vite puis publie `dist/` sur GitHub Pages à chaque push sur `main`.
+Le workflow `.github/workflows/pages.yml` construit automatiquement le projet Vite et publie `dist/` sur GitHub Pages après chaque push sur `main`.

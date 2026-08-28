@@ -1,484 +1,899 @@
 import "./styles.css";
 
-type FallingKind = "shard" | "glitch" | "battery";
+type GameState = "intro" | "playing" | "upgrade" | "paused" | "gameover" | "victory";
+type EnemyType = "scout" | "gunner" | "tank" | "boss";
+type PickupType = "repair" | "charge";
 
-interface FallingItem {
+interface Enemy {
   id: number;
-  lane: number;
+  type: EnemyType;
+  x: number;
   y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  hp: number;
+  maxHp: number;
   speed: number;
-  kind: FallingKind;
-  rotation: number;
+  fireTimer: number;
+  hitFlash: number;
+  angle: number;
+}
+
+interface Bullet {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  damage: number;
+  hostile: boolean;
+  pierce: number;
+  life: number;
+  color: string;
+}
+
+interface Pickup {
+  x: number;
+  y: number;
+  type: PickupType;
+  life: number;
+  phase: number;
+}
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+}
+
+interface Upgrade {
+  id: string;
+  name: string;
+  description: string;
+  stat: string;
+  apply: () => void;
 }
 
 const app = document.querySelector<HTMLDivElement>("#app");
-
 if (!app) throw new Error("Missing #app mount point");
 
 app.innerHTML = `
-  <main class="shell">
+  <main class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#game" aria-label="Neon Relay, aller au jeu">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span>NEON RELAY</span>
+      <a class="brand" href="#arena" aria-label="Neon Rift, aller au jeu">
+        <span class="brand-sigil" aria-hidden="true"><i></i></span>
+        <span><strong>NEON RIFT</strong><small>LAST BEACON</small></span>
       </a>
-      <div class="top-actions">
-        <button class="icon-button" id="sound-toggle" type="button" aria-pressed="true" aria-label="Désactiver le son">SON ●</button>
-        <button class="icon-button" id="pause-button" type="button" aria-label="Mettre en pause">PAUSE</button>
+      <div class="top-stats">
+        <div><small>MEILLEUR SCORE</small><strong id="best-score">000000</strong></div>
+        <button id="sound-toggle" type="button" aria-pressed="true" aria-label="Désactiver le son">SON <span>●</span></button>
+        <button id="pause-button" type="button" aria-label="Mettre en pause">PAUSE</button>
       </div>
     </header>
 
-    <section class="game-layout" id="game" aria-label="Jeu Neon Relay">
-      <aside class="mission-panel">
-        <p class="eyebrow">MISSION 01</p>
-        <h1>Restaure le signal.</h1>
-        <p class="mission-copy">Traverse la grille, récupère les fragments cyan et repousse les anomalies avant qu'elles n'atteignent le relais.</p>
-        <div class="key-list" aria-label="Commandes clavier">
-          <div><kbd>←</kbd><kbd>→</kbd><span>Changer de voie</span></div>
-          <div><kbd>A</kbd><kbd>D</kbd><span>Changer de voie</span></div>
-          <div><kbd>ESPACE</kbd><span>Impulsion</span></div>
-          <div><kbd>P</kbd><span>Pause</span></div>
+    <section class="hero-copy" aria-labelledby="game-title">
+      <div>
+        <p class="eyebrow">PROTOCOLE DE SURVIE // 05 VAGUES</p>
+        <h1 id="game-title">Tiens la ligne.<br><em>Brise la faille.</em></h1>
+      </div>
+      <p>Le dernier phare de la cité est encerclé. Pilote le Spectre, absorbe les noyaux ennemis et construis ton arsenal avant l'arrivée du Gardien.</p>
+    </section>
+
+    <section class="game-frame" id="arena" aria-label="Arène de Neon Rift">
+      <div class="hud" aria-live="polite">
+        <div class="hud-cell"><span>VAGUE</span><strong id="wave-value">01 / 05</strong></div>
+        <div class="hud-cell score-cell"><span>SCORE</span><strong id="score-value">000000</strong></div>
+        <div class="hud-cell combo-cell"><span>CHAÎNE</span><strong id="combo-value">×1.0</strong></div>
+        <div class="hud-cell health-cell">
+          <span>INTÉGRITÉ</span>
+          <div class="meter" role="progressbar" aria-label="Intégrité" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="health-fill"></i></div>
+          <strong id="health-value">100</strong>
         </div>
-        <div class="legend">
-          <span><i class="legend-dot shard"></i> Fragment +100</span>
-          <span><i class="legend-dot battery"></i> Recharge</span>
-          <span><i class="legend-dot glitch"></i> Anomalie</span>
-        </div>
-      </aside>
-
-      <div class="cabinet">
-        <div class="hud" aria-live="polite">
-          <div><span>SCORE</span><strong id="score">000000</strong></div>
-          <div><span>NIVEAU</span><strong id="level">01</strong></div>
-          <div><span>RELAIS</span><strong id="lives">◆ ◆ ◆</strong></div>
-        </div>
-
-        <div class="canvas-wrap">
-          <canvas id="game-canvas" width="720" height="840" aria-label="Zone de jeu à quatre voies"></canvas>
-          <div class="scanlines" aria-hidden="true"></div>
-
-          <section class="overlay" id="intro-overlay" data-testid="intro-overlay">
-            <div class="overlay-card">
-              <p class="eyebrow">TRANSMISSION ENTRANTE</p>
-              <h2>NEON RELAY</h2>
-              <p>Le réseau est tombé. Synchronise trois relais pour relancer la ville.</p>
-              <button class="primary-button" id="start-button" data-testid="start-button" type="button">LANCER LA MISSION</button>
-              <small>Meilleur score : <span id="best-score">000000</span></small>
-            </div>
-          </section>
-
-          <section class="overlay hidden" id="result-overlay" data-testid="result-overlay">
-            <div class="overlay-card">
-              <p class="eyebrow" id="result-kicker">SIGNAL PERDU</p>
-              <h2 id="result-title">FIN DE TRANSMISSION</h2>
-              <p id="result-copy">Score final : 0</p>
-              <button class="primary-button" id="restart-button" type="button">REJOUER</button>
-            </div>
-          </section>
-
-          <div class="pause-card hidden" id="pause-card" role="status">PAUSE</div>
-        </div>
-
-        <div class="energy-row">
-          <span>IMPULSION</span>
-          <div class="energy-track" role="progressbar" aria-label="Charge de l'impulsion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
-            <div id="energy-fill"></div>
-          </div>
-          <strong id="combo">×1</strong>
-        </div>
-
-        <div class="touch-controls" aria-label="Commandes tactiles">
-          <button id="left-button" type="button" aria-label="Aller à gauche">←</button>
-          <button id="pulse-button" type="button">IMPULSION</button>
-          <button id="right-button" type="button" aria-label="Aller à droite">→</button>
+        <div class="hud-cell dash-cell">
+          <span>DASH</span>
+          <div class="meter" role="progressbar" aria-label="Recharge du dash" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="dash-fill"></i></div>
         </div>
       </div>
 
-      <aside class="status-panel">
-        <p class="eyebrow">ÉTAT DU RÉSEAU</p>
-        <ol class="relay-list">
-          <li class="active"><span>01</span><div><strong>SECTEUR NORD</strong><small id="relay-one">EN COURS · 0%</small></div></li>
-          <li><span>02</span><div><strong>SECTEUR EST</strong><small id="relay-two">HORS LIGNE</small></div></li>
-          <li><span>03</span><div><strong>SECTEUR CENTRAL</strong><small id="relay-three">HORS LIGNE</small></div></li>
-        </ol>
-        <div class="objective-card">
-          <span>OBJECTIF</span>
-          <strong>3 × 1 500</strong>
-          <p>Atteins 4 500 points pour rétablir le réseau.</p>
+      <div class="canvas-stage">
+        <canvas id="game-canvas" width="1280" height="720" aria-label="Arène de combat vue du dessus"></canvas>
+        <div class="screen-noise" aria-hidden="true"></div>
+        <div class="vignette" aria-hidden="true"></div>
+
+        <div class="boss-hud hidden" id="boss-hud">
+          <span>LE GARDIEN DE LA FAILLE</span>
+          <div><i id="boss-fill"></i></div>
         </div>
-        <p class="status-message" id="status-message">Prêt pour la synchronisation.</p>
-      </aside>
+
+        <section class="overlay intro-overlay" id="intro-overlay" data-testid="intro-overlay">
+          <div class="intro-grid">
+            <div class="transmission">
+              <p class="eyebrow">TRANSMISSION // PRIORITÉ OMEGA</p>
+              <h2>LE DERNIER<br><em>PHARE</em></h2>
+              <p class="intro-text">Survis à cinq vagues. Ton canon vise automatiquement la menace la plus proche. Chaque secteur sécurisé te permet de choisir une mutation permanente.</p>
+              <button class="primary-button" id="start-button" data-testid="start-button" type="button"><span>LANCER L'INTERCEPTION</span><b>→</b></button>
+            </div>
+            <div class="briefing">
+              <p class="eyebrow">SYSTÈMES DU SPECTRE</p>
+              <ul>
+                <li><kbd>WASD</kbd><span><strong>DÉPLACEMENT LIBRE</strong><small>Flèches également disponibles</small></span></li>
+                <li><kbd>ESPACE</kbd><span><strong>DASH PHASÉ</strong><small>Invulnérable pendant la traversée</small></span></li>
+                <li><kbd>SOURIS</kbd><span><strong>GUIDAGE MANUEL</strong><small>Sinon, verrouillage automatique</small></span></li>
+                <li><kbd>P</kbd><span><strong>SUSPENSION</strong><small>Pause instantanée</small></span></li>
+              </ul>
+              <div class="enemy-codex">
+                <span><i class="enemy-icon scout"></i>Éclaireur</span>
+                <span><i class="enemy-icon gunner"></i>Artilleur</span>
+                <span><i class="enemy-icon tank"></i>Colosse</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="overlay upgrade-overlay hidden" id="upgrade-overlay" data-testid="upgrade-overlay">
+          <div class="upgrade-wrap">
+            <p class="eyebrow">SECTEUR SÉCURISÉ // MUTATION DISPONIBLE</p>
+            <h2>CHOISIS TON <em>AVANTAGE</em></h2>
+            <p>Une seule amélioration peut être intégrée avant la prochaine vague.</p>
+            <div class="upgrade-grid" id="upgrade-grid"></div>
+          </div>
+        </section>
+
+        <section class="overlay result-overlay hidden" id="result-overlay" data-testid="result-overlay">
+          <div class="result-card">
+            <p class="eyebrow" id="result-kicker">TRANSMISSION INTERROMPUE</p>
+            <h2 id="result-title">LE PHARE<br>S'EST ÉTEINT</h2>
+            <div class="result-stats">
+              <div><span>SCORE</span><strong id="result-score">0</strong></div>
+              <div><span>VAGUE</span><strong id="result-wave">1 / 5</strong></div>
+              <div><span>ÉLIMINATIONS</span><strong id="result-kills">0</strong></div>
+            </div>
+            <button class="primary-button" id="restart-button" type="button"><span>NOUVELLE INTERCEPTION</span><b>↻</b></button>
+          </div>
+        </section>
+
+        <div class="pause-overlay hidden" id="pause-overlay" role="status"><span>SYSTÈME SUSPENDU</span><strong>PAUSE</strong><small>Appuie sur P pour reprendre</small></div>
+        <div class="wave-banner hidden" id="wave-banner"><small>SECTEUR</small><strong id="wave-banner-value">01</strong><span id="wave-banner-name">PÉRIPHÉRIE</span></div>
+      </div>
+
+      <div class="mobile-controls" aria-label="Commandes tactiles">
+        <div class="dpad">
+          <button data-move="up" aria-label="Monter">↑</button>
+          <button data-move="left" aria-label="Aller à gauche">←</button>
+          <button data-move="down" aria-label="Descendre">↓</button>
+          <button data-move="right" aria-label="Aller à droite">→</button>
+        </div>
+        <button class="dash-button" id="mobile-dash" type="button">DASH</button>
+      </div>
     </section>
 
-    <footer>
-      <span>NEON RELAY / BUILD 1.0</span>
-      <span>JEU LOCAL · AUCUNE DONNÉE TRANSMISE</span>
-    </footer>
+    <section class="feature-strip" aria-label="Caractéristiques du jeu">
+      <article><span>01</span><div><strong>COMBAT RÉACTIF</strong><p>Déplacement libre, verrouillage automatique et dash invulnérable.</p></div></article>
+      <article><span>02</span><div><strong>ARSENAL ÉVOLUTIF</strong><p>Construis une configuration différente à chaque tentative.</p></div></article>
+      <article><span>03</span><div><strong>AFFRONTEMENT FINAL</strong><p>Survis aux secteurs pour défier le Gardien de la faille.</p></div></article>
+    </section>
+
+    <footer><span>NEON RIFT // BUILD 2.0</span><span>CLAVIER · SOURIS · TACTILE</span><span>AUCUNE DONNÉE TRANSMISE</span></footer>
   </main>
 `;
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
 const ctx = canvas.getContext("2d")!;
-const introOverlay = document.querySelector<HTMLElement>("#intro-overlay")!;
-const resultOverlay = document.querySelector<HTMLElement>("#result-overlay")!;
-const pauseCard = document.querySelector<HTMLElement>("#pause-card")!;
-const scoreElement = document.querySelector<HTMLElement>("#score")!;
-const levelElement = document.querySelector<HTMLElement>("#level")!;
-const livesElement = document.querySelector<HTMLElement>("#lives")!;
-const comboElement = document.querySelector<HTMLElement>("#combo")!;
-const energyFill = document.querySelector<HTMLElement>("#energy-fill")!;
-const energyTrack = document.querySelector<HTMLElement>(".energy-track")!;
-const statusMessage = document.querySelector<HTMLElement>("#status-message")!;
+const W = canvas.width;
+const H = canvas.height;
+const ARENA = { left: 48, top: 48, right: W - 48, bottom: H - 48 };
 
-const LANES = 4;
-const LANE_WIDTH = canvas.width / LANES;
-const PLAYER_Y = canvas.height - 105;
-const TARGET_SCORE = 4500;
-let playerLane = 1;
-let targetLane = 1;
-let items: FallingItem[] = [];
-let particles: { x: number; y: number; vx: number; vy: number; life: number; color: string }[] = [];
+const ui = {
+  intro: document.querySelector<HTMLElement>("#intro-overlay")!,
+  upgrade: document.querySelector<HTMLElement>("#upgrade-overlay")!,
+  result: document.querySelector<HTMLElement>("#result-overlay")!,
+  pause: document.querySelector<HTMLElement>("#pause-overlay")!,
+  boss: document.querySelector<HTMLElement>("#boss-hud")!,
+  waveBanner: document.querySelector<HTMLElement>("#wave-banner")!,
+  score: document.querySelector<HTMLElement>("#score-value")!,
+  wave: document.querySelector<HTMLElement>("#wave-value")!,
+  combo: document.querySelector<HTMLElement>("#combo-value")!,
+  health: document.querySelector<HTMLElement>("#health-value")!,
+  healthFill: document.querySelector<HTMLElement>("#health-fill")!,
+  dashFill: document.querySelector<HTMLElement>("#dash-fill")!,
+  bossFill: document.querySelector<HTMLElement>("#boss-fill")!,
+  best: document.querySelector<HTMLElement>("#best-score")!,
+  upgradeGrid: document.querySelector<HTMLElement>("#upgrade-grid")!
+};
+
+const keys = new Set<string>();
+const touchMoves = new Set<string>();
+const pointer = { x: W / 2, y: H / 2, activeUntil: 0 };
+const waveNames = ["PÉRIPHÉRIE", "CANAL ROUGE", "NŒUD FANTÔME", "CŒUR DE VERRE", "LA FAILLE"];
+const stars = Array.from({ length: 110 }, () => ({ x: Math.random() * W, y: Math.random() * H, size: Math.random() * 1.5 + .2, phase: Math.random() * Math.PI * 2 }));
+
+let state: GameState = "intro";
+let previousState: GameState = "playing";
+let lastTime = performance.now();
+let elapsed = 0;
+let wave = 1;
 let score = 0;
-let lives = 3;
-let energy = 100;
+let kills = 0;
 let combo = 1;
 let comboTimer = 0;
-let level = 1;
-let running = false;
-let paused = false;
-let lastTime = 0;
+let waveSpawnRemaining = 0;
 let spawnTimer = 0;
-let nextId = 0;
+let waveStarted = false;
+let nextEnemyId = 1;
+let shake = 0;
+let flash = 0;
+let bannerTimer = 0;
 let audioEnabled = true;
 let audioContext: AudioContext | null = null;
+let shotSoundTimer = 0;
 
-function tone(frequency: number, duration: number, type: OscillatorType = "sine") {
+const player = {
+  x: W / 2,
+  y: H / 2,
+  radius: 17,
+  hp: 100,
+  maxHp: 100,
+  speed: 285,
+  damage: 22,
+  fireRate: 245,
+  fireTimer: 0,
+  bulletSpeed: 760,
+  multishot: 1,
+  pierce: 0,
+  dashTimer: 0,
+  dashCooldown: 1500,
+  dashDuration: 0,
+  invulnerable: 0,
+  shield: 0,
+  aimAngle: -Math.PI / 2
+};
+
+let enemies: Enemy[] = [];
+let bullets: Bullet[] = [];
+let pickups: Pickup[] = [];
+let particles: Particle[] = [];
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function normalize(x: number, y: number) {
+  const length = Math.hypot(x, y) || 1;
+  return { x: x / length, y: y / length };
+}
+
+function sound(frequency: number, duration = .08, type: OscillatorType = "triangle", volume = .035) {
   if (!audioEnabled) return;
   audioContext ??= new AudioContext();
   const oscillator = audioContext.createOscillator();
   const gain = audioContext.createGain();
   oscillator.type = type;
-  oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(0.05, audioContext.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+  gain.gain.setValueAtTime(volume, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + duration);
   oscillator.connect(gain).connect(audioContext.destination);
   oscillator.start();
   oscillator.stop(audioContext.currentTime + duration);
 }
 
-function resetGame() {
-  playerLane = 1;
-  targetLane = 1;
-  items = [];
-  particles = [];
-  score = 0;
-  lives = 3;
-  energy = 100;
-  combo = 1;
-  comboTimer = 0;
-  level = 1;
-  spawnTimer = 250;
-  updateHud();
+function burst(x: number, y: number, color: string, count = 12, force = 180) {
+  for (let index = 0; index < count; index++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * force + 25;
+    const life = 280 + Math.random() * 420;
+    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life, maxLife: life, size: 1.5 + Math.random() * 3.5, color });
+  }
+}
+
+function resetPlayer() {
+  Object.assign(player, {
+    x: W / 2, y: H / 2, hp: 100, maxHp: 100, speed: 285, damage: 22,
+    fireRate: 245, fireTimer: 0, bulletSpeed: 760, multishot: 1, pierce: 0,
+    dashTimer: 0, dashCooldown: 1500, dashDuration: 0, invulnerable: 0, shield: 0, aimAngle: -Math.PI / 2
+  });
 }
 
 function startGame() {
-  resetGame();
-  running = true;
-  paused = false;
-  lastTime = performance.now();
-  introOverlay.classList.add("hidden");
-  resultOverlay.classList.add("hidden");
-  pauseCard.classList.add("hidden");
-  tone(220, 0.12, "square");
-  requestAnimationFrame(loop);
-}
-
-function move(direction: number) {
-  if (!running || paused) return;
-  targetLane = Math.max(0, Math.min(LANES - 1, targetLane + direction));
-  tone(120 + targetLane * 35, 0.04, "square");
-}
-
-function pulse() {
-  if (!running || paused || energy < 35) return;
-  energy -= 35;
-  const playerX = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
-  let destroyed = 0;
-  items = items.filter((item) => {
-    const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
-    const distance = Math.hypot(itemX - playerX, item.y - PLAYER_Y);
-    if (item.kind === "glitch" && distance < 240) {
-      burst(itemX, item.y, "#ff3d87", 14);
-      destroyed += 1;
-      return false;
-    }
-    return true;
-  });
-  score += destroyed * 50;
-  burst(playerX, PLAYER_Y, "#73f6e5", 24);
-  tone(90, 0.22, "sawtooth");
-  statusMessage.textContent = destroyed ? `${destroyed} anomalie${destroyed > 1 ? "s" : ""} neutralisée${destroyed > 1 ? "s" : ""}.` : "Impulsion émise.";
+  resetPlayer();
+  enemies = [];
+  bullets = [];
+  pickups = [];
+  particles = [];
+  wave = 1;
+  score = 0;
+  kills = 0;
+  combo = 1;
+  comboTimer = 0;
+  nextEnemyId = 1;
+  ui.intro.classList.add("hidden");
+  ui.result.classList.add("hidden");
+  ui.upgrade.classList.add("hidden");
+  ui.pause.classList.add("hidden");
+  ui.boss.classList.add("hidden");
+  state = "playing";
+  beginWave(1);
+  sound(190, .18, "sawtooth", .05);
   updateHud();
 }
 
-function togglePause() {
-  if (!running) return;
-  paused = !paused;
-  pauseCard.classList.toggle("hidden", !paused);
-  document.querySelector("#pause-button")!.textContent = paused ? "REPRENDRE" : "PAUSE";
-  if (!paused) {
-    lastTime = performance.now();
-    requestAnimationFrame(loop);
-  }
+function beginWave(number: number) {
+  wave = number;
+  waveStarted = true;
+  waveSpawnRemaining = number === 5 ? 1 : 7 + number * 5;
+  spawnTimer = 750;
+  bannerTimer = 1900;
+  ui.waveBanner.classList.remove("hidden");
+  document.querySelector("#wave-banner-value")!.textContent = String(number).padStart(2, "0");
+  document.querySelector("#wave-banner-name")!.textContent = waveNames[number - 1];
+  if (number === 5) ui.boss.classList.remove("hidden");
 }
 
-function spawnItem() {
-  const random = Math.random();
-  const kind: FallingKind = random < 0.54 ? "shard" : random < 0.91 ? "glitch" : "battery";
-  items.push({
-    id: nextId++,
-    lane: Math.floor(Math.random() * LANES),
-    y: -60,
-    speed: 175 + level * 24 + Math.random() * 55,
-    kind,
-    rotation: Math.random() * Math.PI
+function edgeSpawn() {
+  const side = Math.floor(Math.random() * 4);
+  const margin = 25;
+  if (side === 0) return { x: ARENA.left + Math.random() * (ARENA.right - ARENA.left), y: ARENA.top - margin };
+  if (side === 1) return { x: ARENA.right + margin, y: ARENA.top + Math.random() * (ARENA.bottom - ARENA.top) };
+  if (side === 2) return { x: ARENA.left + Math.random() * (ARENA.right - ARENA.left), y: ARENA.bottom + margin };
+  return { x: ARENA.left - margin, y: ARENA.top + Math.random() * (ARENA.bottom - ARENA.top) };
+}
+
+function spawnEnemy(forcedType?: EnemyType, position?: { x: number; y: number }) {
+  const pos = position ?? edgeSpawn();
+  let type = forcedType;
+  if (!type) {
+    const roll = Math.random();
+    type = wave < 2 ? "scout" : roll < .52 ? "scout" : roll < .82 || wave < 3 ? "gunner" : "tank";
+  }
+  const stats = {
+    scout: { radius: 15, hp: 38 + wave * 7, speed: 112 + wave * 5, fire: 99999 },
+    gunner: { radius: 19, hp: 70 + wave * 10, speed: 68 + wave * 3, fire: 1250 },
+    tank: { radius: 28, hp: 180 + wave * 24, speed: 43 + wave * 2, fire: 99999 },
+    boss: { radius: 62, hp: 2600, speed: 38, fire: 780 }
+  }[type];
+  enemies.push({
+    id: nextEnemyId++, type, x: pos.x, y: pos.y, vx: 0, vy: 0, radius: stats.radius,
+    hp: stats.hp, maxHp: stats.hp, speed: stats.speed, fireTimer: stats.fire * (.65 + Math.random() * .5), hitFlash: 0, angle: Math.random() * Math.PI * 2
   });
 }
 
-function burst(x: number, y: number, color: string, count: number) {
-  for (let index = 0; index < count; index++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 45 + Math.random() * 150;
-    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color });
+function movementVector() {
+  let x = 0;
+  let y = 0;
+  if (keys.has("arrowleft") || keys.has("a") || keys.has("q") || touchMoves.has("left")) x -= 1;
+  if (keys.has("arrowright") || keys.has("d") || touchMoves.has("right")) x += 1;
+  if (keys.has("arrowup") || keys.has("w") || keys.has("z") || touchMoves.has("up")) y -= 1;
+  if (keys.has("arrowdown") || keys.has("s") || touchMoves.has("down")) y += 1;
+  return normalize(x, y);
+}
+
+function dash() {
+  if (state !== "playing" || player.dashTimer > 0) return;
+  const moving = movementVector();
+  if (![...keys, ...touchMoves].some((key) => ["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "q", "d", "w", "z", "s", "left", "right", "up", "down"].includes(key))) {
+    moving.x = Math.cos(player.aimAngle + Math.PI);
+    moving.y = Math.sin(player.aimAngle + Math.PI);
+  }
+  player.dashDuration = 210;
+  player.dashTimer = player.dashCooldown;
+  player.invulnerable = 330;
+  burst(player.x, player.y, "#7fffea", 28, 250);
+  player.x = clamp(player.x + moving.x * 115, ARENA.left + player.radius, ARENA.right - player.radius);
+  player.y = clamp(player.y + moving.y * 115, ARENA.top + player.radius, ARENA.bottom - player.radius);
+  shake = 9;
+  sound(105, .22, "sawtooth", .055);
+}
+
+function nearestEnemy() {
+  return enemies.reduce<Enemy | null>((closest, enemy) => !closest || distance(player, enemy) < distance(player, closest) ? enemy : closest, null);
+}
+
+function firePlayerBullet() {
+  const target = nearestEnemy();
+  if (!target) return;
+  const usePointer = performance.now() < pointer.activeUntil;
+  const angle = usePointer ? Math.atan2(pointer.y - player.y, pointer.x - player.x) : Math.atan2(target.y - player.y, target.x - player.x);
+  player.aimAngle = angle;
+  const spread = .13;
+  for (let index = 0; index < player.multishot; index++) {
+    const offset = (index - (player.multishot - 1) / 2) * spread;
+    bullets.push({
+      x: player.x + Math.cos(angle) * 24, y: player.y + Math.sin(angle) * 24,
+      vx: Math.cos(angle + offset) * player.bulletSpeed, vy: Math.sin(angle + offset) * player.bulletSpeed,
+      radius: 4.5, damage: player.damage, hostile: false, pierce: player.pierce, life: 1500, color: "#7fffea"
+    });
+  }
+  player.fireTimer = player.fireRate;
+  if (shotSoundTimer <= 0) {
+    sound(330, .035, "square", .012);
+    shotSoundTimer = 150;
   }
 }
 
-function collect(item: FallingItem) {
-  const x = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
-  if (item.kind === "shard") {
-    score += 100 * combo;
-    combo = Math.min(8, combo + 1);
-    comboTimer = 2400;
-    energy = Math.min(100, energy + 8);
-    burst(x, PLAYER_Y, "#73f6e5", 12);
-    tone(430 + combo * 35, 0.08, "triangle");
-    statusMessage.textContent = `Fragment synchronisé · combo ×${combo}`;
-  } else if (item.kind === "battery") {
-    energy = Math.min(100, energy + 50);
-    score += 25;
-    burst(x, PLAYER_Y, "#ffe66d", 14);
-    tone(680, 0.12, "sine");
-    statusMessage.textContent = "Impulsion rechargée.";
-  } else {
-    lives -= 1;
-    combo = 1;
-    comboTimer = 0;
-    burst(x, PLAYER_Y, "#ff3d87", 22);
-    tone(80, 0.3, "sawtooth");
-    statusMessage.textContent = "Impact détecté. Intégrité du relais réduite.";
+function fireHostile(enemy: Enemy, radial = false) {
+  const baseAngle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+  const count = radial ? 10 : enemy.type === "boss" ? 3 : 1;
+  for (let index = 0; index < count; index++) {
+    const angle = radial ? enemy.angle + index * Math.PI * 2 / count : baseAngle + (index - (count - 1) / 2) * .22;
+    const speed = enemy.type === "boss" ? 270 : 235;
+    bullets.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, radius: enemy.type === "boss" ? 8 : 6, damage: enemy.type === "boss" ? 14 : 10, hostile: true, pierce: 0, life: 4600, color: "#ff477e" });
+  }
+  enemy.fireTimer = enemy.type === "boss" ? 720 : 1400;
+}
+
+function damagePlayer(amount: number) {
+  if (player.invulnerable > 0) return;
+  if (player.shield > 0) {
+    player.shield -= 1;
+    player.invulnerable = 500;
+    burst(player.x, player.y, "#ffd166", 22, 220);
+    sound(520, .16, "triangle", .045);
+    return;
+  }
+  player.hp -= amount;
+  player.invulnerable = 700;
+  combo = 1;
+  comboTimer = 0;
+  flash = 110;
+  shake = 18;
+  burst(player.x, player.y, "#ff477e", 28, 260);
+  sound(72, .35, "sawtooth", .065);
+  if (player.hp <= 0) finishGame(false);
+}
+
+function killEnemy(enemy: Enemy) {
+  kills += 1;
+  const values = { scout: 100, gunner: 180, tank: 320, boss: 2500 };
+  score += Math.round(values[enemy.type] * combo);
+  combo = Math.min(9.9, combo + (enemy.type === "boss" ? 1 : .15));
+  comboTimer = 2400;
+  const color = enemy.type === "gunner" ? "#a06cff" : enemy.type === "tank" ? "#ffd166" : enemy.type === "boss" ? "#ffffff" : "#ff477e";
+  burst(enemy.x, enemy.y, color, enemy.type === "boss" ? 90 : 20, enemy.type === "boss" ? 420 : 220);
+  shake = Math.max(shake, enemy.type === "boss" ? 30 : enemy.type === "tank" ? 13 : 6);
+  if (enemy.type !== "boss" && Math.random() < .16) pickups.push({ x: enemy.x, y: enemy.y, type: Math.random() < .45 ? "repair" : "charge", life: 8000, phase: Math.random() * Math.PI * 2 });
+  sound(enemy.type === "boss" ? 58 : 140 + Math.random() * 70, enemy.type === "boss" ? .7 : .08, "sawtooth", enemy.type === "boss" ? .08 : .02);
+  if (enemy.type === "boss") finishGame(true);
+}
+
+function updatePlayer(delta: number) {
+  const moving = movementVector();
+  const hasMovement = Math.abs(moving.x) + Math.abs(moving.y) > .1;
+  const speed = player.speed * (player.dashDuration > 0 ? 2.2 : 1);
+  if (hasMovement) {
+    player.x = clamp(player.x + moving.x * speed * delta / 1000, ARENA.left + player.radius, ARENA.right - player.radius);
+    player.y = clamp(player.y + moving.y * speed * delta / 1000, ARENA.top + player.radius, ARENA.bottom - player.radius);
+    if (Math.random() < delta / 26) particles.push({ x: player.x - moving.x * 18, y: player.y - moving.y * 18, vx: -moving.x * 75 + (Math.random() - .5) * 40, vy: -moving.y * 75 + (Math.random() - .5) * 40, life: 260, maxLife: 260, size: 2 + Math.random() * 3, color: "#7fffea" });
+  }
+  player.fireTimer -= delta;
+  player.dashTimer -= delta;
+  player.dashDuration -= delta;
+  player.invulnerable -= delta;
+  shotSoundTimer -= delta;
+  if (player.fireTimer <= 0) firePlayerBullet();
+}
+
+function updateEnemies(delta: number) {
+  for (const enemy of enemies) {
+    const toPlayer = normalize(player.x - enemy.x, player.y - enemy.y);
+    const playerDistance = distance(player, enemy);
+    enemy.angle += delta * .0007;
+    enemy.fireTimer -= delta;
+    enemy.hitFlash -= delta;
+    if (enemy.type === "scout" || enemy.type === "tank") {
+      enemy.vx += (toPlayer.x * enemy.speed - enemy.vx) * .06;
+      enemy.vy += (toPlayer.y * enemy.speed - enemy.vy) * .06;
+    } else if (enemy.type === "gunner") {
+      const direction = playerDistance < 220 ? -1 : playerDistance > 350 ? 1 : 0;
+      const strafe = Math.sin(elapsed * .001 + enemy.id) * .45;
+      enemy.vx += ((toPlayer.x * direction - toPlayer.y * strafe) * enemy.speed - enemy.vx) * .05;
+      enemy.vy += ((toPlayer.y * direction + toPlayer.x * strafe) * enemy.speed - enemy.vy) * .05;
+      if (enemy.fireTimer <= 0) fireHostile(enemy);
+    } else {
+      const direction = playerDistance > 280 ? 1 : -.3;
+      enemy.vx += (toPlayer.x * enemy.speed * direction - toPlayer.y * 20 - enemy.vx) * .025;
+      enemy.vy += (toPlayer.y * enemy.speed * direction + toPlayer.x * 20 - enemy.vy) * .025;
+      if (enemy.fireTimer <= 0) fireHostile(enemy, Math.random() < .36);
+      if (Math.random() < delta / 7000 && enemies.filter((item) => item.type !== "boss").length < 5) {
+        spawnEnemy("scout", { x: enemy.x + (Math.random() - .5) * 120, y: enemy.y + (Math.random() - .5) * 120 });
+      }
+    }
+    enemy.x += enemy.vx * delta / 1000;
+    enemy.y += enemy.vy * delta / 1000;
+    if (playerDistance < player.radius + enemy.radius) {
+      damagePlayer(enemy.type === "tank" ? 24 : enemy.type === "boss" ? 30 : 15);
+      enemy.x -= toPlayer.x * 28;
+      enemy.y -= toPlayer.y * 28;
+    }
+  }
+}
+
+function updateBullets(delta: number) {
+  for (const bullet of bullets) {
+    bullet.x += bullet.vx * delta / 1000;
+    bullet.y += bullet.vy * delta / 1000;
+    bullet.life -= delta;
+    if (bullet.hostile && distance(bullet, player) < bullet.radius + player.radius) {
+      bullet.life = 0;
+      damagePlayer(bullet.damage);
+    }
+    if (!bullet.hostile) {
+      for (const enemy of enemies) {
+        if (enemy.hp > 0 && distance(bullet, enemy) < bullet.radius + enemy.radius) {
+          enemy.hp -= bullet.damage;
+          enemy.hitFlash = 70;
+          burst(bullet.x, bullet.y, "#7fffea", 4, 80);
+          if (bullet.pierce > 0) bullet.pierce -= 1;
+          else bullet.life = 0;
+          if (enemy.hp <= 0) killEnemy(enemy);
+          break;
+        }
+      }
+    }
+  }
+  bullets = bullets.filter((bullet) => bullet.life > 0 && bullet.x > -80 && bullet.x < W + 80 && bullet.y > -80 && bullet.y < H + 80);
+  enemies = enemies.filter((enemy) => enemy.hp > 0);
+}
+
+function updatePickups(delta: number) {
+  for (const pickup of pickups) {
+    pickup.life -= delta;
+    pickup.phase += delta * .004;
+    const toward = normalize(player.x - pickup.x, player.y - pickup.y);
+    if (distance(pickup, player) < 140) {
+      pickup.x += toward.x * 230 * delta / 1000;
+      pickup.y += toward.y * 230 * delta / 1000;
+    }
+    if (distance(pickup, player) < player.radius + 13) {
+      pickup.life = 0;
+      if (pickup.type === "repair") player.hp = Math.min(player.maxHp, player.hp + 22);
+      else player.dashTimer = Math.max(0, player.dashTimer - 900);
+      score += 35;
+      burst(pickup.x, pickup.y, pickup.type === "repair" ? "#62ff9d" : "#ffd166", 14, 140);
+      sound(pickup.type === "repair" ? 620 : 760, .12, "triangle", .035);
+    }
+  }
+  pickups = pickups.filter((pickup) => pickup.life > 0);
+}
+
+function updateParticles(delta: number) {
+  for (const particle of particles) {
+    particle.x += particle.vx * delta / 1000;
+    particle.y += particle.vy * delta / 1000;
+    particle.vx *= .985;
+    particle.vy *= .985;
+    particle.life -= delta;
+  }
+  particles = particles.filter((particle) => particle.life > 0);
+}
+
+function updateWave(delta: number) {
+  if (!waveStarted) return;
+  spawnTimer -= delta;
+  if (waveSpawnRemaining > 0 && spawnTimer <= 0) {
+    spawnEnemy(wave === 5 ? "boss" : undefined);
+    waveSpawnRemaining -= 1;
+    spawnTimer = wave === 5 ? 999999 : Math.max(280, 820 - wave * 85) + Math.random() * 240;
+  }
+  if (waveSpawnRemaining === 0 && enemies.length === 0) {
+    waveStarted = false;
+    if (wave >= 5) finishGame(true);
+    else showUpgrades();
   }
 }
 
 function update(delta: number) {
-  playerLane += (targetLane - playerLane) * Math.min(1, delta * 0.014);
-  spawnTimer -= delta;
-  if (spawnTimer <= 0) {
-    spawnItem();
-    spawnTimer = Math.max(300, 790 - level * 55) + Math.random() * 180;
-  }
-
+  elapsed += delta;
+  bannerTimer -= delta;
   comboTimer -= delta;
-  if (comboTimer <= 0) combo = 1;
-  energy = Math.min(100, energy + delta * 0.005);
-
-  for (const item of items) {
-    item.y += item.speed * (delta / 1000);
-    item.rotation += delta * 0.0015;
-  }
-
-  const collisions = items.filter((item) => item.y > PLAYER_Y - 46 && item.y < PLAYER_Y + 54 && Math.abs(item.lane - playerLane) < 0.34);
-  collisions.forEach(collect);
-  const collisionIds = new Set(collisions.map((item) => item.id));
-  items = items.filter((item) => item.y < canvas.height + 80 && !collisionIds.has(item.id));
-
-  for (const particle of particles) {
-    particle.x += particle.vx * delta / 1000;
-    particle.y += particle.vy * delta / 1000;
-    particle.vy += 80 * delta / 1000;
-    particle.life -= delta / 650;
-  }
-  particles = particles.filter((particle) => particle.life > 0);
-
-  level = Math.min(9, Math.floor(score / 700) + 1);
+  flash -= delta;
+  shake *= .88;
+  if (bannerTimer <= 0) ui.waveBanner.classList.add("hidden");
+  if (comboTimer <= 0) combo = Math.max(1, combo - delta * .0015);
+  updatePlayer(delta);
+  updateEnemies(delta);
+  updateBullets(delta);
+  updatePickups(delta);
+  updateParticles(delta);
+  updateWave(delta);
   updateHud();
-  if (lives <= 0) endGame(false);
-  if (score >= TARGET_SCORE) endGame(true);
 }
 
-function updateHud() {
-  scoreElement.textContent = Math.max(0, score).toString().padStart(6, "0");
-  levelElement.textContent = level.toString().padStart(2, "0");
-  livesElement.textContent = Array.from({ length: 3 }, (_, index) => index < lives ? "◆" : "◇").join(" ");
-  comboElement.textContent = `×${combo}`;
-  energyFill.style.width = `${energy}%`;
-  energyTrack.setAttribute("aria-valuenow", String(Math.round(energy)));
-  const sectors = [
-    document.querySelector<HTMLElement>("#relay-one")!,
-    document.querySelector<HTMLElement>("#relay-two")!,
-    document.querySelector<HTMLElement>("#relay-three")!
-  ];
-  const entries = document.querySelectorAll<HTMLElement>(".relay-list li");
-  sectors.forEach((sector, index) => {
-    const sectorStart = index * 1500;
-    const progress = Math.min(100, Math.max(0, ((score - sectorStart) / 1500) * 100));
-    sector.textContent = progress >= 100 ? "SYNCHRONISÉ" : progress > 0 || index === 0 ? `EN COURS · ${Math.floor(progress)}%` : "HORS LIGNE";
-    entries[index].classList.toggle("complete", progress >= 100);
-    entries[index].classList.toggle("active", progress > 0 && progress < 100 || index === 0 && score === 0);
+const upgrades: Upgrade[] = [
+  { id: "damage", name: "CANON NOVA", description: "Les projectiles infligent davantage de dégâts.", stat: "+30% dégâts", apply: () => player.damage *= 1.3 },
+  { id: "rate", name: "CŒUR RAPIDE", description: "Le cycle du canon se contracte fortement.", stat: "+24% cadence", apply: () => player.fireRate *= .76 },
+  { id: "multi", name: "PRISME TRIPLE", description: "Ajoute un projectile à chaque salve.", stat: "+1 projectile", apply: () => player.multishot += 1 },
+  { id: "pierce", name: "PHASE DENSE", description: "Les tirs traversent une cible supplémentaire.", stat: "+1 perforation", apply: () => player.pierce += 1 },
+  { id: "speed", name: "MOTEUR ION", description: "Le Spectre gagne en vitesse de déplacement.", stat: "+18% vitesse", apply: () => player.speed *= 1.18 },
+  { id: "dash", name: "SAUT QUANTIQUE", description: "Le dash phasé se recharge plus vite.", stat: "−25% recharge", apply: () => player.dashCooldown *= .75 },
+  { id: "hull", name: "COQUE VIVANTE", description: "Renforce et répare intégralement le vaisseau.", stat: "+30 intégrité", apply: () => { player.maxHp += 30; player.hp = player.maxHp; } },
+  { id: "shield", name: "ÉGIDE SOLAIRE", description: "Annule les deux prochains impacts.", stat: "+2 boucliers", apply: () => player.shield += 2 },
+  { id: "velocity", name: "MUNITIONS VECTEUR", description: "Les projectiles accélèrent et grossissent.", stat: "+25% vélocité", apply: () => player.bulletSpeed *= 1.25 }
+];
+
+function showUpgrades() {
+  state = "upgrade";
+  bullets = bullets.filter((bullet) => !bullet.hostile);
+  player.hp = Math.min(player.maxHp, player.hp + 18);
+  const choices = [...upgrades].sort(() => Math.random() - .5).slice(0, 3);
+  ui.upgradeGrid.innerHTML = choices.map((upgrade, index) => `
+    <button class="upgrade-card" type="button" data-upgrade="${upgrade.id}">
+      <span>0${index + 1}</span>
+      <i aria-hidden="true"></i>
+      <strong>${upgrade.name}</strong>
+      <p>${upgrade.description}</p>
+      <b>${upgrade.stat}</b>
+    </button>
+  `).join("");
+  ui.upgrade.classList.remove("hidden");
+  ui.upgradeGrid.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const upgrade = upgrades.find((item) => item.id === button.dataset.upgrade)!;
+      upgrade.apply();
+      ui.upgrade.classList.add("hidden");
+      sound(470, .25, "triangle", .05);
+      burst(player.x, player.y, "#ffd166", 35, 260);
+      state = "playing";
+      beginWave(wave + 1);
+    });
   });
 }
 
-function endGame(victory: boolean) {
-  if (!running) return;
-  running = false;
-  const best = Math.max(Number(localStorage.getItem("neon-relay-best") ?? 0), score);
-  localStorage.setItem("neon-relay-best", String(best));
-  document.querySelector("#result-kicker")!.textContent = victory ? "RÉSEAU RESTAURÉ" : "SIGNAL PERDU";
-  document.querySelector("#result-title")!.textContent = victory ? "MISSION ACCOMPLIE" : "FIN DE TRANSMISSION";
-  document.querySelector("#result-copy")!.textContent = `Score final : ${score.toLocaleString("fr-FR")} · Record : ${best.toLocaleString("fr-FR")}`;
-  resultOverlay.classList.remove("hidden");
-  tone(victory ? 620 : 110, 0.45, victory ? "triangle" : "sawtooth");
+function finishGame(victory: boolean) {
+  if (state === "gameover" || state === "victory") return;
+  state = victory ? "victory" : "gameover";
+  const best = Math.max(score, Number(localStorage.getItem("neon-rift-best") ?? 0));
+  localStorage.setItem("neon-rift-best", String(best));
+  ui.best.textContent = String(best).padStart(6, "0");
+  document.querySelector("#result-kicker")!.textContent = victory ? "FAILLE SCELLÉE // CITÉ SÉCURISÉE" : "TRANSMISSION INTERROMPUE";
+  document.querySelector("#result-title")!.innerHTML = victory ? "LE PHARE<br><em>RAYONNE</em>" : "LE PHARE<br>S'EST ÉTEINT";
+  document.querySelector("#result-score")!.textContent = score.toLocaleString("fr-FR");
+  document.querySelector("#result-wave")!.textContent = `${wave} / 5`;
+  document.querySelector("#result-kills")!.textContent = String(kills);
+  ui.result.classList.remove("hidden");
+  ui.boss.classList.add("hidden");
+  sound(victory ? 640 : 62, victory ? .7 : .5, victory ? "triangle" : "sawtooth", .07);
 }
 
-function drawGrid(time: number) {
-  ctx.fillStyle = "#070b16";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height * 0.4, 20, canvas.width / 2, canvas.height * 0.4, 560);
-  gradient.addColorStop(0, "rgba(30, 83, 101, .24)");
-  gradient.addColorStop(1, "rgba(7, 11, 22, 0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.lineWidth = 1;
-  for (let lane = 1; lane < LANES; lane++) {
-    ctx.strokeStyle = "rgba(115, 246, 229, .12)";
-    ctx.beginPath();
-    ctx.moveTo(lane * LANE_WIDTH, 0);
-    ctx.lineTo(lane * LANE_WIDTH, canvas.height);
-    ctx.stroke();
-  }
-  const offset = (time * 0.08) % 72;
-  for (let y = offset - 72; y < canvas.height; y += 72) {
-    ctx.strokeStyle = "rgba(115, 246, 229, .07)";
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
-    ctx.stroke();
-  }
-}
-
-function drawItem(item: FallingItem) {
-  const x = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
-  ctx.save();
-  ctx.translate(x, item.y);
-  ctx.rotate(item.rotation);
-  if (item.kind === "shard") {
-    ctx.shadowBlur = 24;
-    ctx.shadowColor = "#73f6e5";
-    ctx.fillStyle = "#73f6e5";
-    ctx.beginPath();
-    ctx.moveTo(0, -23); ctx.lineTo(17, 0); ctx.lineTo(0, 23); ctx.lineTo(-17, 0); ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#eafffb";
-    ctx.stroke();
-  } else if (item.kind === "battery") {
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "#ffe66d";
-    ctx.strokeStyle = "#ffe66d";
-    ctx.lineWidth = 5;
-    ctx.strokeRect(-18, -24, 36, 48);
-    ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(6, -12); ctx.lineTo(1, 0); ctx.lineTo(9, 0); ctx.lineTo(-5, 14); ctx.lineTo(0, 0); ctx.stroke();
+function togglePause() {
+  if (!["playing", "paused"].includes(state)) return;
+  if (state === "paused") {
+    state = previousState;
+    ui.pause.classList.add("hidden");
+    document.querySelector("#pause-button")!.textContent = "PAUSE";
+    lastTime = performance.now();
   } else {
-    ctx.shadowBlur = 25;
-    ctx.shadowColor = "#ff3d87";
-    ctx.strokeStyle = "#ff3d87";
-    ctx.fillStyle = "rgba(255, 61, 135, .13)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const angle = (Math.PI * 2 * i) / 8;
-      const radius = i % 2 ? 21 : 32;
-      ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-    }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-13, -13); ctx.lineTo(13, 13); ctx.moveTo(13, -13); ctx.lineTo(-13, 13); ctx.stroke();
+    previousState = state;
+    state = "paused";
+    ui.pause.classList.remove("hidden");
+    document.querySelector("#pause-button")!.textContent = "REPRENDRE";
   }
-  ctx.restore();
+}
+
+function updateHud() {
+  ui.score.textContent = String(Math.round(score)).padStart(6, "0");
+  ui.wave.textContent = `${String(wave).padStart(2, "0")} / 05`;
+  ui.combo.textContent = `×${combo.toFixed(1)}`;
+  ui.health.textContent = String(Math.max(0, Math.ceil(player.hp)));
+  const healthPercent = clamp(player.hp / player.maxHp * 100, 0, 100);
+  ui.healthFill.style.width = `${healthPercent}%`;
+  ui.healthFill.parentElement!.setAttribute("aria-valuenow", String(Math.round(healthPercent)));
+  const dashPercent = clamp((1 - player.dashTimer / player.dashCooldown) * 100, 0, 100);
+  ui.dashFill.style.width = `${dashPercent}%`;
+  ui.dashFill.parentElement!.setAttribute("aria-valuenow", String(Math.round(dashPercent)));
+  const boss = enemies.find((enemy) => enemy.type === "boss");
+  if (boss) ui.bossFill.style.width = `${clamp(boss.hp / boss.maxHp * 100, 0, 100)}%`;
+}
+
+function polygon(sides: number, radius: number, rotation = 0) {
+  ctx.beginPath();
+  for (let index = 0; index < sides; index++) {
+    const angle = rotation + index * Math.PI * 2 / sides;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function drawBackground(time: number) {
+  ctx.fillStyle = "#030711";
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, 440);
+  glow.addColorStop(0, "rgba(31, 91, 106, .20)");
+  glow.addColorStop(1, "rgba(3, 7, 17, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+  for (const star of stars) {
+    const alpha = .18 + (Math.sin(time * .0015 + star.phase) + 1) * .12;
+    ctx.fillStyle = `rgba(186, 226, 229, ${alpha})`;
+    ctx.fillRect(star.x, star.y, star.size, star.size);
+  }
+  ctx.strokeStyle = "rgba(89, 216, 211, .07)";
+  ctx.lineWidth = 1;
+  const gridOffset = time * .012 % 56;
+  for (let x = ARENA.left + gridOffset; x < ARENA.right; x += 56) {
+    ctx.beginPath(); ctx.moveTo(x, ARENA.top); ctx.lineTo(x, ARENA.bottom); ctx.stroke();
+  }
+  for (let y = ARENA.top + gridOffset; y < ARENA.bottom; y += 56) {
+    ctx.beginPath(); ctx.moveTo(ARENA.left, y); ctx.lineTo(ARENA.right, y); ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(127, 255, 234, .27)";
+  ctx.strokeRect(ARENA.left, ARENA.top, ARENA.right - ARENA.left, ARENA.bottom - ARENA.top);
+  const corner = 22;
+  ctx.strokeStyle = "#7fffea";
+  ctx.beginPath();
+  ctx.moveTo(ARENA.left, ARENA.top + corner); ctx.lineTo(ARENA.left, ARENA.top); ctx.lineTo(ARENA.left + corner, ARENA.top);
+  ctx.moveTo(ARENA.right - corner, ARENA.top); ctx.lineTo(ARENA.right, ARENA.top); ctx.lineTo(ARENA.right, ARENA.top + corner);
+  ctx.moveTo(ARENA.right, ARENA.bottom - corner); ctx.lineTo(ARENA.right, ARENA.bottom); ctx.lineTo(ARENA.right - corner, ARENA.bottom);
+  ctx.moveTo(ARENA.left + corner, ARENA.bottom); ctx.lineTo(ARENA.left, ARENA.bottom); ctx.lineTo(ARENA.left, ARENA.bottom - corner);
+  ctx.stroke();
 }
 
 function drawPlayer(time: number) {
-  const x = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
   ctx.save();
-  ctx.translate(x, PLAYER_Y);
-  ctx.shadowBlur = 28;
-  ctx.shadowColor = "#73f6e5";
-  ctx.strokeStyle = "#73f6e5";
-  ctx.fillStyle = "rgba(115, 246, 229, .14)";
-  ctx.lineWidth = 5;
-  const pulseScale = 1 + Math.sin(time * 0.006) * 0.05;
-  ctx.scale(pulseScale, pulseScale);
-  ctx.beginPath(); ctx.moveTo(0, -34); ctx.lineTo(30, 27); ctx.lineTo(0, 16); ctx.lineTo(-30, 27); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#f3fffd";
-  ctx.beginPath(); ctx.arc(0, 3, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.aimAngle + Math.PI / 2);
+  ctx.globalAlpha = player.invulnerable > 0 && Math.floor(time / 70) % 2 ? .35 : 1;
+  ctx.shadowColor = "#7fffea";
+  ctx.shadowBlur = 20 + Math.sin(time * .008) * 4;
+  ctx.strokeStyle = "#7fffea";
+  ctx.fillStyle = "rgba(127, 255, 234, .12)";
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(17, 17); ctx.lineTo(0, 11); ctx.lineTo(-17, 17); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#f4fffd";
+  ctx.beginPath(); ctx.arc(0, 1, 4, 0, Math.PI * 2); ctx.fill();
+  if (player.shield > 0) {
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = .55 + Math.sin(time * .01) * .2;
+    ctx.beginPath(); ctx.arc(0, 0, 29, 0, Math.PI * 2); ctx.stroke();
+  }
   ctx.restore();
 }
 
-function draw(time: number) {
-  drawGrid(time);
-  items.forEach(drawItem);
+function drawEnemy(enemy: Enemy, time: number) {
+  ctx.save();
+  ctx.translate(enemy.x, enemy.y);
+  ctx.rotate(enemy.angle);
+  const isHit = enemy.hitFlash > 0;
+  if (enemy.type === "scout") {
+    ctx.shadowColor = "#ff477e"; ctx.shadowBlur = 16; ctx.strokeStyle = isHit ? "#fff" : "#ff477e"; ctx.fillStyle = "rgba(255,71,126,.12)"; ctx.lineWidth = 3;
+    polygon(4, enemy.radius, Math.PI / 4); ctx.fill(); ctx.stroke();
+    ctx.rotate(-enemy.angle * 2); polygon(3, enemy.radius * .48, time * .003); ctx.stroke();
+  } else if (enemy.type === "gunner") {
+    ctx.shadowColor = "#a06cff"; ctx.shadowBlur = 18; ctx.strokeStyle = isHit ? "#fff" : "#a06cff"; ctx.fillStyle = "rgba(160,108,255,.13)"; ctx.lineWidth = 3;
+    polygon(6, enemy.radius); ctx.fill(); ctx.stroke();
+    ctx.rotate(-enemy.angle * 1.8); ctx.beginPath(); ctx.arc(0, 0, enemy.radius * .48, 0, Math.PI * 1.55); ctx.stroke();
+  } else if (enemy.type === "tank") {
+    ctx.shadowColor = "#ffd166"; ctx.shadowBlur = 18; ctx.strokeStyle = isHit ? "#fff" : "#ffd166"; ctx.fillStyle = "rgba(255,209,102,.12)"; ctx.lineWidth = 4;
+    polygon(8, enemy.radius); ctx.fill(); ctx.stroke();
+    ctx.rotate(-enemy.angle * 1.4); polygon(4, enemy.radius * .55, Math.PI / 4); ctx.stroke();
+  } else {
+    ctx.shadowColor = "#ff477e"; ctx.shadowBlur = 35; ctx.strokeStyle = isHit ? "#fff" : "#ff477e"; ctx.fillStyle = "rgba(255,71,126,.09)"; ctx.lineWidth = 4;
+    polygon(10, enemy.radius); ctx.fill(); ctx.stroke();
+    ctx.rotate(-enemy.angle * 1.7); polygon(6, enemy.radius * .7); ctx.stroke();
+    ctx.rotate(enemy.angle * 3.1); polygon(4, enemy.radius * .36, Math.PI / 4); ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 7 + Math.sin(time * .009) * 2, 0, Math.PI * 2); ctx.fill();
+  }
+  if (enemy.type !== "boss" && enemy.hp < enemy.maxHp) {
+    ctx.rotate(-enemy.angle);
+    ctx.fillStyle = "rgba(255,255,255,.13)"; ctx.fillRect(-enemy.radius, enemy.radius + 9, enemy.radius * 2, 3);
+    ctx.fillStyle = "#ff477e"; ctx.fillRect(-enemy.radius, enemy.radius + 9, enemy.radius * 2 * enemy.hp / enemy.maxHp, 3);
+  }
+  ctx.restore();
+}
+
+function drawBullet(bullet: Bullet) {
+  ctx.save();
+  ctx.translate(bullet.x, bullet.y);
+  ctx.shadowColor = bullet.color; ctx.shadowBlur = 14; ctx.fillStyle = bullet.color;
+  ctx.beginPath(); ctx.arc(0, 0, bullet.radius, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = .36; ctx.strokeStyle = bullet.color; ctx.lineWidth = bullet.radius;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-bullet.vx * .025, -bullet.vy * .025); ctx.stroke();
+  ctx.restore();
+}
+
+function drawPickup(pickup: Pickup) {
+  ctx.save();
+  ctx.translate(pickup.x, pickup.y);
+  ctx.rotate(pickup.phase);
+  const color = pickup.type === "repair" ? "#62ff9d" : "#ffd166";
+  ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 18; ctx.lineWidth = 3;
+  polygon(pickup.type === "repair" ? 4 : 6, 11, Math.PI / 4); ctx.stroke();
+  ctx.rotate(-pickup.phase * 2); polygon(3, 5); ctx.stroke();
+  ctx.restore();
+}
+
+function drawParticles() {
   for (const particle of particles) {
-    ctx.globalAlpha = Math.max(0, particle.life);
+    ctx.globalAlpha = clamp(particle.life / particle.maxLife, 0, 1);
     ctx.fillStyle = particle.color;
-    ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
+    ctx.fillRect(particle.x - particle.size / 2, particle.y - particle.size / 2, particle.size, particle.size);
   }
   ctx.globalAlpha = 1;
+}
+
+function draw(time: number) {
+  const dx = shake > .5 ? (Math.random() - .5) * shake : 0;
+  const dy = shake > .5 ? (Math.random() - .5) * shake : 0;
+  ctx.save();
+  ctx.translate(dx, dy);
+  drawBackground(time);
+  pickups.forEach(drawPickup);
+  bullets.forEach(drawBullet);
+  enemies.forEach((enemy) => drawEnemy(enemy, time));
+  drawParticles();
   drawPlayer(time);
+  ctx.restore();
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(255, 71, 126, ${flash / 650})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 }
 
 function loop(time: number) {
-  if (!running || paused) return;
   const delta = Math.min(40, time - lastTime);
   lastTime = time;
-  update(delta);
+  if (state === "playing") update(delta);
+  else {
+    elapsed += delta;
+    updateParticles(delta);
+    shake *= .88;
+  }
   draw(time);
-  if (running) requestAnimationFrame(loop);
+  requestAnimationFrame(loop);
 }
 
 document.querySelector("#start-button")!.addEventListener("click", startGame);
 document.querySelector("#restart-button")!.addEventListener("click", startGame);
-document.querySelector("#left-button")!.addEventListener("click", () => move(-1));
-document.querySelector("#right-button")!.addEventListener("click", () => move(1));
-document.querySelector("#pulse-button")!.addEventListener("click", pulse);
 document.querySelector("#pause-button")!.addEventListener("click", togglePause);
+document.querySelector("#mobile-dash")!.addEventListener("click", dash);
 document.querySelector("#sound-toggle")!.addEventListener("click", (event) => {
   audioEnabled = !audioEnabled;
   const button = event.currentTarget as HTMLButtonElement;
   button.setAttribute("aria-pressed", String(audioEnabled));
   button.setAttribute("aria-label", audioEnabled ? "Désactiver le son" : "Activer le son");
-  button.textContent = audioEnabled ? "SON ●" : "SON ○";
+  button.innerHTML = `SON <span>${audioEnabled ? "●" : "○"}</span>`;
 });
 
 window.addEventListener("keydown", (event) => {
-  if (["ArrowLeft", "ArrowRight", " "].includes(event.key)) event.preventDefault();
-  if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a" || event.key.toLowerCase() === "q") move(-1);
-  if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") move(1);
-  if (event.key === " ") pulse();
-  if (event.key.toLowerCase() === "p" || event.key === "Escape") togglePause();
+  const key = event.key.toLowerCase();
+  if (["arrowleft", "arrowright", "arrowup", "arrowdown", " "].includes(key)) event.preventDefault();
+  keys.add(key);
+  if (key === " ") dash();
+  if (key === "p" || key === "escape") togglePause();
+});
+window.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+canvas.addEventListener("pointermove", (event) => {
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = (event.clientX - rect.left) / rect.width * W;
+  pointer.y = (event.clientY - rect.top) / rect.height * H;
+  pointer.activeUntil = performance.now() + 2800;
+});
+
+document.querySelectorAll<HTMLButtonElement>("[data-move]").forEach((button) => {
+  const direction = button.dataset.move!;
+  const start = (event: Event) => { event.preventDefault(); touchMoves.add(direction); };
+  const stop = (event: Event) => { event.preventDefault(); touchMoves.delete(direction); };
+  button.addEventListener("pointerdown", start);
+  button.addEventListener("pointerup", stop);
+  button.addEventListener("pointercancel", stop);
+  button.addEventListener("pointerleave", stop);
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && running && !paused) togglePause();
+  if (document.hidden && state === "playing") togglePause();
 });
 
-document.querySelector("#best-score")!.textContent = Number(localStorage.getItem("neon-relay-best") ?? 0).toString().padStart(6, "0");
+ui.best.textContent = String(Number(localStorage.getItem("neon-rift-best") ?? 0)).padStart(6, "0");
 updateHud();
-draw(0);
+requestAnimationFrame(loop);
