@@ -1037,6 +1037,80 @@ function drawMuzzleFlash() {
   ctx.restore();
 }
 
+function drawGhosts() {
+  for (const ghost of ghosts) {
+    const alpha = clamp(ghost.life / ghost.maxLife, 0, 1) * .35;
+    ctx.save();
+    ctx.translate(ghost.x, ghost.y);
+    ctx.rotate(ghost.angle + Math.PI / 2);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = "#7fffea";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(17, 17); ctx.lineTo(0, 11); ctx.lineTo(-17, 17); ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawSpawnRings() {
+  for (const ring of spawnRings) {
+    const alpha = clamp(ring.life / ring.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha * .8;
+    ctx.strokeStyle = ring.color;
+    ctx.shadowColor = ring.color;
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = alpha * .4;
+    ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.radius * .55, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawShockwaves() {
+  for (const wave of shockwaves) {
+    const alpha = clamp(wave.life / wave.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha * .75;
+    ctx.strokeStyle = wave.color;
+    ctx.shadowColor = wave.color;
+    ctx.shadowBlur = 22;
+    ctx.lineWidth = wave.width;
+    ctx.beginPath(); ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawFloatingTexts() {
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.font = "600 12px 'Space Grotesk', sans-serif";
+  for (const text of floatingTexts) {
+    const alpha = clamp(text.life / text.maxLife, 0, 1);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = text.color;
+    ctx.shadowColor = text.color;
+    ctx.shadowBlur = 8;
+    ctx.font = `600 ${text.size}px 'Space Grotesk', sans-serif`;
+    ctx.fillText(text.text, text.x, text.y);
+  }
+  ctx.restore();
+}
+
+function drawMuzzleFlash() {
+  if (muzzleFlash <= 0) return;
+  const alpha = clamp(muzzleFlash / 90, 0, 1);
+  const tipX = player.x + Math.cos(player.aimAngle) * 30;
+  const tipY = player.y + Math.sin(player.aimAngle) * 30;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "#f4fffd";
+  ctx.shadowColor = "#7fffea";
+  ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.arc(tipX, tipY, 5 + alpha * 3, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 function drawParticles() {
   for (const particle of particles) {
     ctx.globalAlpha = clamp(particle.life / particle.maxLife, 0, 1);

@@ -1,0 +1,291 @@
+diff a/src/main.ts b/src/main.ts	(rejected hunks)
+@@ -60,6 +60,55 @@ interface Upgrade {
+   apply: () => void;
+ }
+ 
++interface FloatingText {
++  x: number;
++  y: number;
++  vy: number;
++  text: string;
++  color: string;
++  size: number;
++  life: number;
++  maxLife: number;
++}
++
++interface Shockwave {
++  x: number;
++  y: number;
++  radius: number;
++  maxRadius: number;
++  color: string;
++  life: number;
++  maxLife: number;
++  width: number;
++}
++
++interface SpawnRing {
++  x: number;
++  y: number;
++  radius: number;
++  color: string;
++  life: number;
++  maxLife: number;
++}
++
++interface Ghost {
++  x: number;
++  y: number;
++  angle: number;
++  life: number;
++  maxLife: number;
++}
++
++interface Nebula {
++  x: number;
++  y: number;
++  radius: number;
++  color: string;
++  driftX: number;
++  driftY: number;
++  phase: number;
++}
++
+ const app = document.querySelector<HTMLDivElement>("#app");
+ if (!app) throw new Error("Missing #app mount point");
+ 
+@@ -258,6 +307,17 @@ let enemies: Enemy[] = [];
+ let bullets: Bullet[] = [];
+ let pickups: Pickup[] = [];
+ let particles: Particle[] = [];
++let floatingTexts: FloatingText[] = [];
++let shockwaves: Shockwave[] = [];
++let spawnRings: SpawnRing[] = [];
++let ghosts: Ghost[] = [];
++let muzzleFlash = 0;
++let lastComboStep = 1;
++const nebulae: Nebula[] = Array.from({ length: 5 }, () => ({
++  x: Math.random() * W, y: Math.random() * H, radius: 140 + Math.random() * 180,
++  color: [`rgba(127,255,234,`, `rgba(160,108,255,`, `rgba(255,71,126,`][Math.floor(Math.random() * 3)],
++  driftX: (Math.random() - .5) * .012, driftY: (Math.random() - .5) * .012, phase: Math.random() * Math.PI * 2
++}));
+ 
+ function clamp(value: number, min: number, max: number) {
+   return Math.max(min, Math.min(max, value));
+@@ -295,6 +355,18 @@ function burst(x: number, y: number, color: string, count = 12, force = 180) {
+   }
+ }
+ 
++function spawnFloatingText(x: number, y: number, text: string, color: string, size = 13) {
++  floatingTexts.push({ x: x + (Math.random() - .5) * 14, y, vy: -46, text, color, size, life: 620, maxLife: 620 });
++}
++
++function spawnShockwave(x: number, y: number, color: string, maxRadius = 90, width = 3) {
++  shockwaves.push({ x, y, radius: 4, maxRadius, color, life: 420, maxLife: 420, width });
++}
++
++function spawnMaterializeRing(x: number, y: number, color: string) {
++  spawnRings.push({ x, y, radius: 4, color, life: 480, maxLife: 480 });
++}
++
+ function resetPlayer() {
+   Object.assign(player, {
+     x: W / 2, y: H / 2, hp: 100, maxHp: 100, speed: 285, damage: 22,
+@@ -309,11 +381,17 @@ function startGame() {
+   bullets = [];
+   pickups = [];
+   particles = [];
++  floatingTexts = [];
++  shockwaves = [];
++  spawnRings = [];
++  ghosts = [];
+   wave = 1;
+   score = 0;
+   kills = 0;
+   combo = 1;
+   comboTimer = 0;
++  lastComboStep = 1;
++  muzzleFlash = 0;
+   nextEnemyId = 1;
+   ui.intro.classList.add("hidden");
+   ui.result.classList.add("hidden");
+@@ -364,6 +442,8 @@ function spawnEnemy(forcedType?: EnemyType, position?: { x: number; y: number })
+     id: nextEnemyId++, type, x: pos.x, y: pos.y, vx: 0, vy: 0, radius: stats.radius,
+     hp: stats.hp, maxHp: stats.hp, speed: stats.speed, fireTimer: stats.fire * (.65 + Math.random() * .5), hitFlash: 0, angle: Math.random() * Math.PI * 2
+   });
++  const ringColor = type === "gunner" ? "#a06cff" : type === "tank" ? "#ffd166" : type === "boss" ? "#ffffff" : "#ff477e";
++  spawnMaterializeRing(pos.x, pos.y, ringColor);
+ }
+ 
+ function movementVector() {
+@@ -387,6 +467,15 @@ function dash() {
+   player.dashTimer = player.dashCooldown;
+   player.invulnerable = 330;
+   burst(player.x, player.y, "#7fffea", 28, 250);
++  const steps = 6;
++  for (let index = 1; index <= steps; index++) {
++    const t = index / steps;
++    ghosts.push({
++      x: clamp(player.x + moving.x * 115 * t, ARENA.left + player.radius, ARENA.right - player.radius),
++      y: clamp(player.y + moving.y * 115 * t, ARENA.top + player.radius, ARENA.bottom - player.radius),
++      angle: player.aimAngle, life: 260, maxLife: 260
++    });
++  }
+   player.x = clamp(player.x + moving.x * 115, ARENA.left + player.radius, ARENA.right - player.radius);
+   player.y = clamp(player.y + moving.y * 115, ARENA.top + player.radius, ARENA.bottom - player.radius);
+   shake = 9;
+@@ -413,6 +502,7 @@ function firePlayerBullet() {
+     });
+   }
+   player.fireTimer = player.fireRate;
++  muzzleFlash = 90;
+   if (shotSoundTimer <= 0) {
+     sound(330, .035, "square", .012);
+     shotSoundTimer = 150;
+@@ -443,9 +533,11 @@ function damagePlayer(amount: number) {
+   player.invulnerable = 700;
+   combo = 1;
+   comboTimer = 0;
++  lastComboStep = 1;
+   flash = 110;
+   shake = 18;
+   burst(player.x, player.y, "#ff477e", 28, 260);
++  spawnFloatingText(player.x, player.y - 26, `-${Math.round(amount)}`, "#ff477e", 15);
+   sound(72, .35, "sawtooth", .065);
+   if (player.hp <= 0) finishGame(false);
+ }
+@@ -458,6 +550,12 @@ function killEnemy(enemy: Enemy) {
+   comboTimer = 2400;
+   const color = enemy.type === "gunner" ? "#a06cff" : enemy.type === "tank" ? "#ffd166" : enemy.type === "boss" ? "#ffffff" : "#ff477e";
+   burst(enemy.x, enemy.y, color, enemy.type === "boss" ? 90 : 20, enemy.type === "boss" ? 420 : 220);
++  spawnShockwave(enemy.x, enemy.y, color, enemy.type === "boss" ? 260 : enemy.type === "tank" ? 130 : 70, enemy.type === "boss" ? 6 : 3);
++  spawnFloatingText(enemy.x, enemy.y - enemy.radius - 6, `+${Math.round(values[enemy.type] * combo)}`, "#ffd166", enemy.type === "boss" ? 20 : 12);
++  if (Math.floor(combo) > lastComboStep && combo >= 2) {
++    lastComboStep = Math.floor(combo);
++    spawnFloatingText(player.x, player.y - 46, `CHAÎNE ×${lastComboStep}`, "#7fffea", 14);
++  }
+   shake = Math.max(shake, enemy.type === "boss" ? 30 : enemy.type === "tank" ? 13 : 6);
+   if (enemy.type !== "boss" && Math.random() < .16) pickups.push({ x: enemy.x, y: enemy.y, type: Math.random() < .45 ? "repair" : "charge", life: 8000, phase: Math.random() * Math.PI * 2 });
+   sound(enemy.type === "boss" ? 58 : 140 + Math.random() * 70, enemy.type === "boss" ? .7 : .08, "sawtooth", enemy.type === "boss" ? .08 : .02);
+@@ -531,6 +629,7 @@ function updateBullets(delta: number) {
+           enemy.hp -= bullet.damage;
+           enemy.hitFlash = 70;
+           burst(bullet.x, bullet.y, "#7fffea", 4, 80);
++          spawnFloatingText(bullet.x, bullet.y, String(Math.round(bullet.damage)), "#f4fffd", 10);
+           if (bullet.pierce > 0) bullet.pierce -= 1;
+           else bullet.life = 0;
+           if (enemy.hp <= 0) killEnemy(enemy);
+@@ -575,6 +674,38 @@ function updateParticles(delta: number) {
+   particles = particles.filter((particle) => particle.life > 0);
+ }
+ 
++function updateFloatingTexts(delta: number) {
++  for (const text of floatingTexts) {
++    text.y += text.vy * delta / 1000;
++    text.vy *= .94;
++    text.life -= delta;
++  }
++  floatingTexts = floatingTexts.filter((text) => text.life > 0);
++}
++
++function updateShockwaves(delta: number) {
++  for (const wave of shockwaves) {
++    wave.life -= delta;
++    const t = 1 - clamp(wave.life / wave.maxLife, 0, 1);
++    wave.radius = wave.maxRadius * (1 - (1 - t) * (1 - t));
++  }
++  shockwaves = shockwaves.filter((wave) => wave.life > 0);
++}
++
++function updateSpawnRings(delta: number) {
++  for (const ring of spawnRings) {
++    ring.life -= delta;
++    const t = 1 - clamp(ring.life / ring.maxLife, 0, 1);
++    ring.radius = 6 + t * 46;
++  }
++  spawnRings = spawnRings.filter((ring) => ring.life > 0);
++}
++
++function updateGhosts(delta: number) {
++  for (const ghost of ghosts) ghost.life -= delta;
++  ghosts = ghosts.filter((ghost) => ghost.life > 0);
++}
++
+ function updateWave(delta: number) {
+   if (!waveStarted) return;
+   spawnTimer -= delta;
+@@ -603,6 +734,11 @@ function update(delta: number) {
+   updateBullets(delta);
+   updatePickups(delta);
+   updateParticles(delta);
++  updateFloatingTexts(delta);
++  updateShockwaves(delta);
++  updateSpawnRings(delta);
++  updateGhosts(delta);
++  muzzleFlash -= delta;
+   updateWave(delta);
+   updateHud();
+ }
+@@ -707,6 +843,20 @@ function polygon(sides: number, radius: number, rotation = 0) {
+ function drawBackground(time: number) {
+   ctx.fillStyle = "#030711";
+   ctx.fillRect(0, 0, W, H);
++  for (const cloud of nebulae) {
++    cloud.x += cloud.driftX;
++    cloud.y += cloud.driftY;
++    if (cloud.x < -cloud.radius) cloud.x = W + cloud.radius;
++    if (cloud.x > W + cloud.radius) cloud.x = -cloud.radius;
++    if (cloud.y < -cloud.radius) cloud.y = H + cloud.radius;
++    if (cloud.y > H + cloud.radius) cloud.y = -cloud.radius;
++    const pulse = .05 + (Math.sin(time * .0003 + cloud.phase) + 1) * .025;
++    const gradient = ctx.createRadialGradient(cloud.x, cloud.y, 0, cloud.x, cloud.y, cloud.radius);
++    gradient.addColorStop(0, `${cloud.color}${pulse})`);
++    gradient.addColorStop(1, `${cloud.color}0)`);
++    ctx.fillStyle = gradient;
++    ctx.fillRect(0, 0, W, H);
++  }
+   const glow = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, 440);
+   glow.addColorStop(0, "rgba(31, 91, 106, .20)");
+   glow.addColorStop(1, "rgba(3, 7, 17, 0)");
+@@ -828,16 +1052,29 @@ function draw(time: number) {
+   ctx.save();
+   ctx.translate(dx, dy);
+   drawBackground(time);
++  drawSpawnRings();
++  drawShockwaves();
+   pickups.forEach(drawPickup);
++  drawGhosts();
+   bullets.forEach(drawBullet);
+   enemies.forEach((enemy) => drawEnemy(enemy, time));
+   drawParticles();
+   drawPlayer(time);
++  drawMuzzleFlash();
++  drawFloatingTexts();
+   ctx.restore();
+   if (flash > 0) {
+     ctx.fillStyle = `rgba(255, 71, 126, ${flash / 650})`;
+     ctx.fillRect(0, 0, W, H);
+   }
++  if (state === "playing" && player.hp / player.maxHp < .3) {
++    const pulse = .16 + (Math.sin(time * .006) + 1) * .1;
++    const vignette = ctx.createRadialGradient(W / 2, H / 2, H * .28, W / 2, H / 2, H * .72);
++    vignette.addColorStop(0, "rgba(255,71,126,0)");
++    vignette.addColorStop(1, `rgba(255,71,126,${pulse})`);
++    ctx.fillStyle = vignette;
++    ctx.fillRect(0, 0, W, H);
++  }
+ }
+ 
+ function loop(time: number) {
+@@ -847,6 +1084,10 @@ function loop(time: number) {
+   else {
+     elapsed += delta;
+     updateParticles(delta);
++    updateFloatingTexts(delta);
++    updateShockwaves(delta);
++    updateSpawnRings(delta);
++    updateGhosts(delta);
+     shake *= .88;
+   }
+   draw(time);
