@@ -1,16 +1,20 @@
 import { defineConfig } from "vite";
-
-const repositoryName = process.env.GITHUB_REPOSITORY?.split("/")[1];
-const isProjectPagesBuild =
-  process.env.GITHUB_ACTIONS === "true" &&
-  !!repositoryName &&
-  !repositoryName.endsWith(".github.io");
+import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  base: isProjectPagesBuild ? `/${repositoryName}/` : "/",
+  root: "web",
+  // Relative assets work on /neon/ and when Pages uses another repository name.
+  base: "./",
+  publicDir: "../public",
+  resolve: {
+    alias: { "/src": fileURLToPath(new URL("./src", import.meta.url)) }
+  },
   build: {
-    minify: false,
-    target: "esnext"
+    outDir: "../dist",
+    emptyOutDir: true,
+    assetsDir: "pages-assets",
+    minify: "esbuild",
+    target: "es2020"
   },
   server: {
     host: "0.0.0.0",
