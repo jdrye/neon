@@ -1,18 +1,16 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#090e1b" />
-    <meta
-      name="description"
-      content="Neon Rift — Le dernier phare. Trois appareils, cinq secteurs et un Gardien à vaincre. Un jeu d’action au clavier ou sur mobile."
-    />
-    <title>Neon Rift — Le dernier phare</title>
-    <script type="module" crossorigin src="./pages-assets/index-B89yU-8u.js"></script>
-    <link rel="stylesheet" crossorigin href="./pages-assets/index-tBs1Wriw.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
-</html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101f28"><meta name="description" content="Une aventure point & click contemplative. Explorez une planète inconnue et donnez naissance à une colonie, à votre rythme."><title>NÉON · Première Aube</title><link rel="stylesheet" href="./src/style.css"></head>
+<body>
+<header><a class="brand" href="./" aria-label="Néon, accueil">NÉON<span>PREMIÈRE AUBE</span></a><div class="coordinates">MISSION PIONNIÈRE / KEPLER · 186f<span>UN NOUVEAU MONDE VOUS ATTEND</span></div><div class="tools"><button id="sound" aria-pressed="false" title="Activer l’ambiance sonore">♪ <span>Son désactivé</span></button><button id="journal">Carnet <span id="count">0/6</span></button><button id="help" aria-label="Comment jouer">?</button></div></header>
+<main>
+<div class="chapter"><span><i></i> EXPÉDITION 001</span><span id="phase">LE PREMIER CONTACT</span><span class="save" id="save">Sauvegarde locale automatique</span></div>
+<section class="world" aria-label="Paysage interactif"><div id="art" aria-hidden="true"></div><div class="scene-heading"><p id="location-number">01 / SITE D’ATTERRISSAGE</p><h1 id="location-title">La vallée de l’aube</h1><p id="location-description">Tout commence par un premier pas.</p></div><div id="hotspots"></div><div class="world-bottom"><span id="weather">18° · ATMOSPHÈRE STABLE</span><button id="reveal" aria-pressed="false">◎ Révéler les points d’intérêt</button></div><div class="vignette"></div></section>
+<nav id="map" aria-label="Lieux à explorer"></nav>
+<section class="console"><div class="companion"><div class="orb">◈</div><div><span class="eyebrow">ÉCHO · VOTRE COMPAGNON</span><p id="message" role="status" aria-live="polite">Bienvenue sur Kepler. Prenez votre temps. Notre capsule a encore quelques secrets à nous confier.</p></div></div><div class="objective"><span class="eyebrow">VOTRE PROCHAINE ÉTAPE</span><p id="objective"></p><button id="hint">Un petit indice ↗</button></div></section>
+<section class="inventory"><div><span class="eyebrow">VOTRE SACOCHE</span><p>Sélectionnez un objet, puis un élément du paysage.</p></div><div id="items"></div><span id="progress"></span></section>
+<footer><span>EXPLORER. COMPRENDRE. FAIRE ÉCLORE.</span><button id="restart">Recommencer l’expédition</button></footer>
+</main>
+<dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
+<script type="module" src="./src/app.js"></script>
+</body></html>
