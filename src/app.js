@@ -1,5 +1,5 @@
-import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle } from './engine.js';
-import { renderMap, buildingPreview, project } from './scenes.js';
+import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle } from './engine.js?v=3.0.0';
+import { renderMap, buildingPreview, project } from './scenes.js?v=3.0.0';
 
 const $ = id => document.getElementById(id);
 const KEY = 'neon-colony-v2';

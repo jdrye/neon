@@ -1,4 +1,4 @@
-import { WORLD, BUILDINGS, RESOURCES, canPlace, population } from './engine.js';
+import { WORLD, BUILDINGS, RESOURCES, canPlace, population } from './engine.js?v=3.0.0';
 export const project = (x, y) => ({ x: 550 + (x - y) * 44, y: 180 + (x + y) * 23 });
 const diamond = '0,-23 44,0 0,23 -44,0';
 const polygon = (points, fill, extra = '') => `<polygon points="${points}" fill="${fill}" ${extra}/>`;
