@@ -1,15 +1,30 @@
 <!doctype html>
 <html lang="fr">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101f28"><meta name="description" content="Une aventure point & click contemplative. Explorez une planète inconnue et donnez naissance à une colonie, à votre rythme."><title>NÉON · Première Aube</title><link rel="stylesheet" href="./src/style.css"></head>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10282c">
+<meta name="description" content="Bâtissez une colonie paisible sur une planète inconnue. Un jeu 2D isométrique : collecte, construction et exploration.">
+<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css">
+</head>
 <body>
-<header><a class="brand" href="./" aria-label="Néon, accueil">NÉON<span>PREMIÈRE AUBE</span></a><div class="coordinates">MISSION PIONNIÈRE / KEPLER · 186f<span>UN NOUVEAU MONDE VOUS ATTEND</span></div><div class="tools"><button id="sound" aria-pressed="false" title="Activer l’ambiance sonore">♪ <span>Son désactivé</span></button><button id="journal">Carnet <span id="count">0/6</span></button><button id="help" aria-label="Comment jouer">?</button></div></header>
+<header><a class="brand" href="./">NÉON<span>LES PIONNIERS DE L’AUBE</span></a><div class="expedition"><span class="live-dot"></span> KEPLER · SECTEUR 01 <small>UN NOUVEAU MONDE, À VOTRE RYTHME</small></div><div class="tools"><button id="sound" aria-pressed="false" title="Ambiance sonore">♪</button><button id="guide">Guide de bord</button><button id="settings" aria-label="Options">⚙</button></div></header>
 <main>
-<div class="chapter"><span><i></i> EXPÉDITION 001</span><span id="phase">LE PREMIER CONTACT</span><span class="save" id="save">Sauvegarde locale automatique</span></div>
-<section class="world" aria-label="Paysage interactif"><div id="art" aria-hidden="true"></div><div class="scene-heading"><p id="location-number">01 / SITE D’ATTERRISSAGE</p><h1 id="location-title">La vallée de l’aube</h1><p id="location-description">Tout commence par un premier pas.</p></div><div id="hotspots"></div><div class="world-bottom"><span id="weather">18° · ATMOSPHÈRE STABLE</span><button id="reveal" aria-pressed="false">◎ Révéler les points d’intérêt</button></div><div class="vignette"></div></section>
-<nav id="map" aria-label="Lieux à explorer"></nav>
-<section class="console"><div class="companion"><div class="orb">◈</div><div><span class="eyebrow">ÉCHO · VOTRE COMPAGNON</span><p id="message" role="status" aria-live="polite">Bienvenue sur Kepler. Prenez votre temps. Notre capsule a encore quelques secrets à nous confier.</p></div></div><div class="objective"><span class="eyebrow">VOTRE PROCHAINE ÉTAPE</span><p id="objective"></p><button id="hint">Un petit indice ↗</button></div></section>
-<section class="inventory"><div><span class="eyebrow">VOTRE SACOCHE</span><p>Sélectionnez un objet, puis un élément du paysage.</p></div><div id="items"></div><span id="progress"></span></section>
-<footer><span>EXPLORER. COMPRENDRE. FAIRE ÉCLORE.</span><button id="restart">Recommencer l’expédition</button></footer>
+<section class="resource-bar" aria-label="Réserves de la colonie"><div class="resource-label">VOS RÉSERVES<span id="save-state">Sauvegarde automatique</span></div><div id="resources"></div><div class="population"><span>♙</span><strong id="population">4</strong><small>PIONNIERS</small></div></section>
+<div class="layout">
+<section class="map-panel" aria-label="Carte isométrique de la colonie">
+<div class="map-heading"><p>VOTRE COLONIE · <span id="colony-stage">CAMP PIONNIER</span> <span id="mobile-population"></span></p><h1>Première Aube<span>.</span></h1><p class="subtitle">Un petit refuge. Des possibilités infinies.</p></div>
+<div class="world" id="world"><div id="scene"></div><div id="float-layer" aria-hidden="true"></div></div>
+<div class="map-toolbar"><span class="weather">☀ <span>18° · BRUME LÉGÈRE</span></span><div><button id="zoom-out" aria-label="Dézoomer">−</button><span id="zoom-label">100 %</span><button id="zoom-in" aria-label="Zoomer">+</button><button id="center" title="Recentrer la carte" aria-label="Recentrer la carte">⌾</button></div></div>
+<div id="placement" hidden><span></span><button id="cancel">Annuler ×</button></div>
+<div class="map-tip" id="map-tip">Cliquez sur les cristaux, les roches, les plantes et les sources pour collecter.</div>
+</section>
+<aside>
+<section class="mission"><div class="section-label"><span>LE PROCHAIN HORIZON</span><span id="goal-count">01 / 05</span></div><h2 id="goal-title"></h2><p id="goal-text"></p><div class="goal-track" id="goal-track"></div><div class="reward" id="goal-reward"></div><button id="objectives">Voir les étapes ↗</button></section>
+<section class="inspector" id="inspector"></section>
+<section class="echo"><div class="echo-mark">◈</div><div><span>ÉCHO · COMPAGNON DE MISSION</span><p id="message" role="status" aria-live="polite">Bienvenue sur Kepler. Observez le terrain : chaque ressource est un premier pas vers notre futur foyer.</p></div></section>
+</aside>
+</div>
+<section class="build-section"><div class="build-title"><div><span class="section-label">IMAGINER UN NOUVEAU FOYER</span><h2>Votre colonie commence ici.</h2></div><p>Sélectionnez un bâtiment, puis une case libre sur la carte.</p></div><div class="catalog" id="catalog"></div></section>
+<footer><span>EXPLORER. RÉCOLTER. FAIRE GRANDIR.</span><span id="cycle-label">Production douce · un cycle toutes les 12 s</span><span>Votre progression reste sur cet appareil.</span></footer>
 </main>
 <dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
 <script type="module" src="./src/app.js"></script>

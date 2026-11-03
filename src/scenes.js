@@ -1,23 +1,94 @@
-export const SCENES = [
- {title:'La vallée de l’aube',label:'Le camp',sub:'SITE D’ATTERRISSAGE',desc:'Tout commence par un premier pas.',weather:'18° · BRUME LÉGÈRE',spots:[['capsule','La capsule',26,66],['dome','Le biodôme',67,62],['view','L’horizon',88,39]]},
- {title:'Les lagons de verre',label:'Les lagons',sub:'RÉSERVE NATURELLE',desc:'Sous la surface, un monde respire.',weather:'21° · EAU CRISTALLINE',spots:[['pool','Le bassin',44,74],['crystal','Les cristaux',76,61],['view','L’horizon',87,38]]},
- {title:'La forêt des murmures',label:'La forêt',sub:'SANCTUAIRE VÉGÉTAL',desc:'Écoutez ce qui pousse en silence.',weather:'23° · BRUISEMENT DES FEUILLES',spots:[['flower','La fleur-lanterne',65,61],['stone','La stèle',31,70],['view','La canopée',88,36]]},
- {title:'La crête des deux lunes',label:'La crête',sub:'RELAIS INTERSTELLAIRE',desc:'Quelque part, quelqu’un attend un signe.',weather:'12° · CIEL DÉGAGÉ',spots:[['beacon','La balise',59,59],['view','Les deux lunes',83,31]]}
-];
-const tree=(x,y,k=1,color='#568d91')=>`<g transform="translate(${x} ${y}) scale(${k})"><path d="M0 0 Q18 -110 0 -240 M6 -120 Q-55 -160 -80 -180 M8 -166 Q70 -205 80 -222" fill="none" stroke="#264c59" stroke-width="12"/><path d="M-124 -177 Q-120 -250 -15 -214 Q48 -289 127 -228 Q161 -188 47 -177 Q-44 -145 -124 -177" fill="${color}"/><path d="M-100 -185 Q-25 -204 103 -220" stroke="#a0e4c5" stroke-opacity=".35" fill="none"/><path d="M-65 -181 L-60 -132 M65 -198 L63 -150" stroke="#b8ead5" opacity=".3"/></g>`;
-const crystal=(x,y,k=1)=>`<g transform="translate(${x} ${y}) scale(${k})"><path d="M0 0 L-24 -58 L-12 -118 L14 -138 L36 -74 L23 -8Z" fill="#77dbdd"/><path d="M14 -138 L7 -54 L23 -8 L36 -74Z" fill="#b6fff0"/><path d="M-12 -118 L7 -54 L0 0 L-24 -58Z" fill="#459fae"/></g>`;
-export function artwork(scene,flags){
- const palettes=[['#122f43','#729b9f','#e3b69a'],['#17384c','#548d9d','#c7c8b1'],['#102e3b','#447476','#9cbd9c'],['#121e39','#555a89','#d8a9b0']];const [a,b,c]=palettes[scene];
- let stars='';for(let i=0;i<65;i++){let x=(i*149+31)%1600,y=(i*71+23)%450;stars+=`<circle cx="${x}" cy="${y}" r="${i%3===0?1.5:.8}" fill="#ecf7e8" opacity="${.12+i%5*.1}"/>`;}
- let grasses='';for(let i=0;i<55;i++){let x=(i*97)%1600,y=685+(i*37)%115;grasses+=`<path d="M${x} ${y} q-7 -25 -16 -30 m16 30 q9 -38 16 -41" stroke="${scene===2?'#77b69e':'#7b9993'}" stroke-width="2" fill="none" opacity=".4"/>`;}
- const mountains=`<path d="M0 435L100 331 180 355 301 218 422 360 549 295 686 418 846 308 946 349 1060 229 1178 340 1291 270 1450 354 1600 279V800H0Z" fill="#375667" opacity=".5"/><path d="M0 470L158 396 275 436 445 346 586 442 727 401 839 461 1045 377 1188 440 1335 385 1600 455V800H0Z" fill="#344f5b" opacity=".7"/><path d="M0 510 Q250 444 504 493 T1004 474 T1600 482 V800H0Z" fill="#395d62"/><path d="M0 614 Q230 505 478 581 Q680 632 872 554 Q1200 488 1600 567V800H0Z" fill="#29494d"/>`;
- let objects='';
- if(scene===0){objects=`<path d="M755 800 Q680 684 1000 590 Q1120 560 1100 490" fill="none" stroke="#bac6a7" stroke-opacity=".15" stroke-width="66"/>
- <g transform="translate(415 515)"><ellipse cy="57" rx="165" ry="28" fill="#102c38" opacity=".5"/><path d="M-125 33L-145 63M102 33L133 63" stroke="#647f86" stroke-width="13"/><path d="M-145 7Q-136 -65 -79 -87L51 -87Q123 -72 141 8L108 37H-116Z" fill="#c1cecb"/><path d="M-79 -87L51 -87Q107 -77 126 -29H-113Q-103 -65 -79 -87" fill="#e6e8d7"/><path d="M-77 -70H35L77 -34H-97Z" fill="#294d62"/><path d="M-69 -63H29L46 -47H-78Z" fill="#70c1c9" opacity=".6"/><rect x="-30" y="-12" width="65" height="46" rx="7" fill="${flags.capsule?'#203d47':'#9aaeb0'}"/><path d="M-115 11H-58M75 11H122" stroke="#efac7d" stroke-width="5"/><text x="-111" y="29" fill="#44616a" font-size="10" letter-spacing="3">PIONNIER 01</text></g>
- <g transform="translate(1070 490)"><ellipse cy="66" rx="183" ry="31" fill="#142e36" opacity=".6"/><path d="M-164 40A164 164 0 0 1 164 40Z" fill="${flags.power?'#81c8b6':'#719799'}" fill-opacity=".35" stroke="#a3c8c0" stroke-width="3"/><path d="M-164 40H164L145 62H-145Z" fill="#8ea5a0"/><path d="M0 -124V40M-140 -43H140M-155 5H155M0 -124Q-100 -58 -85 40M0 -124Q100 -58 85 40" stroke="#accbc2" fill="none" stroke-width="3" opacity=".6"/>${flags.garden?tree(0,34,.48,'#b6dc9d'):'<path d="M-45 38V-4H45V38" fill="#3b6266"/>'}<rect x="-28" y="23" width="56" height="39" rx="4" fill="#284950"/><rect x="-18" y="32" width="36" height="4" fill="${flags.power?'#bbffcf':'#829993'}"/>${flags.power?'<ellipse cy="47" rx="125" ry="5" fill="#b9ffce" opacity=".2"/>':''}</g>
- <path d="M1290 577V471M1250 493L1330 452L1375 492L1294 536Z" fill="#2b4f61" stroke="#769a9c" stroke-width="3"/><path d="M1264 486L1346 523M1287 474L1364 507" stroke="#769a9c" stroke-width="2"/>${tree(140,631,.6)}${tree(1480,628,.8)}`;
- } else if(scene===1){objects=`<path d="M240 650Q415 497 842 563T1450 658Q1190 786 654 760T240 650Z" fill="#72bdbb" opacity=".7"/><path d="M280 660Q580 547 1080 618T1380 677" fill="none" stroke="#c3e6c8" opacity=".55" stroke-width="3"/><path d="M385 702Q760 632 1220 692M460 729Q780 675 1115 721" fill="none" stroke="#bbe5cf" opacity=".3" stroke-width="2"/><ellipse cx="690" cy="650" rx="160" ry="20" fill="#a7f2d3" opacity=".14"/>${crystal(1190,531,.9)}${crystal(1254,545,.6)}${!flags.crystal?crystal(1160,570,.38):''}${crystal(184,583,.5)}${tree(75,640,.65)}${tree(1460,599,.6)}<g fill="#bdedcf" opacity=".7"><ellipse cx="490" cy="632" rx="20" ry="4"/><ellipse cx="880" cy="694" rx="29" ry="3"/><ellipse cx="1010" cy="640" rx="20" ry="3"/></g>`;
- }else if(scene===2){objects=`${tree(120,620,1.7,'#39696d')}${tree(1440,640,1.9,'#477b7b')}${tree(800,505,.8,'#4c817b')}${tree(570,495,.62,'#53877e')}<g transform="translate(491 560)"><ellipse cy="25" rx="85" ry="19" fill="#193e42"/><path d="M-53 15L-42 -139L24 -158L61 -129L54 22Z" fill="#779490"/><path d="M-42 -139L24 -158L16 12L-53 15Z" fill="#91aaa0"/><text x="-23" y="-88" font-size="24" fill="#d2ebc1">☀</text><text x="-23" y="-48" font-size="24" fill="#d2ebc1">≈</text><text x="-23" y="-8" font-size="24" fill="#d2ebc1">☾</text></g><g transform="translate(1040 567)"><path d="M0 0Q-4 -80 4 -140M0 -30Q-93 -115 -93 -66Q-75 -24 0 -30M1 -60Q73 -125 76 -81Q63 -43 1 -60" fill="#77a786" stroke="#95bb9c" stroke-width="3"/><ellipse cy="-150" rx="${flags.seed?64:42}" ry="44" fill="#dfb4af" opacity=".25" filter="url(#glow)"/><path d="M0 -107Q-90 -160 -46 -184Q-7 -181 0 -140Q8 -204 39 -186Q87 -166 0 -107" fill="${flags.seed?'#ecdca9':'#c3a8b4'}"/><path d="M0 -113Q-26 -150 0 -184Q27 -155 0 -113" fill="#ffe4b3"/><circle cy="-143" r="9" fill="#fff3c9"/></g>`;
- }else{objects=`<path d="M0 687L287 643L454 576L689 586L786 518L1044 505L1190 584L1600 667V800H0Z" fill="#41475b"/><path d="M350 800L725 590L865 548L1070 557L1220 800Z" fill="#686878" opacity=".45"/><g transform="translate(944 476)"><ellipse cy="69" rx="123" ry="25" fill="#252f44"/><path d="M-80 52L-50 24H50L80 52L65 65H-65Z" fill="#899496"/><path d="M-28 24L-19 -145H19L28 24Z" fill="#bac1b6"/><path d="M-8 16V-129" stroke="${flags.beacon?'#baf8da':'#5d7885'}" stroke-width="6"/><circle cy="-166" r="53" fill="none" stroke="#acc1bd" stroke-width="9"/><circle cy="-166" r="35" fill="none" stroke="#6c929e" stroke-width="3"/>${flags.beacon?'<path d="M0 -191L15 -166L0 -141L-15 -166Z" fill="#baffdc"/>':''}${flags.tuned?'<g class="signal" fill="none" stroke="#baffdc" opacity=".4"><circle cy="-166" r="73"/><circle cy="-166" r="95"/></g>':''}</g>${crystal(265,690,.45)}${crystal(1380,673,.3)}`;}
- return `<svg viewBox="0 0 1600 800" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="${a}"/><stop offset=".65" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient><radialGradient id="sun"><stop stop-color="#f2dfbe" stop-opacity=".65"/><stop offset="1" stop-color="#f2dfbe" stop-opacity="0"/></radialGradient><linearGradient id="ground" x2="0" y2="1"><stop stop-color="#284d50" stop-opacity="0"/><stop offset="1" stop-color="#102e35"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="15"/></filter></defs><rect width="1600" height="800" fill="url(#sky)"/>${stars}<ellipse cx="1180" cy="265" rx="300" ry="220" fill="url(#sun)"/><circle cx="1190" cy="218" r="81" fill="#e4d9bd" opacity=".75"/><circle cx="1168" cy="198" r="12" fill="#bec6b7" opacity=".2"/><circle cx="1324" cy="135" r="25" fill="#e4e8cf" opacity=".7"/><path d="M820 135Q1100 244 1460 230" stroke="#e8dfca" stroke-width="2" fill="none" opacity=".2"/>${mountains}<path d="M0 487Q630 470 1600 504" fill="none" stroke="#d1d6bc" stroke-width="25" opacity=".08"/>${objects}<path d="M0 725Q300 658 590 724T1100 733T1600 690V800H0Z" fill="url(#ground)"/>${grasses}<g class="fireflies" fill="#dcf7c4">${Array.from({length:15},(_,i)=>`<circle cx="${(i*229+50)%1600}" cy="${510+i*19%220}" r="2" opacity="${.2+i%4*.15}"/>`).join('')}</g>${flags.finished?'<g fill="#f5ddba"><path d="M1200 95l35 3-35 3 8-3Z"/><path d="M1280 78l22 2-22 2 4-2Z"/><path d="M1260 116l25 2-25 2 5-2Z"/></g>':''}</svg>`;
+import { WORLD, BUILDINGS, RESOURCES, canPlace, population } from './engine.js';
+export const project = (x, y) => ({ x: 550 + (x - y) * 44, y: 180 + (x + y) * 23 });
+const diamond = '0,-23 44,0 0,23 -44,0';
+const polygon = (points, fill, extra = '') => `<polygon points="${points}" fill="${fill}" ${extra}/>`;
+function base() {
+  return `<ellipse cy="12" rx="43" ry="22" fill="#122e3540"/>${polygon('-35,-4 0,-22 35,-4 0,14','#adc2b5')}${polygon('-35,-4 0,14 0,22 -35,4','#6d9290')}${polygon('0,14 35,-4 35,4 0,22','#527b7d')}`;
+}
+function box(x, y, w, h, color = '#dedfc5') {
+  return `<g transform="translate(${x} ${y})">${polygon(`-${w},0 0,${w/2} 0,${w/2-h} -${w},-${h}`,color)}${polygon(`0,${w/2} ${w},0 ${w},-${h} 0,${w/2-h}`,'#8ea8a1')}${polygon(`-${w},-${h} 0,-${w/2+h} ${w},-${h} 0,${w/2-h}`,'#e9e9d3')}</g>`;
+}
+function tree(x=0, y=0, k=1, tint='#83bfa2') {
+  return `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="4" rx="20" ry="10" fill="#193d4640"/><path d="M0 4V-40M0 -15L-13 -29M0 -25L13 -38" fill="none" stroke="#476b66" stroke-width="5"/><path d="M-24 -37Q-31 -58 -10 -62Q5 -84 21 -63Q43 -43 20 -34Q-3 -26 -24 -37" fill="${tint}"/><path d="M-24 -37Q-10 -47 16 -43L23 -34Q-5 -25 -24 -37" fill="#4e9188"/><path d="M-12 -59Q0 -68 10 -60" stroke="#c2e1b4" stroke-width="3" fill="none" opacity=".6"/></g>`;
+}
+function crystal(x=0,y=0,k=1) {
+  return `<g transform="translate(${x} ${y}) scale(${k})">${polygon('-10,-4 -14,-35 0,-60 12,-38 10,-6 0,0','#9a87c5')}${polygon('0,-60 12,-38 10,-6 0,0','#b5a4e1')}${polygon('0,-60 -14,-35 -10,-4 0,0','#786ca8')}${polygon('0,-60 12,-38 0,-30 -14,-35','#e0ccf2')}</g>`;
+}
+export function buildingSymbol(type, level=1) {
+  let art=base();
+  if(type==='pod'||type==='habitat') {
+    art+=box(0,0,28,29+level*4);
+    art+=`<path d="M-25 -26L-4 -15V-5L-25 -16Z" fill="#467c8c"/><path d="M5 -15L24 -25V-16L5 -6Z" fill="#285a6b"/><path d="M-21 -23L-7 -16" stroke="#a9e6dc" stroke-width="2"/><path d="M8 -15L20 -21" stroke="#a9e6dc" stroke-width="2"/>`;
+    art+=polygon('-19,-36 0,-46 19,-36 0,-26',type==='pod'?'#d4ac7d':'#83aaa6');
+    art+=`<path d="M-6 -33L6 -39" stroke="#faf2d5" stroke-width="3"/>`;
+    if(level>1)art+=box(19,-9,10,39);
+    if(level>2)art+=`<path d="M-18 -39V-66" stroke="#b3c8b7" stroke-width="2"/><circle cx="-18" cy="-67" r="3" fill="#f6dc9b"/>`;
+  }
+  if(type==='solar') {
+    art+=`<path d="M-16 3V-27M18 3V-44" stroke="#adc7bb" stroke-width="4"/>`;
+    art+=polygon('-38,-27 11,-52 39,-38 -10,-13','#284c63','stroke="#a3c6bd" stroke-width="2"');
+    art+=`<path d="M-26 -33L2 -19M-14 -39L14 -25M-2 -45L26 -31M-24 -20L25 -45" stroke="#82bfc9" stroke-width="1.3"/><path d="M-34 -28L10 -50" stroke="#caede0" stroke-width="2"/>`;
+    if(level>1)art+=box(22,9,9,17);
+    if(level>2)art+=`<path d="M-27 7V-10L-12 -18" stroke="#dcdfbc" stroke-width="3"/><circle cx="-12" cy="-18" r="4" fill="#f7d784"/>`;
+  }
+  if(type==='pump') {
+    art+=`<path d="M-24 -10V-39Q-24 -52 -8 -52Q8 -52 8 -39V-10Z" fill="#7db3b8"/><ellipse cx="-8" cy="-39" rx="16" ry="9" fill="#cbe2d1"/><ellipse cx="-8" cy="-10" rx="16" ry="9" fill="#578f9b"/><path d="M-19 -34V-15M-13 -32V-13" stroke="#b7e6de" stroke-width="2"/><path d="M8 -28H22V2" stroke="#a9c6b8" stroke-width="6" fill="none"/>`;
+    if(level>1)art+=`<path d="M15 -5V-29" stroke="#9ac7c7" stroke-width="12"/><ellipse cx="15" cy="-29" rx="6" ry="4" fill="#dae7d0"/>`;
+    if(level>2)art+=`<path d="M-8 -46V-67M-23 -62H7" stroke="#d3debc" stroke-width="3"/>`;
+  }
+  if(type==='greenhouse') {
+    art+=`<path d="M-31 0V-12A31 37 0 0 1 62 0V0Z" transform="translate(-15 0) scale(.67 1)" fill="#75bca7"/>`;
+    art+=`<path d="M-31 0A31 39 0 0 1 31 0Q0 22 -31 0Z" fill="#8ac9b2" fill-opacity=".65" stroke="#d0e6c4" stroke-width="2"/>`;
+    art+=tree(-8,-2,.42,'#c6d99c');
+    art+=`<path d="M0 -39V11M0 -39Q-22 -18 -17 7M0 -39Q22 -18 17 7M-29 -13Q0 2 29 -13" fill="none" stroke="#daebc7" stroke-width="1.5" opacity=".7"/>`;
+    if(level>1)art+=tree(18,7,.35,'#d2de9f');
+    if(level>2)art+=tree(-26,6,.3,'#debdb5');
+  }
+  if(type==='mine') {
+    art+=box(-8,0,19,24);
+    art+=`<path d="M10 -4L23 -49L39 -41L25 10Z" fill="#799b96"/><path d="M23 -49L39 -41L28 -34L13 -42Z" fill="#d9d9ba"/><path d="M19 -33L30 -27M16 -22L27 -16" stroke="#dfbd87" stroke-width="4"/><path d="M-21 -13L-7 -6" stroke="#9be4cf" stroke-width="4"/>`;
+    if(level>1)art+=crystal(-28,8,.3);
+    if(level>2)art+=crystal(-13,17,.25);
+  }
+  if(type==='beacon') {
+    art+=box(0,0,22,17);
+    art+=`<path d="M-7 -16L-4 -85H4L7 -16Z" fill="#cad8c5"/><ellipse cy="-72" rx="26" ry="15" fill="none" stroke="#a6d7c5" stroke-width="5" transform="rotate(-28 0 -72)"/><path d="M0 -90L8 -73L0 -57L-8 -73Z" fill="#edda9f"/><circle cy="-108" r="4" fill="#f6e4b2"/><g class="beacon-waves" stroke="#cae7c3" fill="none" opacity=".4"><ellipse cy="-108" rx="15" ry="7"/><ellipse cy="-108" rx="25" ry="12"/></g>`;
+  }
+  return art;
+}
+function nodeArt(tile) {
+  if(tile.node==='bio')return tree(-10,3,.8)+tree(17,7,.56,'#b9c995');
+  if(tile.node==='crystal')return crystal(-10,3,.7)+crystal(15,7,.48)+`<ellipse cy="7" rx="27" ry="10" fill="#c4a6ed" opacity=".1"/>`;
+  if(tile.node==='ore')return polygon('-31,2 -25,-15 -7,-25 9,-11 10,8 -10,15','#a6aaa0')+polygon('-25,-15 -7,-25 9,-11 -9,-5','#d5c8ac')+polygon('8,7 12,-16 25,-22 34,-6 27,13','#818f8b')+polygon('12,-16 25,-22 34,-6 22,-1','#c6bfa8');
+  if(tile.node==='water')return `<g stroke="#b2e6d7" fill="none"><ellipse cy="-2" rx="26" ry="10" opacity=".45"/><ellipse cy="-2" rx="13" ry="5" opacity=".7"/></g><path d="M0 -25Q-14 -11 0 -9Q14 -11 0 -25" fill="#c0f0e0" opacity=".7"/>`;
+  return '';
+}
+export function renderMap(state, { selection=null, placing=null, zoom=1, center={x:550,y:410} }={}) {
+  const buildings=Object.fromEntries(state.buildings.map(b=>[b.id,b]));
+  const width=1100/zoom,height=800/zoom;
+  const view=`${center.x-width/2} ${center.y-height/2} ${width} ${height}`;
+  let ground='',objects='';
+  const tiles=[...WORLD].sort((a,b)=>a.x+a.y-b.x-b.y||a.x-b.x);
+  for(const t of tiles) {
+    const p=project(t.x,t.y),b=buildings[t.id];
+    const palette=t.terrain==='water'?['#639e9e','#629695']:t.terrain==='sand'?['#9da991','#a6b298']:['#799b87','#83a48e','#8bab94'];
+    let color=palette[(t.x*3+t.y*7)%palette.length];
+    if((t.x===5||t.y===5)&&!t.node&&!b)color='#a8b39c';
+    const side=polygon('-44,0 0,23 0,42 -44,19','#4b736d')+polygon('0,23 44,0 44,19 0,42','#365e60');
+    const placeable=placing&&canPlace(state,t.id);
+    const label=b?`${BUILDINGS[b.type].name}, niveau ${b.level}`:t.node?`Collecter : ${RESOURCES[t.node].name}`:'Terrain libre';
+    const interactive=b||t.node||placeable;
+    ground+=`<g transform="translate(${p.x} ${p.y})">${side}${polygon(diamond,color)}<path d="M-44 0L0 -23L44 0" fill="none" stroke="#d0dec029" stroke-width="1"/></g>`;
+    let detail='';
+    if(!b&&!t.node&&t.terrain==='grass'&&(t.x*5+t.y)%4===0)detail=`<path d="M-15 1l-3 -7m3 7l4 -5M17 8l2 -6" stroke="#cee0b270" stroke-width="1.5"/>`;
+    objects+=`<g class="tile ${selection===t.id?'selected':''} ${placeable?'buildable':''} ${placing&&!placeable?'unavailable':''}" data-tile="${t.id}" transform="translate(${p.x} ${p.y})" role="button" tabindex="${interactive?0:-1}" aria-label="${label}" ${placing&&!placeable?'aria-disabled="true"':''}><polygon class="hit" points="${diamond}" fill="transparent"/>${detail}${t.node?nodeArt(t):''}${b?buildingSymbol(b.type,b.level):''}${placeable?'<path class="place-mark" d="M-7 0H7M0 -5V5" stroke="#e4f3c3" stroke-width="2"/>':''}<polygon class="outline" points="${diamond}" fill="none" stroke="#e6edbc" stroke-width="2"/>${b&&b.type!=='pod'?`<g class="level"><rect x="-10" y="21" width="20" height="12" rx="5" fill="#244748"/><text x="0" y="30" text-anchor="middle" fill="#d5e7be" font-size="8" font-family="Arial">${'I'.repeat(b.level)}</text></g>`:''}<title>${label}${t.node?' · '+(t.node==='crystal'?3:5)+' par collecte':''}</title></g>`;
+  }
+  const walkers = tiles.filter(t => (t.x === 5 || t.y === 5) && !t.node && !buildings[t.id]).slice(0, Math.min(8, Math.ceil(population(state) / 3))).map((t, i) => {
+    const p = project(t.x, t.y);
+    return `<g transform="translate(${p.x + 12} ${p.y + 3})" pointer-events="none"><ellipse cy="3" rx="5" ry="2.5" fill="#244e4b44"/><path d="M-2 1V-5M2 1V-5" stroke="#365b61" stroke-width="2"/><rect x="-3" y="-12" width="6" height="8" rx="2" fill="${i % 2 ? '#d8b58b' : '#d8e2c8'}"/><circle cy="-15" r="4" fill="#e5e8d0"/><path d="M-2 -15H2" stroke="#5c9ea8" stroke-width="2"/></g>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view}" aria-label="Carte de Première Aube" role="group"><defs><radialGradient id="island-glow"><stop stop-color="#acc6a5" stop-opacity=".12"/><stop offset="1" stop-color="#acc6a5" stop-opacity="0"/></radialGradient></defs><ellipse cx="550" cy="480" rx="500" ry="300" fill="url(#island-glow)"/><ellipse cx="550" cy="507" rx="370" ry="178" fill="#061d2440"/>${ground}${objects}${walkers}<g class="drone" transform="translate(558 300)" pointer-events="none"><ellipse cy="70" rx="12" ry="5" fill="#193b3b30"/><g class="drone-float"><ellipse rx="12" ry="6" fill="#e6e8ce"/><path d="M-7 0H7" stroke="#86c9c3" stroke-width="3"/><path d="M-18 -3H-11M11 -3H18" stroke="#c5d6c0" stroke-width="2"/></g></g></svg>`;
+}
+export function buildingPreview(type) {
+  return `<svg viewBox="-58 -122 116 160" aria-hidden="true">${buildingSymbol(type,type==='habitat'?2:1)}</svg>`;
 }

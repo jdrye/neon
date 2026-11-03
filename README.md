@@ -1,41 +1,60 @@
-# NÉON — Première Aube
+# NÉON — Les pionniers de l’aube
 
-Un jeu point & click contemplatif en français. Explorez Kepler, apprenez à connaître son écosystème et préparez un refuge pour les premiers pionniers.
+Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub Pages :
 
-**Jouer : https://jdrye.github.io/neon/**
+**https://jdrye.github.io/neon/**
 
-## L’aventure
+## Collecter, construire, faire grandir
 
-Quatre paysages vectoriels originaux : la vallée de l’aube, les lagons de verre, la forêt des murmures et la crête des deux lunes. Observez, recueillez des objets, utilisez-les dans le décor, déchiffrez une séquence de symboles et faites naître une colonie. Aucun combat, score ou chronomètre. Une fin complète, puis l’exploration reste libre.
+- Une carte isométrique SVG originale, avec déplacement par glissement, zoom et recentrage.
+- Cinq ressources : minerai, biomasse, eau, cristaux et énergie.
+- Cliquez sur les gisements, les arbres ou les sources pour collecter. Chaque gisement se renouvelle en 2,5 secondes ; aucun stock naturel ne s’épuise définitivement.
+- Sélectionnez un bâtiment dans le catalogue, puis une case illuminée. Les ressources sont débitées seulement à la pose. Échap ou Annuler quitte ce mode sans rien dépenser.
+- Cliquez sur un bâtiment pour consulter sa production et l’améliorer jusqu’au niveau III. Le module pionnier et le port stellaire ont un niveau unique.
+- Démontez les constructions après confirmation pour réorganiser le terrain. Vous récupérez 50 % des matériaux investis, améliorations comprises. Le module pionnier reste en place.
 
-- Cliquez ou touchez les repères du paysage.
-- Sélectionnez un objet dans la sacoche, puis sa cible dans le paysage.
-- Changez de lieu avec les quatre onglets sous le décor.
-- Le carnet garde les découvertes et l’indice de l’énigme. Un bouton donne une aide contextuelle.
-- Tab / Entrée : navigation et actions. Échap : fermeture des fenêtres.
-- Son d’ambiance synthétisé, facultatif et désactivé par défaut.
-- Sauvegarde locale automatique, propre à ce navigateur et à cette origine. Elle ne se synchronise pas entre appareils. Le bouton Recommencer demande confirmation. Si le stockage est bloqué, le jeu reste jouable pour la session.
-- Animations réduites selon la préférence système.
+| Construction | Effet par niveau |
+| --- | --- |
+| Centrale solaire | +2 énergies / cycle |
+| Habitat | +6 pionniers |
+| Collecteur d’eau | +3 eaux / cycle |
+| Serre vivante | +3 biomasses / cycle ; nécessite un habitat |
+| Extracteur doux | +3 minerais et +1 cristal / cycle ; nécessite une centrale solaire |
+| Port stellaire | Objectif final ; nécessite une serre |
+
+La production suit un cycle global de 12 secondes, sans coût d’entretien. Les améliorations multiplient la production par le niveau. Les cinq étapes de l’expédition accordent des récompenses une seule fois. Atteignez 16 habitants avec une serre et un port stellaire pour achever l’objectif principal ; la construction reste ensuite libre.
+
+Pas de combat, de famine, de mort de colons ou de pénalité d’absence. Les réserves sont plafonnées à 9 999 par ressource.
+
+## Sauvegarde et accessibilité
+
+La sauvegarde automatique utilise `localStorage` (`neon-colony-v2`). Elle reste propre au navigateur, à l’appareil et à l’origine du site. La sauvegarde de l’ancien point & click est conservée séparément ; son inventaire n’est pas converti en matériaux.
+
+La production hors ligne est créditée au retour, dans la limite de 30 minutes. Si le stockage est bloqué, la session reste jouable. Recommencer demande confirmation.
+
+Les ressources et bâtiments sont accessibles au clavier (Tab, Entrée ou Espace). Échap ferme les fenêtres ou annule un placement. Sur mobile, la caméra est rapprochée au départ ; le glissement déplace la carte. Une fiche permet aussi de collecter la ressource sélectionnée. Les animations suivent la préférence système de réduction des mouvements. Son d’ambiance synthétisé, facultatif, désactivé au chargement et suspendu lorsque l’onglet est masqué.
 
 ## Développement
 
-Node.js 22+ pour les tests, la construction et le serveur local fourni. **Aucune dépendance npm à installer**, aucun service externe, aucune clé d’API.
+Node.js 22 ou plus. Aucune dépendance npm, aucun CDN, serveur applicatif ou secret.
 
 ```sh
 npm test
 npm run build
 npm run dev
-# Ouvrir http://localhost:5173
+# http://localhost:5173
 ```
 
-`index.html` et `src/` sont directement exécutables par un serveur statique. `npm run build` les copie dans `dist/`. Le moteur de progression est séparé dans `src/engine.js`; les illustrations SVG sont dans `src/scenes.js`.
+- `src/engine.js` : économie, collecte, construction, niveaux, production et sauvegardes.
+- `src/scenes.js` : projection isométrique et illustrations SVG.
+- `src/app.js` : interface, caméra, interactions et audio.
+- `src/style.css` : présentation et adaptation mobile.
+- `scripts/build.mjs` : copie des fichiers statiques dans `dist/`.
 
 ## GitHub Pages
 
-Le workflow `.github/workflows/pages.yml` teste puis publie `dist/` à chaque push sur `main`. Dans **Settings → Pages**, sélectionner **GitHub Actions** comme source si nécessaire. La racine du dépôt est également directement compatible avec le mode **Deploy from a branch → main → /(root)**. Tous les chemins sont relatifs et fonctionnent sous `/neon/`.
+Le workflow `.github/workflows/pages.yml` teste puis publie `dist/` à chaque push sur `main`. Choisir **Settings → Pages → GitHub Actions** si nécessaire. La racine est également utilisable avec **Deploy from a branch → main → /(root)**. Tous les chemins sont relatifs et compatibles avec `/neon/`.
 
-L’ancienne implémentation Neon Rift, ses ressources compilées et ses dépendances ont été supprimées du code courant. L’historique Git reste conservé.
+## Vérifications
 
-## Vérifications automatisées
-
-Les tests couvrent la progression jusqu’à la fin, la consommation et la non-duplication des objets, les prérequis du relais, les mauvaises réponses à l’énigme, un ordre alternatif (jardin avant relais), et le chargement des sauvegardes.
+`npm test` couvre un parcours complet jusqu’au port stellaire sans injection de ressources, les coûts et prérequis, le renouvellement des gisements, les récompenses uniques, les améliorations, le démontage, la production hors ligne plafonnée, les sauvegardes corrompues et l’absence de doubles crédits.

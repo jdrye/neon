@@ -1,35 +1,139 @@
-export const ITEM = {cell:['▥','Cellule solaire'],flask:['♧','Fiole vide'],water:['◒','Eau pure'],crystal:['◇','Cristal harmonique'],seed:['❋','Graine de lumière']};
-export const NOTES = [
- ['capsule','Une arrivée en douceur','La capsule est intacte. Une cellule solaire et une fiole nous aideront à rendre ce lieu habitable.'],
- ['pool','Une eau vivante','Les bassins filtrent naturellement l’eau. La vie s’est déjà inventé ses propres équilibres.'],
- ['stone','Le langage de la vallée','Trois gravures suivent le cycle du ciel : le soleil se lève, la vague l’accueille, la lune veille. Ordre : soleil → vague → lune.'],
- ['flower','La patience des fleurs','La fleur-lanterne s’ouvre au contact de l’eau pure et offre une unique graine lumineuse.'],
- ['beacon','Un signal dans le silence','Le cristal amplifie les ondes de la balise. Le ciel est assez vaste pour accueillir d’autres voyageurs.'],
- ['garden','La première aube','Notre premier jardin mêle technologie humaine et vie locale. Habiter cette planète commence par en prendre soin.']
+export const VERSION = 2;
+export const LIMIT = 9999;
+export const RESOURCES = {
+  ore: { name: 'Minerai', icon: '⬡', color: '#dbbc9a' },
+  bio: { name: 'Biomasse', icon: '❧', color: '#b9d69d' },
+  water: { name: 'Eau', icon: '◒', color: '#89ccdc' },
+  crystal: { name: 'Cristaux', icon: '◇', color: '#c4a8e5' },
+  energy: { name: 'Énergie', icon: 'ϟ', color: '#eed28a' },
+};
+export const BUILDINGS = {
+  pod: { name: 'Module pionnier', icon: '⌂', description: 'Le cœur de votre colonie. Quatre pionniers, un refuge et beaucoup de possibles.', cost: {}, max: 1 },
+  solar: { name: 'Centrale solaire', icon: '☀', description: 'Capte la lumière des deux soleils. Produit 2 énergies par cycle et par niveau.', cost: { ore: 12, crystal: 3 }, output: { energy: 2 }, max: 3 },
+  habitat: { name: 'Habitat', icon: '⌂', description: 'Un foyer pour 6 nouveaux colons par niveau. Sans entretien ni risque de famine.', cost: { ore: 16, bio: 10, water: 6, energy: 4 }, max: 3 },
+  pump: { name: 'Collecteur d’eau', icon: '◒', description: 'Condense l’humidité de l’air. Produit 3 eaux par cycle et par niveau.', cost: { ore: 10, crystal: 4, energy: 4 }, output: { water: 3 }, max: 3 },
+  greenhouse: { name: 'Serre vivante', icon: '❧', description: 'Cultive la flore locale. Produit 3 biomasses par cycle et par niveau.', cost: { ore: 14, bio: 12, water: 10, energy: 6 }, output: { bio: 3 }, max: 3, requires: 'habitat' },
+  mine: { name: 'Extracteur doux', icon: '⬡', description: 'Valorise les fragments du sous-sol. Produit 3 minerais et 1 cristal par cycle et par niveau.', cost: { ore: 20, crystal: 8, energy: 10 }, output: { ore: 3, crystal: 1 }, max: 3, requires: 'solar' },
+  beacon: { name: 'Port stellaire', icon: '✧', description: 'Relie votre colonie aux étoiles. Dernier objectif : 16 habitants, une serre et un port.', cost: { ore: 40, bio: 20, crystal: 24, energy: 30 }, max: 1, requires: 'greenhouse' },
+};
+export const GOALS = [
+  { name: 'Premiers prélèvements', text: 'Collecter 5 fois dans le paysage.', reward: { ore: 10, energy: 5 }, check: s => s.harvests >= 5 },
+  { name: 'Un rayon d’autonomie', text: 'Construire une centrale solaire.', reward: { bio: 12, water: 8 }, check: s => has(s, 'solar') },
+  { name: 'Un foyer sur Kepler', text: 'Construire un habitat.', reward: { ore: 15, crystal: 6 }, check: s => has(s, 'habitat') },
+  { name: 'La vie s’installe', text: 'Construire une serre et un collecteur d’eau.', reward: { ore: 20, energy: 15 }, check: s => has(s, 'greenhouse') && has(s, 'pump') },
+  { name: 'Première Aube', text: 'Accueillir 16 habitants et construire le port stellaire.', reward: { crystal: 20, energy: 30 }, check: s => population(s) >= 16 && has(s, 'beacon') && has(s, 'greenhouse') },
 ];
-export function fresh(){return {version:1,scene:0,inventory:[],flags:{},notes:[],selected:null};}
-export function restore(raw){
- try {const s=JSON.parse(raw);if(s.version!==1||!Array.isArray(s.inventory)||!Array.isArray(s.notes)||!s.flags||typeof s.flags!=='object')return fresh();
- const allowed=['capsule','power','water','crystal','stone','seed','beacon','tuned','garden','finished'];
- return {version:1,scene:Number.isInteger(s.scene)&&s.scene>=0&&s.scene<4?s.scene:0,inventory:[...new Set(s.inventory.filter(x=>Object.hasOwn(ITEM,x)))],notes:[...new Set(s.notes.filter(x=>NOTES.some(n=>n[0]===x)))],flags:Object.fromEntries(allowed.filter(k=>s.flags[k]===true).map(k=>[k,true])),selected:null};
- }catch{return fresh();}
+export const CYCLE = 12000;
+export const NODE_DELAY = 2500;
+const nodes = {
+  '2,2': 'crystal', '1,6': 'crystal', '7,8': 'crystal',
+  '2,7': 'bio', '4,1': 'bio', '8,6': 'bio', '7,3': 'bio',
+  '1,3': 'ore', '8,4': 'ore', '5,9': 'ore',
+  '8,1': 'water', '9,2': 'water', '3,9': 'water',
+};
+export const WORLD = [];
+for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) {
+  if (x + y < 3 || x + y > 17 || x - y > 8 || y - x > 8) continue;
+  const id = `${x},${y}`;
+  const water = ['8,1', '9,1', '8,2', '9,2', '3,9', '2,9', '3,10'];
+  WORLD.push({ id, x, y, node: nodes[id] || null, terrain: water.includes(id) ? 'water' : (x * 7 + y * 13) % 7 < 2 ? 'sand' : 'grass' });
 }
-export function objective(s){const f=s.flags;if(!f.capsule)return 'Ouvrir la capsule d’exploration';if(!f.power)return 'Alimenter le dôme du camp';if(!f.seed)return 'Découvrir la graine de la forêt';if(!f.tuned)return 'Réveiller la balise de la crête';if(!f.garden)return 'Planter la graine dans le biodôme';if(!f.finished)return 'Inviter les pionniers depuis la balise';return 'Profiter de votre nouveau monde';}
-export function hint(s){const f=s.flags;if(!f.capsule)return 'Dans la vallée, cliquez sur la capsule blanche, à gauche.';if(!f.power)return 'Sélectionnez la cellule solaire dans la sacoche, puis cliquez sur le dôme.';if(!f.water&&!f.seed)return 'Aux lagons, utilisez la fiole sur le bassin lumineux.';if(!f.seed)return 'Dans la forêt, offrez l’eau pure à la grande fleur-lanterne.';if(!f.crystal)return 'Un cristal se détache au bord du lagon. Cliquez dessus pour le recueillir.';if(!f.stone)return 'La stèle de la forêt porte la clé du signal. Examinez-la ; le carnet conservera son message.';if(!f.beacon)return 'Sur la crête, utilisez le cristal harmonique sur la balise.';if(!f.tuned)return 'Cliquez sur la balise. Réglez ses symboles dans l’ordre : soleil, vague, lune.';if(!f.garden)return 'Revenez au camp. Sélectionnez la graine puis cliquez sur le dôme alimenté.';if(!f.finished)return 'Le jardin est prêt. Cliquez sur la balise de la crête pour transmettre l’invitation.';return 'Votre mission est accomplie. Vous pouvez encore explorer et compléter le carnet.';}
-export function interact(s,id){
- const f=s.flags;let message='',puzzle=false,ending=false;
- const add=i=>{if(!s.inventory.includes(i))s.inventory.push(i);};
- const use=i=>{s.inventory=s.inventory.filter(x=>x!==i);s.selected=null;};
- const note=i=>{if(!s.notes.includes(i))s.notes.push(i);};
- const selected=i=>s.selected===i&&s.inventory.includes(i);
- if(id==='capsule'){if(f.capsule)message='Notre capsule nous a bien protégés. Le reste du voyage se fera à pied.';else{f.capsule=true;add('cell');add('flask');note('capsule');message='La capsule s’ouvre. Une cellule solaire et une fiole rejoignent votre sacoche. De quoi commencer !';}}
- else if(id==='dome'){if(!f.power){if(selected('cell')){use('cell');f.power=true;message='Le dôme s’illumine. Un petit refuge, au milieu de l’inconnu. Il pourra accueillir une plante locale.';}else message='Le dôme attend une source d’énergie. La capsule doit contenir une cellule solaire.';}else if(f.garden)message='Le jardin respire doucement. Nous avons désormais une maison parmi les étoiles.';else if(selected('seed')){use('seed');f.garden=true;note('garden');message='La graine prend racine. Une lumière chaude traverse le dôme. Il ne reste qu’à inviter les pionniers depuis la balise.';}else message='Le biodôme est prêt. Une graine de cette planète pourrait s’y épanouir.';}
- else if(id==='pool'){note('pool');if(selected('flask')){use('flask');add('water');f.water=true;message='Vous recueillez un peu d’eau pure, sans troubler le bassin.';}else message='L’eau est limpide. Les filaments bleus la filtrent naturellement. Une fiole permettrait d’en recueillir.';}
- else if(id==='crystal'){if(f.crystal)message='Les autres cristaux restent en place. Un seul nous suffit.';else{f.crystal=true;add('crystal');message='Un cristal détaché repose sur le sable. Il vibre comme une note de musique. Vous le recueillez.';}}
- else if(id==='flower'){if(f.seed)message='La fleur oscille dans la brise. Merci pour son cadeau.';else if(selected('water')){use('water');add('seed');f.seed=true;note('flower');message='La fleur s’ouvre lentement et vous offre une graine de lumière. Un échange, plutôt qu’une conquête.';}else message='Cette fleur-lanterne garde ses pétales serrés. Quelques gouttes d’eau pure pourraient l’aider.';}
- else if(id==='stone'){f.stone=true;note('stone');message='Sur la stèle : « Le soleil se lève. La vague l’accueille. La lune veille. » Écho recopie ces trois symboles dans votre carnet.';}
- else if(id==='beacon'){if(!f.power)message='Le relais attend que le camp soit alimenté. Commençons par le dôme.';else if(!f.beacon){if(selected('crystal')){use('crystal');f.beacon=true;note('beacon');message='Le cristal trouve sa place au cœur de la balise. Cliquez à nouveau pour harmoniser le signal.';}else message='La balise a besoin d’un cristal capable d’amplifier son signal. Cherchons près de l’eau.';}else if(!f.tuned){puzzle=true;message='Trois fréquences attendent le bon ordre. La forêt conserve peut-être leur secret.';}else if(!f.garden)message='Le signal est prêt. Avant d’inviter les pionniers, faisons pousser un jardin dans le dôme.';else if(!f.finished){f.finished=true;ending=true;message='Le signal traverse les étoiles. « Nous arrivons. » La première colonie de Kepler vient de naître.';}else{ending=true;message='Les pionniers sont en route. Le temps nous appartient.';}}
- else if(id==='view')message='Au loin, deux lunes se lèvent sur une mer silencieuse. Vous restez un instant à contempler l’horizon.';
- return {message,puzzle,ending};
+export const TILE_MAP = Object.fromEntries(WORLD.map(t => [t.id, t]));
+export function fresh(now = Date.now()) {
+  return { version: VERSION, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
 }
-export function tune(s,sequence){if(!s.flags.beacon)return false;if(sequence.join(',')!=='0,1,2')return false;s.flags.tuned=true;return true;}
+export function has(s, type) { return s.buildings.some(b => b.type === type); }
+export function population(s) { return 4 + s.buildings.filter(b => b.type === 'habitat').reduce((n, b) => n + 6 * b.level, 0); }
+export function rates(s) {
+  const r = Object.fromEntries(Object.keys(RESOURCES).map(k => [k, 0]));
+  for (const b of s.buildings) for (const [key, n] of Object.entries(BUILDINGS[b.type].output || {})) r[key] += n * b.level;
+  return r;
+}
+export function grant(s, resources) { for (const [k, v] of Object.entries(resources)) s.resources[k] = Math.min(LIMIT, s.resources[k] + v); }
+export function affordable(s, cost) { return Object.entries(cost).every(([k, n]) => s.resources[k] >= n); }
+export function pay(s, cost) { for (const [k, n] of Object.entries(cost)) s.resources[k] -= n; }
+export function collectRewards(s) {
+  const won = [];
+  GOALS.forEach((g, i) => { if (!s.claimed.includes(i) && g.check(s)) { s.claimed.push(i); grant(s, g.reward); won.push(g.name); } });
+  return won;
+}
+export function harvest(s, id, now = Date.now()) {
+  const tile = TILE_MAP[id];
+  if (!tile?.node) return { ok: false, message: 'Choisissez un gisement, une plante ou une source.' };
+  if (now < (s.cooldowns[id] || 0)) return { ok: false, message: 'Ce lieu se régénère quelques instants. Un autre gisement vous attend.' };
+  const amount = tile.node === 'crystal' ? 3 : 5;
+  if (s.resources[tile.node] >= LIMIT) return { ok: false, message: 'Votre réserve est pleine. Construisez ou améliorez un bâtiment.' };
+  grant(s, { [tile.node]: amount }); s.harvests++; s.cooldowns[id] = now + NODE_DELAY;
+  const rewards = collectRewards(s);
+  return { ok: true, resource: tile.node, amount, rewards, message: `+${amount} ${RESOURCES[tile.node].name.toLowerCase()} · La nature se renouvelle, à son rythme.` };
+}
+export function unlocked(s, type) { const def = BUILDINGS[type]; return !!def && (!def.requires || has(s, def.requires)); }
+export function canPlace(s, id) {
+  const t = TILE_MAP[id];
+  return !!t && t.terrain !== 'water' && !t.node && !s.buildings.some(b => b.id === id);
+}
+export function build(s, type, id) {
+  if (!BUILDINGS[type] || type === 'pod' || !unlocked(s, type)) return { ok: false, message: 'Construisez d’abord le bâtiment requis.' };
+  if (!canPlace(s, id)) return { ok: false, message: 'Choisissez une case de terrain libre, hors de l’eau et des ressources.' };
+  const def = BUILDINGS[type];
+  if (!affordable(s, def.cost)) return { ok: false, message: 'Il manque des ressources. La fiche du bâtiment indique les quantités nécessaires.' };
+  pay(s, def.cost); s.buildings.push({ id, type, level: 1 });
+  return { ok: true, rewards: collectRewards(s), message: `${def.name} : construction terminée. Votre colonie prend vie !` };
+}
+export function upgradeCost(b) {
+  return Object.fromEntries(Object.entries(BUILDINGS[b.type].cost).map(([k, v]) => [k, Math.ceil(v * (1 + b.level * .65))]));
+}
+export function upgrade(s, id) {
+  const b = s.buildings.find(b => b.id === id);
+  if (!b || b.level >= BUILDINGS[b.type].max) return { ok: false, message: 'Ce bâtiment a atteint son niveau maximal.' };
+  const cost = upgradeCost(b);
+  if (!affordable(s, cost)) return { ok: false, message: 'Rassemblez encore les ressources affichées pour cette amélioration.' };
+  pay(s, cost); b.level++;
+  return { ok: true, rewards: collectRewards(s), message: `${BUILDINGS[b.type].name} atteint le niveau ${b.level}.` };
+}
+// Credit only complete cycles; at most 30 minutes offline. Rates have no upkeep.
+export function advance(s, now = Date.now()) {
+  if (now < s.lastTick) { s.lastTick = now; return 0; }
+  const elapsed = now - s.lastTick;
+  const cycles = Math.floor(Math.min(elapsed, 1800000) / CYCLE);
+  if (cycles > 0) {
+    const production = rates(s);
+    for (const k of Object.keys(production)) production[k] *= cycles;
+    grant(s, production);
+    s.lastTick = elapsed > 1800000 ? now : s.lastTick + cycles * CYCLE;
+  }
+  return cycles;
+}
+export function restore(raw, now = Date.now()) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.version !== VERSION || !parsed.resources || !Array.isArray(parsed.buildings)) return fresh(now);
+    const s = fresh(now);
+    for (const k of Object.keys(RESOURCES)) s.resources[k] = Number.isFinite(parsed.resources[k]) ? Math.max(0, Math.min(LIMIT, Math.floor(parsed.resources[k]))) : 0;
+    const seen = new Set(['5,5']);
+    for (const b of parsed.buildings) {
+      if (!b || b.type === 'pod' || !Object.hasOwn(BUILDINGS, b.type) || !TILE_MAP[b.id] || seen.has(b.id)) continue;
+      if (TILE_MAP[b.id].terrain === 'water' || TILE_MAP[b.id].node) continue;
+      s.buildings.push({ id: b.id, type: b.type, level: Math.max(1, Math.min(BUILDINGS[b.type].max, Math.floor(Number(b.level)) || 1)) }); seen.add(b.id);
+    }
+    s.harvests = Math.max(0, Math.floor(Number(parsed.harvests)) || 0);
+    s.claimed = Array.isArray(parsed.claimed) ? [...new Set(parsed.claimed.filter(i => Number.isInteger(i) && i >= 0 && i < GOALS.length))] : [];
+    s.lastTick = Number.isFinite(parsed.lastTick) ? Math.min(now, Math.max(0, parsed.lastTick)) : now;
+    s.sound = parsed.sound === true;
+    return s;
+  } catch { return fresh(now); }
+}
+export function salvage(b) {
+  const total = { ...BUILDINGS[b.type].cost };
+  for (let level = 1; level < b.level; level++) {
+    for (const [k, n] of Object.entries(upgradeCost({ type: b.type, level }))) total[k] = (total[k] || 0) + n;
+  }
+  return Object.fromEntries(Object.entries(total).map(([k, n]) => [k, Math.floor(n / 2)]));
+}
+export function dismantle(s, id) {
+  const b = s.buildings.find(b => b.id === id);
+  if (!b || b.type === 'pod') return { ok: false, message: 'Le module pionnier doit rester en place.' };
+  grant(s, salvage(b));
+  s.buildings = s.buildings.filter(b => b.id !== id);
+  return { ok: true, message: 'Terrain libéré. La moitié des matériaux investis a été récupérée.' };
+}
