@@ -142,3 +142,37 @@ test('Import de sauvegarde validé et objectifs détaillés cohérents', async (
   }
   assert.deepEqual(goalSteps(s, -1), []);
 });
+
+test('Recherches : prérequis, coût unique, bonus et restauration', async () => {
+  const { research, RESEARCH } = await import('../src/engine.js');
+  const { s, place, fund } = expedition();
+  const before = structuredClone(s);
+  assert.equal(research(s, 'optics').ok, false);
+  assert.deepEqual(s, before);
+  place('solar'); place('habitat'); place('pump'); place('greenhouse'); place('mine');
+  for (const key of Object.keys(RESEARCH)) {
+    fund(RESEARCH[key].cost);
+    assert.ok(research(s, key).ok);
+    const snapshot = structuredClone(s);
+    assert.equal(research(s, key).ok, false);
+    assert.deepEqual(s, snapshot);
+  }
+  assert.deepEqual(rates(s), { ore: 6, crystal: 2, water: 6, bio: 6, energy: 4 });
+  const loaded = restore(JSON.stringify(s), s.lastTick);
+  assert.deepEqual(loaded.research, s.research);
+  assert.deepEqual(rates(loaded), rates(s));
+  const old = structuredClone(s); delete old.research;
+  assert.deepEqual(restore(JSON.stringify(old), s.lastTick).research, []);
+});
+
+test('Expansion complète jusqu’à la métropole avec ressources acquises en jeu', async () => {
+  const { research, RESEARCH } = await import('../src/engine.js');
+  const { s, place, fund } = expedition();
+  place('solar'); place('habitat'); place('pump'); place('greenhouse'); place('mine'); place('beacon');
+  for (const key of Object.keys(RESEARCH)) { fund(RESEARCH[key].cost); assert.ok(research(s, key).ok); }
+  for (let i = 0; i < 7; i++) place('habitat');
+  for (const building of s.buildings.filter(b => BUILDINGS[b.type].max === 3).slice(0, 4)) {
+    while (building.level < 3) { fund(upgradeCost(building)); assert.ok(upgrade(s, building.id).ok); }
+  }
+  assert.deepEqual([...s.claimed].sort(), [0, 1, 2, 3, 4, 5, 6]);
+});

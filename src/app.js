@@ -1,5 +1,5 @@
-import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY } from './engine.js?v=3.1.0';
-import { renderMap, buildingPreview, project } from './scenes.js?v=3.1.0';
+import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY, RESEARCH, research, productionMultiplier } from './engine.js?v=3.2.0';
+import { renderMap, buildingPreview, project } from './scenes.js?v=3.2.0';
 
 const $ = id => document.getElementById(id);
 const KEY = 'neon-colony-v2';
@@ -36,7 +36,7 @@ function drawStats() {
   document.querySelectorAll('[data-cost-key]').forEach(e => e.classList.toggle('missing', state.resources[e.dataset.costKey] < Number(e.dataset.costValue)));
   const current = GOALS.findIndex((g, i) => !state.claimed.includes(i));
   const goal = GOALS[current];
-  $('goal-count').textContent = current < 0 ? '05 / 05' : `0${current + 1} / 05`;
+  $('goal-count').textContent = `${String(current < 0 ? GOALS.length : current + 1).padStart(2, '0')} / ${String(GOALS.length).padStart(2, '0')}`;
   $('goal-title').textContent = goal ? goal.name : 'Une colonie parmi les étoiles';
   $('goal-text').textContent = goal ? goal.text + (current === 0 ? ` (${Math.min(5, state.harvests)}/5)` : current === 4 ? ` (${population(state)}/16 habitants)` : '') : 'Les pionniers ont trouvé leur foyer. Continuez à bâtir, améliorer et prendre soin de ce monde.';
   $('goal-checklist').innerHTML = goalSteps(state, current).map(step => `<li class="${step.done ? 'done' : ''}"><span aria-hidden="true">${step.done ? '✓' : '○'}</span> ${step.text}</li>`).join('');
@@ -78,7 +78,7 @@ function drawInspector() {
   const b = state.buildings.find(b => b.id === selected), tile = TILE_MAP[selected];
   if (b) {
     const d = BUILDINGS[b.type], max = b.level >= d.max;
-    const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : b.type === 'habitat' ? `${6 * b.level} pionniers accueillis` : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
+    const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : b.type === 'habitat' ? `${6 * b.level} pionniers accueillis` : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
     panel.innerHTML = `<div class="preview">${buildingPreview(b.type)}</div><span class="eyebrow">BÂTIMENT · NIVEAU ${b.level}</span><h2>${d.name}</h2><p>${d.description}</p><p class="detail">${yieldText}</p>${max ? '<p>Niveau maximal atteint.</p>' : `<span class="eyebrow">AMÉLIORATION NIVEAU ${b.level + 1}</span>${costs(upgradeCost(b))}<button class="action" id="inspect-action" ${affordable(state, upgradeCost(b)) ? '' : 'disabled'}>Améliorer au niveau ${b.level + 1}</button>`}`;
     if (b.type !== 'pod') {
       const move = document.createElement('button'); move.className = 'move-building'; move.textContent = 'Déplacer gratuitement';
@@ -115,10 +115,17 @@ function updateTimers() {
     collectButton.textContent = remaining ? `Régénération · ${(remaining / 1000).toFixed(1)} s` : `Collecter ${RESOURCES[TILE_MAP[selected].node].name.toLowerCase()}`;
   }
 }
+function drawResearch() {
+  $('research-cards').innerHTML = Object.entries(RESEARCH).map(([key, def]) => {
+    const done = (state.research || []).includes(key);
+    return `<article class="research-card ${done ? 'researched' : ''}"><span class="research-icon">${{optics:'☀',ecology:'❧',geology:'◈'}[key]}</span><span class="eyebrow">${done ? 'TECHNOLOGIE ACQUISE' : 'RECHERCHE'}</span><h3>${def.name}</h3><p>${def.text}</p>${done ? '<p class="detail">✓ Bonus permanent actif</p>' : `${costs(def.cost)}<button data-research="${key}" ${state.buildings.some(b => b.type === def.requires) && affordable(state, def.cost) ? '' : 'disabled'}>Débloquer</button><small>Requis : ${BUILDINGS[def.requires].name}</small>`}</article>`;
+  }).join('');
+}
+$('research-cards').onclick = e => { const button = e.target.closest('[data-research]'); if (button) { advance(state); handle(research(state, button.dataset.research)); } };
 function render() {
   const active = document.activeElement;
   const focusId = active?.id, tileId = active?.dataset?.tile, buildType = active?.dataset?.build;
-  drawMap(); drawCatalog(); drawInspector(); drawStats(); updateTimers();
+  drawMap(); drawCatalog(); drawInspector(); drawStats(); drawResearch(); updateTimers();
   const target = focusId ? $(focusId) : tileId ? $('scene').querySelector(`[data-tile="${tileId}"]`) : buildType ? $('catalog').querySelector(`[data-build="${buildType}"]`) : null;
   target?.focus({ preventScroll: true });
 }
@@ -246,7 +253,7 @@ $('sound').onclick = async () => {
 };
 document.addEventListener('visibilitychange', () => { if (audio) { if (document.hidden) audio.suspend(); else if (sound) audio.resume(); } if (document.hidden) save(); });
 window.addEventListener('pagehide', save);
-setInterval(() => { const cycles = advance(state); if (cycles) { save(); drawStats(); } }, 1000);
+setInterval(() => { const cycles = advance(state); if (cycles) { save(); drawStats(); drawResearch(); } }, 1000);
 setInterval(updateTimers, 100);
 render();
 if (!stored) guide(true);
