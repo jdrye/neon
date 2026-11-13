@@ -114,3 +114,31 @@ test('Sauvegarde restaurée, schéma ancien isolé et entrées corrompues filtr�
   assert.equal(cleaned.resources.ore, 0); assert.equal(cleaned.resources.crystal, LIMIT);
   assert.equal(cleaned.buildings.length, s.buildings.length);
 });
+
+test('Déplacement gratuit : niveau, production, réserves et sauvegarde conservés', async () => {
+  const { relocate } = await import('../src/engine.js');
+  const { s, place, fund } = expedition();
+  const id = place('solar'); fund(upgradeCost(s.buildings.find(b => b.id === id))); upgrade(s, id);
+  const before = structuredClone(s), destination = WORLD.find(t => canPlace(s, t.id)).id;
+  for (const target of ['5,5', '8,1', '2,2', '99,99', id]) {
+    assert.equal(relocate(s, id, target).ok, false); assert.deepEqual(s, before);
+  }
+  assert.equal(relocate(s, '5,5', destination).ok, false);
+  assert.ok(relocate(s, id, destination).ok);
+  assert.deepEqual(s.resources, before.resources); assert.deepEqual(rates(s), rates(before));
+  assert.ok(canPlace(s, id)); assert.equal(s.buildings.find(b => b.id === destination).level, 2);
+  assert.deepEqual(restore(JSON.stringify(s), s.lastTick).buildings, s.buildings);
+});
+
+test('Import de sauvegarde validé et objectifs détaillés cohérents', async () => {
+  const { importSave, goalSteps } = await import('../src/engine.js');
+  const { s, place } = expedition(); place('solar'); place('habitat');
+  assert.deepEqual(importSave(JSON.stringify(s), s.lastTick).resources, s.resources);
+  for (const raw of ['null', '{}', '{', JSON.stringify({ ...s, version: 1 }), JSON.stringify({ ...s, resources: { ore: -1 } })]) {
+    assert.throws(() => importSave(raw));
+  }
+  for (let index = 0; index < GOALS.length; index++) {
+    assert.equal(goalSteps(s, index).every(step => step.done), GOALS[index].check(s));
+  }
+  assert.deepEqual(goalSteps(s, -1), []);
+});

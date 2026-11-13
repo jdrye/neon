@@ -137,3 +137,28 @@ export function dismantle(s, id) {
   s.buildings = s.buildings.filter(b => b.id !== id);
   return { ok: true, message: 'Terrain libéré. La moitié des matériaux investis a été récupérée.' };
 }
+
+// Relocation preserves all investments and never charges the player.
+export function relocate(s, from, to) {
+  const building = s.buildings.find(b => b.id === from);
+  if (!building || building.type === 'pod') return { ok: false, message: 'Le module pionnier doit rester en place.' };
+  if (!canPlace(s, to)) return { ok: false, message: 'Choisissez une case de terrain libre.' };
+  building.id = to;
+  return { ok: true, message: `${BUILDINGS[building.type].name} déplacé. Niveau et production conservés.` };
+}
+export function goalSteps(s, index) {
+  const built = type => ({ text: BUILDINGS[type].name, done: has(s, type) });
+  return [
+    [{ text: `${Math.min(s.harvests, 5)} / 5 collectes`, done: s.harvests >= 5 }],
+    [built('solar')], [built('habitat')], [built('greenhouse'), built('pump')],
+    [{ text: `${population(s)} / 16 pionniers`, done: population(s) >= 16 }, built('greenhouse'), built('beacon')],
+  ][index] || [];
+}
+export function importSave(raw, now = Date.now()) {
+  const parsed = JSON.parse(raw);
+  if (!parsed || parsed.version !== VERSION || !parsed.resources || !Array.isArray(parsed.buildings)
+    || !Object.keys(RESOURCES).every(k => Number.isFinite(parsed.resources[k]) && parsed.resources[k] >= 0)) {
+    throw new Error('Sauvegarde NÉON incompatible ou incomplète.');
+  }
+  return restore(raw, now);
+}

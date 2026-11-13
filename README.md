@@ -11,6 +11,8 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 - Cliquez sur les gisements, les arbres ou les sources pour collecter. Chaque gisement se renouvelle en 2,5 secondes ; aucun stock naturel ne s’épuise définitivement.
 - Sélectionnez un bâtiment dans le catalogue, puis une case illuminée. Les ressources sont débitées seulement à la pose. Échap ou Annuler quitte ce mode sans rien dépenser.
 - Cliquez sur un bâtiment pour consulter sa production et l’améliorer jusqu’au niveau III. Le module pionnier et le port stellaire ont un niveau unique.
+- Déplacez gratuitement les bâtiments depuis leur fiche : le niveau et la production sont conservés. Annuler ne change rien ; le module pionnier reste fixe.
+- Suivez les sous-objectifs cochés, le compte à rebours du cycle et la régénération des gisements (grisés pendant 2,5 secondes).
 - Démontez les constructions après confirmation pour réorganiser le terrain. Vous récupérez 50 % des matériaux investis, améliorations comprises. Le module pionnier reste en place.
 
 | Construction | Effet par niveau |
@@ -29,6 +31,8 @@ Pas de combat, de famine, de mort de colons ou de pénalité d’absence. Les r�
 ## Sauvegarde et accessibilité
 
 La sauvegarde automatique utilise `localStorage` (`neon-colony-v2`). Elle reste propre au navigateur, à l’appareil et à l’origine du site. La sauvegarde de l’ancien point & click est conservée séparément ; son inventaire n’est pas converti en matériaux.
+
+Dans les options (⚙), exportez votre colonie en fichier JSON pour la conserver ou la transférer sur un autre appareil. L’import demande confirmation avant remplacement et refuse les fichiers incompatibles.
 
 La production hors ligne est créditée au retour, dans la limite de 30 minutes. Si le stockage est bloqué, la session reste jouable. Recommencer demande confirmation.
 
