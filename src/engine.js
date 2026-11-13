@@ -1,3 +1,4 @@
+import { generateWorld, randomSeed, BIOMES } from './world.js?v=4.0.0';
 export const VERSION = 2;
 export const LIMIT = 9999;
 export const RESOURCES = {
@@ -60,8 +61,19 @@ for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) {
   WORLD.push({ id, x, y, node: nodes[id] || null, terrain: water.includes(id) ? 'water' : (x * 7 + y * 13) % 7 < 2 ? 'sand' : 'grass' });
 }
 export const TILE_MAP = Object.fromEntries(WORLD.map(t => [t.id, t]));
-export function fresh(now = Date.now()) {
-  return { version: VERSION, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
+const worldCache = new Map();
+export function worldOf(s) {
+  if (!s.world) return WORLD;
+  const key = `${s.world.seed}:${s.world.biome}`;
+  if (!worldCache.has(key)) {
+    if (worldCache.size >= 16) worldCache.delete(worldCache.keys().next().value);
+    worldCache.set(key, generateWorld(s.world.seed, s.world.biome));
+  }
+  return worldCache.get(key);
+}
+export function tileOf(s, id) { return worldOf(s).find(t => t.id === id); }
+export function fresh(now = Date.now(), seed = randomSeed(), biome = 'emerald') {
+  return { version: VERSION, world: seed === null ? null : { generator: 1, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
 }
 export function has(s, type) { return s.buildings.some(b => b.type === type); }
 export function population(s) { return 4 + s.buildings.filter(b => b.type === 'habitat').reduce((n, b) => n + 6 * b.level, 0); }
@@ -79,7 +91,7 @@ export function collectRewards(s) {
   return won;
 }
 export function harvest(s, id, now = Date.now()) {
-  const tile = TILE_MAP[id];
+  const tile = tileOf(s, id);
   if (!tile?.node) return { ok: false, message: 'Choisissez un gisement, une plante ou une source.' };
   if (now < (s.cooldowns[id] || 0)) return { ok: false, message: 'Ce lieu se régénère quelques instants. Un autre gisement vous attend.' };
   const amount = tile.node === 'crystal' ? 3 : 5;
@@ -90,7 +102,7 @@ export function harvest(s, id, now = Date.now()) {
 }
 export function unlocked(s, type) { const def = BUILDINGS[type]; return !!def && (!def.requires || has(s, def.requires)); }
 export function canPlace(s, id) {
-  const t = TILE_MAP[id];
+  const t = tileOf(s, id);
   return !!t && t.terrain !== 'water' && !t.node && !s.buildings.some(b => b.id === id);
 }
 export function build(s, type, id) {
@@ -129,12 +141,13 @@ export function restore(raw, now = Date.now()) {
   try {
     const parsed = JSON.parse(raw);
     if (parsed.version !== VERSION || !parsed.resources || !Array.isArray(parsed.buildings)) return fresh(now);
-    const s = fresh(now);
+    if (parsed.world != null && !validWorld(parsed.world)) return fresh(now);
+    const s = fresh(now, parsed.world?.seed ?? null, parsed.world?.biome);
     for (const k of Object.keys(RESOURCES)) s.resources[k] = Number.isFinite(parsed.resources[k]) ? Math.max(0, Math.min(LIMIT, Math.floor(parsed.resources[k]))) : 0;
     const seen = new Set(['5,5']);
     for (const b of parsed.buildings) {
-      if (!b || b.type === 'pod' || !Object.hasOwn(BUILDINGS, b.type) || !TILE_MAP[b.id] || seen.has(b.id)) continue;
-      if (TILE_MAP[b.id].terrain === 'water' || TILE_MAP[b.id].node) continue;
+      if (!b || b.type === 'pod' || !Object.hasOwn(BUILDINGS, b.type) || !tileOf(s, b.id) || seen.has(b.id)) continue;
+      if (tileOf(s, b.id).terrain === 'water' || tileOf(s, b.id).node) continue;
       s.buildings.push({ id: b.id, type: b.type, level: Math.max(1, Math.min(BUILDINGS[b.type].max, Math.floor(Number(b.level)) || 1)) }); seen.add(b.id);
     }
     s.harvests = Math.max(0, Math.floor(Number(parsed.harvests)) || 0);
@@ -178,8 +191,12 @@ export function goalSteps(s, index) {
     [{ text: `${population(s)} / 52 pionniers`, done: population(s) >= 52 }, { text: `${s.buildings.filter(b => b.level === 3).length} / 4 bâtiments niveau III`, done: s.buildings.filter(b => b.level === 3).length >= 4 }],
   ][index] || [];
 }
+export function validWorld(w) {
+  return w && w.generator === 1 && Number.isInteger(w.seed) && w.seed >= 0 && w.seed <= 4294967295 && Object.hasOwn(BIOMES, w.biome);
+}
 export function importSave(raw, now = Date.now()) {
   const parsed = JSON.parse(raw);
+  if (parsed?.world != null && !validWorld(parsed.world)) throw new Error('Générateur de carte incompatible.');
   if (!parsed || parsed.version !== VERSION || !parsed.resources || !Array.isArray(parsed.buildings)
     || !Object.keys(RESOURCES).every(k => Number.isFinite(parsed.resources[k]) && parsed.resources[k] >= 0)) {
     throw new Error('Sauvegarde NÉON incompatible ou incomplète.');
