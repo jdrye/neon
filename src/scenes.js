@@ -1,4 +1,4 @@
-import { WORLD, BUILDINGS, RESOURCES, canPlace, population } from './engine.js?v=3.1.0';
+import { WORLD, BUILDINGS, RESOURCES, canPlace, population } from './engine.js?v=3.2.0';
 export const project = (x, y) => ({ x: 550 + (x - y) * 44, y: 180 + (x + y) * 23 });
 const diamond = '0,-23 44,0 0,23 -44,0';
 const polygon = (points, fill, extra = '') => `<polygon points="${points}" fill="${fill}" ${extra}/>`;
@@ -93,7 +93,11 @@ export function renderMap(state, { selection=null, placing=null, zoom=1, center=
     const p = project(t.x, t.y);
     return `<g transform="translate(${p.x + 12} ${p.y + 3})" pointer-events="none"><ellipse cy="3" rx="5" ry="2.5" fill="#244e4b44"/><path d="M-2 1V-5M2 1V-5" stroke="#365b61" stroke-width="2"/><rect x="-3" y="-12" width="6" height="8" rx="2" fill="${i % 2 ? '#d8b58b' : '#d8e2c8'}"/><circle cy="-15" r="4" fill="#e5e8d0"/><path d="M-2 -15H2" stroke="#5c9ea8" stroke-width="2"/></g>`;
   }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view}" aria-label="Carte de Première Aube" role="group"><defs><radialGradient id="island-glow"><stop stop-color="#acc6a5" stop-opacity=".12"/><stop offset="1" stop-color="#acc6a5" stop-opacity="0"/></radialGradient></defs><ellipse cx="550" cy="480" rx="500" ry="300" fill="url(#island-glow)"/><ellipse cx="550" cy="507" rx="370" ry="178" fill="#061d2440"/>${ground}${objects}${walkers}${placementOverlay}<g class="drone" transform="translate(558 300)" pointer-events="none"><ellipse cy="70" rx="12" ry="5" fill="#193b3b30"/><g class="drone-float"><ellipse rx="12" ry="6" fill="#e6e8ce"/><path d="M-7 0H7" stroke="#86c9c3" stroke-width="3"/><path d="M-18 -3H-11M11 -3H18" stroke="#c5d6c0" stroke-width="2"/></g></g></svg>`;
+  const roads = tiles.filter(t => !t.node && t.terrain !== 'water' && (t.x === 5 || t.y === 5)).map(t => {
+    const p = project(t.x, t.y);
+    return `<g transform="translate(${p.x} ${p.y})" pointer-events="none"><path d="M-30 -15L30 15M-30 15L30 -15" stroke="#dfd2a3" stroke-width="9" opacity=".22"/><circle cx="-32" cy="0" r="2" fill="#ffe9b1"/></g>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view}" aria-label="Carte de Première Aube" role="group"><defs><filter id="soft-glow"><feGaussianBlur stdDeviation="5"/></filter><radialGradient id="island-glow"><stop stop-color="#acc6a5" stop-opacity=".12"/><stop offset="1" stop-color="#acc6a5" stop-opacity="0"/></radialGradient></defs><ellipse cx="550" cy="480" rx="500" ry="300" fill="url(#island-glow)"/><ellipse cx="550" cy="507" rx="370" ry="178" fill="#061d2440"/>${ground}${roads}${objects}${walkers}<g pointer-events="none" class="atmosphere"><ellipse cx="350" cy="290" rx="150" ry="30" fill="#e6f9ed" opacity=".07" filter="url(#soft-glow)"/><ellipse cx="760" cy="540" rx="200" ry="25" fill="#e6f9ed" opacity=".06" filter="url(#soft-glow)"/></g>${placementOverlay}<g class="drone" transform="translate(558 300)" pointer-events="none"><ellipse cy="70" rx="12" ry="5" fill="#193b3b30"/><g class="drone-float"><ellipse rx="12" ry="6" fill="#e6e8ce"/><path d="M-7 0H7" stroke="#86c9c3" stroke-width="3"/><path d="M-18 -3H-11M11 -3H18" stroke="#c5d6c0" stroke-width="2"/></g></g></svg>`;
 }
 export function buildingPreview(type) {
   return `<svg viewBox="-58 -122 116 160" aria-hidden="true">${buildingSymbol(type,type==='habitat'?2:1)}</svg>`;

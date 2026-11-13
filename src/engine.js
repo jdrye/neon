@@ -23,6 +23,27 @@ export const GOALS = [
   { name: 'La vie s’installe', text: 'Construire une serre et un collecteur d’eau.', reward: { ore: 20, energy: 15 }, check: s => has(s, 'greenhouse') && has(s, 'pump') },
   { name: 'Première Aube', text: 'Accueillir 16 habitants et construire le port stellaire.', reward: { crystal: 20, energy: 30 }, check: s => population(s) >= 16 && has(s, 'beacon') && has(s, 'greenhouse') },
 ];
+export const RESEARCH = {
+  optics: { name: 'Optique solaire', text: 'Double la production des centrales solaires.', requires: 'solar', cost: { crystal: 35, ore: 45, energy: 40 } },
+  ecology: { name: 'Écosystèmes fermés', text: 'Double la production des serres et des collecteurs d’eau.', requires: 'greenhouse', cost: { bio: 65, water: 50, energy: 55 } },
+  geology: { name: 'Sondes profondes', text: 'Double la production des extracteurs.', requires: 'mine', cost: { ore: 80, crystal: 50, energy: 65 } },
+};
+export function research(s, key) {
+  const def = RESEARCH[key];
+  if (!Object.hasOwn(RESEARCH, key) || !def || !has(s, def.requires)) return { ok: false, message: 'Construisez le bâtiment requis pour cette recherche.' };
+  if ((s.research || []).includes(key)) return { ok: false, message: 'Recherche déjà acquise.' };
+  if (!affordable(s, def.cost)) return { ok: false, message: 'Réserves insuffisantes pour lancer cette recherche.' };
+  pay(s, def.cost); (s.research ||= []).push(key);
+  return { ok: true, rewards: collectRewards(s), message: `${def.name} : technologie opérationnelle !` };
+}
+export function productionMultiplier(s, type) {
+  const key = { solar: 'optics', greenhouse: 'ecology', pump: 'ecology', mine: 'geology' }[type];
+  return (s.research || []).includes(key) ? 2 : 1;
+}
+GOALS.push(
+  { name: 'L’âge des découvertes', text: 'Débloquer les trois recherches et accueillir 28 pionniers.', reward: { ore: 100, crystal: 60 }, check: s => (s.research || []).length >= 3 && population(s) >= 28 },
+  { name: 'Métropole de Kepler', text: 'Accueillir 52 pionniers et posséder 4 installations de niveau III.', reward: { energy: 200, bio: 150 }, check: s => population(s) >= 52 && s.buildings.filter(b => b.level === 3).length >= 4 },
+);
 export const CYCLE = 12000;
 export const NODE_DELAY = 2500;
 const nodes = {
@@ -40,13 +61,13 @@ for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) {
 }
 export const TILE_MAP = Object.fromEntries(WORLD.map(t => [t.id, t]));
 export function fresh(now = Date.now()) {
-  return { version: VERSION, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
+  return { version: VERSION, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
 }
 export function has(s, type) { return s.buildings.some(b => b.type === type); }
 export function population(s) { return 4 + s.buildings.filter(b => b.type === 'habitat').reduce((n, b) => n + 6 * b.level, 0); }
 export function rates(s) {
   const r = Object.fromEntries(Object.keys(RESOURCES).map(k => [k, 0]));
-  for (const b of s.buildings) for (const [key, n] of Object.entries(BUILDINGS[b.type].output || {})) r[key] += n * b.level;
+  for (const b of s.buildings) for (const [key, n] of Object.entries(BUILDINGS[b.type].output || {})) r[key] += n * b.level * productionMultiplier(s, b.type);
   return r;
 }
 export function grant(s, resources) { for (const [k, v] of Object.entries(resources)) s.resources[k] = Math.min(LIMIT, s.resources[k] + v); }
@@ -119,6 +140,7 @@ export function restore(raw, now = Date.now()) {
     s.harvests = Math.max(0, Math.floor(Number(parsed.harvests)) || 0);
     s.claimed = Array.isArray(parsed.claimed) ? [...new Set(parsed.claimed.filter(i => Number.isInteger(i) && i >= 0 && i < GOALS.length))] : [];
     s.lastTick = Number.isFinite(parsed.lastTick) ? Math.min(now, Math.max(0, parsed.lastTick)) : now;
+    s.research = Array.isArray(parsed.research) ? [...new Set(parsed.research.filter(key => Object.hasOwn(RESEARCH, key)))] : [];
     s.sound = parsed.sound === true;
     return s;
   } catch { return fresh(now); }
@@ -152,6 +174,8 @@ export function goalSteps(s, index) {
     [{ text: `${Math.min(s.harvests, 5)} / 5 collectes`, done: s.harvests >= 5 }],
     [built('solar')], [built('habitat')], [built('greenhouse'), built('pump')],
     [{ text: `${population(s)} / 16 pionniers`, done: population(s) >= 16 }, built('greenhouse'), built('beacon')],
+    [{ text: `${(s.research || []).length} / 3 recherches`, done: (s.research || []).length >= 3 }, { text: `${population(s)} / 28 pionniers`, done: population(s) >= 28 }],
+    [{ text: `${population(s)} / 52 pionniers`, done: population(s) >= 52 }, { text: `${s.buildings.filter(b => b.level === 3).length} / 4 bâtiments niveau III`, done: s.buildings.filter(b => b.level === 3).length >= 4 }],
   ][index] || [];
 }
 export function importSave(raw, now = Date.now()) {

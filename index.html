@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10282c">
 <meta name="description" content="Bâtissez une colonie paisible sur une planète inconnue. Un jeu 2D isométrique : collecte, construction et exploration.">
-<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=3.1.0">
+<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=3.2.0">
 </head>
 <body>
 <header><a class="brand" href="./">NÉON<span>LES PIONNIERS DE L’AUBE</span></a><div class="expedition"><span class="live-dot"></span> KEPLER · SECTEUR 01 <small>UN NOUVEAU MONDE, À VOTRE RYTHME</small></div><div class="tools"><button id="sound" aria-pressed="false" title="Ambiance sonore">♪</button><button id="guide">Guide de bord</button><button id="settings" aria-label="Options">⚙</button></div></header>
@@ -24,8 +24,9 @@
 </aside>
 </div>
 <section class="build-section"><div class="build-title"><div><span class="section-label">IMAGINER UN NOUVEAU FOYER</span><h2>Votre colonie commence ici.</h2></div><p>Sélectionnez un bâtiment, puis une case libre sur la carte.</p></div><div class="catalog" id="catalog"></div></section>
+<section class="research-section"><div class="build-title"><div><span class="section-label">INVESTIR DANS DEMAIN</span><h2>Le laboratoire de Kepler.</h2></div><p>Choisissez quelle production développer. Chaque recherche apporte un bonus permanent.</p></div><div id="research-cards"></div></section>
 <footer><span>EXPLORER. RÉCOLTER. FAIRE GRANDIR.</span><span class="production-clock"><progress id="cycle-progress" max="1" value="0" aria-label="Progression du cycle de production"></progress><span id="cycle-label">Production douce · un cycle toutes les 12 s</span></span><span>Votre progression reste sur cet appareil.</span></footer>
 </main>
 <dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="./src/app.js?v=3.1.0"></script>
+<script type="module" src="./src/app.js?v=3.2.0"></script>
 </body></html>

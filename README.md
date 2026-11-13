@@ -24,7 +24,7 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 | Extracteur doux | +3 minerais et +1 cristal / cycle ; nécessite une centrale solaire |
 | Port stellaire | Objectif final ; nécessite une serre |
 
-La production suit un cycle global de 12 secondes, sans coût d’entretien. Les améliorations multiplient la production par le niveau. Les cinq étapes de l’expédition accordent des récompenses une seule fois. Atteignez 16 habitants avec une serre et un port stellaire pour achever l’objectif principal ; la construction reste ensuite libre.
+La production suit un cycle global de 12 secondes, sans coût d’entretien. Les améliorations multiplient la production par le niveau. Les sept étapes de l’expédition accordent des récompenses une seule fois. Atteignez 16 habitants avec une serre et un port stellaire pour achever l’objectif principal ; la construction reste ensuite libre.
 
 Pas de combat, de famine, de mort de colons ou de pénalité d’absence. Les réserves sont plafonnées à 9 999 par ressource.
 
@@ -62,3 +62,11 @@ Le workflow `.github/workflows/pages.yml` teste puis publie `dist/` à chaque pu
 ## Vérifications
 
 `npm test` couvre un parcours complet jusqu’au port stellaire sans injection de ressources, les coûts et prérequis, le renouvellement des gisements, les récompenses uniques, les améliorations, le démontage, la production hors ligne plafonnée, les sauvegardes corrompues et l’absence de doubles crédits.
+
+## Laboratoire et métropole
+
+Trois recherches permanentes permettent d’investir les réserves dans la production : optique solaire (centrales ×2), écosystèmes fermés (serres et eau ×2), sondes profondes (extracteurs ×2). Le bâtiment correspondant doit être construit avant la recherche. Les bonus se cumulent avec les niveaux et s’appliquent aussi à la production hors ligne.
+
+Après le port stellaire, débloquez les trois technologies et accueillez 28 pionniers, puis atteignez 52 pionniers avec quatre bâtiments de niveau III. Les sauvegardes antérieures reprennent avec aucune recherche acquise.
+
+La carte comporte des chemins éclairés et des brumes animées ; les animations respectent la réduction des mouvements.
