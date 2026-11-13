@@ -1,4 +1,4 @@
-import { generateWorld, randomSeed, BIOMES } from './world.js?v=4.0.0';
+import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=4.1.0';
 export const VERSION = 2;
 export const LIMIT = 9999;
 export const RESOURCES = {
@@ -11,11 +11,17 @@ export const RESOURCES = {
 export const BUILDINGS = {
   pod: { name: 'Module pionnier', icon: '⌂', description: 'Le cœur de votre colonie. Quatre pionniers, un refuge et beaucoup de possibles.', cost: {}, max: 1 },
   solar: { name: 'Centrale solaire', icon: '☀', description: 'Capte la lumière des deux soleils. Produit 2 énergies par cycle et par niveau.', cost: { ore: 12, crystal: 3 }, output: { energy: 2 }, max: 3 },
-  habitat: { name: 'Habitat', icon: '⌂', description: 'Un foyer pour 6 nouveaux colons par niveau. Sans entretien ni risque de famine.', cost: { ore: 16, bio: 10, water: 6, energy: 4 }, max: 3 },
+  habitat: { housing: 6, name: 'Habitat', icon: '⌂', description: 'Un foyer pour 6 nouveaux colons par niveau. Sans entretien ni risque de famine.', cost: { ore: 16, bio: 10, water: 6, energy: 4 }, max: 3 },
   pump: { name: 'Collecteur d’eau', icon: '◒', description: 'Condense l’humidité de l’air. Produit 3 eaux par cycle et par niveau.', cost: { ore: 10, crystal: 4, energy: 4 }, output: { water: 3 }, max: 3 },
   greenhouse: { name: 'Serre vivante', icon: '❧', description: 'Cultive la flore locale. Produit 3 biomasses par cycle et par niveau.', cost: { ore: 14, bio: 12, water: 10, energy: 6 }, output: { bio: 3 }, max: 3, requires: 'habitat' },
   mine: { name: 'Extracteur doux', icon: '⬡', description: 'Valorise les fragments du sous-sol. Produit 3 minerais et 1 cristal par cycle et par niveau.', cost: { ore: 20, crystal: 8, energy: 10 }, output: { ore: 3, crystal: 1 }, max: 3, requires: 'solar' },
   beacon: { name: 'Port stellaire', icon: '✧', description: 'Relie votre colonie aux étoiles. Dernier objectif : 16 habitants, une serre et un port.', cost: { ore: 40, bio: 20, crystal: 24, energy: 30 }, max: 1, requires: 'greenhouse' },
+  wind: { name: 'Éolienne orbitale', icon: '✣', description: 'Exploite les vents d’altitude : 6 énergies par cycle et par niveau.', cost: { ore: 35, crystal: 12, energy: 10 }, output: { energy: 6 }, max: 3, requires: 'solar' },
+  residence: { name: 'Résidence collective', icon: '▤', description: 'Un quartier vertical pour 12 pionniers par niveau.', cost: { ore: 45, bio: 30, water: 20, energy: 15 }, housing: 12, max: 3, requires: 'habitat' },
+  hydroponics: { name: 'Ferme hydroponique', icon: '❦', description: 'Culture en circuit fermé : 8 biomasses et 2 eaux par cycle et par niveau.', cost: { ore: 40, bio: 35, water: 25, energy: 20 }, output: { bio: 8, water: 2 }, max: 3, requires: 'greenhouse' },
+  quarry: { name: 'Carrière automatisée', icon: '⬢', description: 'Une installation spécialisée : 8 minerais par cycle et par niveau.', cost: { ore: 50, crystal: 18, energy: 25 }, output: { ore: 8 }, max: 3, requires: 'mine' },
+  synthesizer: { name: 'Synthétiseur cristallin', icon: '⟡', description: 'Fait croître des cristaux purs : 3 cristaux par cycle et par niveau.', cost: { ore: 45, crystal: 25, water: 20, energy: 30 }, output: { crystal: 3 }, max: 3, requires: 'mine' },
+  laboratory: { name: 'Institut scientifique', icon: '⚛', description: 'Réduit de 25 % le coût des recherches encore non acquises. Bonus unique, non cumulable.', cost: { ore: 35, bio: 20, crystal: 15, energy: 20 }, max: 1, requires: 'habitat' },
 };
 export const GOALS = [
   { name: 'Premiers prélèvements', text: 'Collecter 5 fois dans le paysage.', reward: { ore: 10, energy: 5 }, check: s => s.harvests >= 5 },
@@ -29,12 +35,16 @@ export const RESEARCH = {
   ecology: { name: 'Écosystèmes fermés', text: 'Double la production des serres et des collecteurs d’eau.', requires: 'greenhouse', cost: { bio: 65, water: 50, energy: 55 } },
   geology: { name: 'Sondes profondes', text: 'Double la production des extracteurs.', requires: 'mine', cost: { ore: 80, crystal: 50, energy: 65 } },
 };
+export function researchCost(s, key) {
+  return Object.fromEntries(Object.entries(RESEARCH[key].cost).map(([k,n]) => [k, has(s,'laboratory') ? Math.ceil(n * .75) : n]));
+}
 export function research(s, key) {
   const def = RESEARCH[key];
   if (!Object.hasOwn(RESEARCH, key) || !def || !has(s, def.requires)) return { ok: false, message: 'Construisez le bâtiment requis pour cette recherche.' };
   if ((s.research || []).includes(key)) return { ok: false, message: 'Recherche déjà acquise.' };
-  if (!affordable(s, def.cost)) return { ok: false, message: 'Réserves insuffisantes pour lancer cette recherche.' };
-  pay(s, def.cost); (s.research ||= []).push(key);
+  const cost = researchCost(s, key);
+  if (!affordable(s, cost)) return { ok: false, message: 'Réserves insuffisantes pour lancer cette recherche.' };
+  pay(s, cost); (s.research ||= []).push(key);
   return { ok: true, rewards: collectRewards(s), message: `${def.name} : technologie opérationnelle !` };
 }
 export function productionMultiplier(s, type) {
@@ -64,19 +74,24 @@ export const TILE_MAP = Object.fromEntries(WORLD.map(t => [t.id, t]));
 const worldCache = new Map();
 export function worldOf(s) {
   if (!s.world) return WORLD;
-  const key = `${s.world.seed}:${s.world.biome}`;
+  const key = `${s.world.generator}:${s.world.seed}:${s.world.biome}`;
   if (!worldCache.has(key)) {
     if (worldCache.size >= 16) worldCache.delete(worldCache.keys().next().value);
-    worldCache.set(key, generateWorld(s.world.seed, s.world.biome));
+    worldCache.set(key, (s.world.generator === 2 ? generateLargeWorld : generateWorld)(s.world.seed, s.world.biome));
   }
   return worldCache.get(key);
 }
-export function tileOf(s, id) { return worldOf(s).find(t => t.id === id); }
+const tileIndexes = new WeakMap();
+export function tileOf(s, id) {
+  const world = worldOf(s);
+  if (!tileIndexes.has(world)) tileIndexes.set(world, new Map(world.map(t => [t.id,t])));
+  return tileIndexes.get(world).get(id);
+}
 export function fresh(now = Date.now(), seed = randomSeed(), biome = 'emerald') {
-  return { version: VERSION, world: seed === null ? null : { generator: 1, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
+  return { version: VERSION, world: seed === null ? null : { generator: 2, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
 }
 export function has(s, type) { return s.buildings.some(b => b.type === type); }
-export function population(s) { return 4 + s.buildings.filter(b => b.type === 'habitat').reduce((n, b) => n + 6 * b.level, 0); }
+export function population(s) { return 4 + s.buildings.reduce((n, b) => n + (BUILDINGS[b.type].housing || 0) * b.level, 0); }
 export function rates(s) {
   const r = Object.fromEntries(Object.keys(RESOURCES).map(k => [k, 0]));
   for (const b of s.buildings) for (const [key, n] of Object.entries(BUILDINGS[b.type].output || {})) r[key] += n * b.level * productionMultiplier(s, b.type);
@@ -143,6 +158,7 @@ export function restore(raw, now = Date.now()) {
     if (parsed.version !== VERSION || !parsed.resources || !Array.isArray(parsed.buildings)) return fresh(now);
     if (parsed.world != null && !validWorld(parsed.world)) return fresh(now);
     const s = fresh(now, parsed.world?.seed ?? null, parsed.world?.biome);
+    if (s.world) s.world.generator = parsed.world.generator;
     for (const k of Object.keys(RESOURCES)) s.resources[k] = Number.isFinite(parsed.resources[k]) ? Math.max(0, Math.min(LIMIT, Math.floor(parsed.resources[k]))) : 0;
     const seen = new Set(['5,5']);
     for (const b of parsed.buildings) {
@@ -192,7 +208,7 @@ export function goalSteps(s, index) {
   ][index] || [];
 }
 export function validWorld(w) {
-  return w && w.generator === 1 && Number.isInteger(w.seed) && w.seed >= 0 && w.seed <= 4294967295 && Object.hasOwn(BIOMES, w.biome);
+  return w && [1, 2].includes(w.generator) && Number.isInteger(w.seed) && w.seed >= 0 && w.seed <= 4294967295 && Object.hasOwn(BIOMES, w.biome);
 }
 export function importSave(raw, now = Date.now()) {
   const parsed = JSON.parse(raw);
