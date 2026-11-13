@@ -1,10 +1,11 @@
-import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY, RESEARCH, research, productionMultiplier } from './engine.js?v=3.2.0';
-import { renderMap, buildingPreview, project } from './scenes.js?v=3.2.0';
+import { BIOMES, randomSeed } from './world.js?v=4.0.0';
+import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY, RESEARCH, research, productionMultiplier } from './engine.js?v=4.0.0';
+import { renderMap, buildingPreview, project } from './scenes.js?v=4.0.0';
 
 const $ = id => document.getElementById(id);
 const KEY = 'neon-colony-v2';
 let state = fresh(), stored = false, selected = '5,5', chosen = null, placing = null;
-const homeCamera = () => window.innerWidth <= 760 ? { zoom: 1.4, center: { x: 550, y: 340 } } : { zoom: 1, center: { x: 550, y: 410 } };
+const homeCamera = () => window.innerWidth <= 760 ? { zoom: .8, center: { x: 550, y: 390 } } : { zoom: 1, center: { x: 550, y: 390 } };
 let { zoom, center } = homeCamera();
 let moving = null;
 let audio = null, sound = false;
@@ -52,9 +53,13 @@ function drawStats() {
   }
 }
 function drawMap() {
+  const theme = BIOMES[state.world?.biome] || BIOMES.emerald;
+  $('planet-name').textContent = state.world ? theme.name : 'Première Aube';
+  $('planet-description').textContent = state.world ? theme.subtitle : 'Votre colonie historique · terrain préservé';
+  $('planet-code').textContent = state.world ? `MONDE ${state.world.seed}` : 'MONDE HISTORIQUE';
   $('scene').innerHTML = renderMap(state, { selection: selected, placing, zoom, center });
   $('zoom-label').textContent = `${Math.round(zoom * 100)} %`;
-  $('zoom-out').disabled = zoom <= .8;
+  $('zoom-out').disabled = zoom <= .6;
   $('zoom-in').disabled = zoom >= 1.8;
   $('placement').hidden = !placing;
   if (placing) $('placement').querySelector('span').textContent = `${moving ? 'Déplacer : ' : ''}${BUILDINGS[placing].name} · choisissez une case claire`;
@@ -75,7 +80,7 @@ function drawInspector() {
     $('inspect-action').onclick = () => { placing = chosen; drawMap(); drawInspector(); focusMap(); };
     return;
   }
-  const b = state.buildings.find(b => b.id === selected), tile = TILE_MAP[selected];
+  const b = state.buildings.find(b => b.id === selected), tile = tileOf(state, selected);
   if (b) {
     const d = BUILDINGS[b.type], max = b.level >= d.max;
     const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : b.type === 'habitat' ? `${6 * b.level} pionniers accueillis` : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
@@ -103,16 +108,16 @@ function updateTimers() {
   const progress = Math.max(0, Math.min(1, (now - state.lastTick) / CYCLE));
   $('cycle-progress').value = progress;
   $('cycle-label').textContent = `Prochaine production dans ${Math.max(1, Math.ceil((1 - progress) * CYCLE / 1000))} s`;
-  document.querySelectorAll('[data-node]').forEach(el => {
+  $('scene').querySelectorAll('[data-node]').forEach(el => {
     const remaining = Math.max(0, (state.cooldowns[el.dataset.node] || 0) - now);
     el.classList.toggle('regenerating', remaining > 0);
-    el.setAttribute('aria-label', `${RESOURCES[TILE_MAP[el.dataset.node].node].name} · ${remaining ? 'en régénération' : 'prêt à collecter'}`);
+    el.setAttribute('aria-label', `${RESOURCES[tileOf(state, el.dataset.node).node].name} · ${remaining ? 'en régénération' : 'prêt à collecter'}`);
   });
   const collectButton = $('collect');
   if (collectButton) {
     const remaining = Math.max(0, (state.cooldowns[selected] || 0) - now);
     collectButton.disabled = remaining > 0;
-    collectButton.textContent = remaining ? `Régénération · ${(remaining / 1000).toFixed(1)} s` : `Collecter ${RESOURCES[TILE_MAP[selected].node].name.toLowerCase()}`;
+    collectButton.textContent = remaining ? `Régénération · ${(remaining / 1000).toFixed(1)} s` : `Collecter ${RESOURCES[tileOf(state, selected).node].name.toLowerCase()}`;
   }
 }
 function drawResearch() {
@@ -129,7 +134,7 @@ function render() {
   const target = focusId ? $(focusId) : tileId ? $('scene').querySelector(`[data-tile="${tileId}"]`) : buildType ? $('catalog').querySelector(`[data-build="${buildType}"]`) : null;
   target?.focus({ preventScroll: true });
 }
-function focusMap() { if (window.innerWidth <= 760) $('world').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+function focusMap() { if (window.innerWidth <= 760) $('world').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' }); }
 function cancelPlacement() { moving = null; placing = null; chosen = null; render(); }
 $('cancel').onclick = cancelPlacement;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').open) cancelPlacement(); });
@@ -147,7 +152,7 @@ function handle(result) {
   if (result.rewards?.includes('Première Aube')) showEnding();
 }
 function floating(id, text) {
-  const tile = TILE_MAP[id], p = project(tile.x, tile.y);
+  const tile = tileOf(state, id), p = project(tile.x, tile.y);
   const svg = $('scene').querySelector('svg'), point = svg.createSVGPoint();
   point.x = p.x; point.y = p.y - 55;
   const screen = point.matrixTransform(svg.getScreenCTM()), rect = $('world').getBoundingClientRect();
@@ -167,7 +172,7 @@ function actOnTile(id) {
     handle(result); return;
   }
   chosen = null; selected = id;
-  if (TILE_MAP[id]?.node) collect(id);
+  if (tileOf(state, id)?.node) collect(id);
   else { drawMap(); drawCatalog(); drawInspector(); drawStats(); }
 }
 let pointer = null, dragged = false;
@@ -182,7 +187,7 @@ $('world').addEventListener('pointermove', e => {
   if (Math.abs(dx) + Math.abs(dy) < 8 && !dragged) return;
   dragged = true;
   $('world').setPointerCapture(e.pointerId);
-  const scale = Math.max(1100 / zoom / $('world').clientWidth, 800 / zoom / $('world').clientHeight);
+  const scale = Math.max(1100 / zoom / $('world').clientWidth, 780 / zoom / $('world').clientHeight);
   center = { x: Math.max(150, Math.min(950, pointer.center.x - dx * scale)), y: Math.max(180, Math.min(700, pointer.center.y - dy * scale)) };
   drawMap();
 });
@@ -196,10 +201,10 @@ $('world').addEventListener('keydown', e => {
   }
 });
 $('zoom-in').onclick = () => { zoom = Math.min(1.8, Math.round((zoom + .2) * 10) / 10); drawMap(); };
-$('zoom-out').onclick = () => { zoom = Math.max(.8, Math.round((zoom - .2) * 10) / 10); drawMap(); };
+$('zoom-out').onclick = () => { zoom = Math.max(.6, Math.round((zoom - .2) * 10) / 10); drawMap(); };
 $('center').onclick = () => { ({ zoom, center } = homeCamera()); drawMap(); };
 function guide(intro = false) {
-  show(`<span class="section-label">UN MONDE À HABITER, PAS À CONQUÉRIR</span><h2>${intro ? 'Votre colonie commence<br>par un premier geste.' : 'Le guide des pionniers'}</h2><p>Bienvenue sur Kepler. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">${intro ? 'Fonder ma colonie →' : 'Revenir sur Kepler →'}</button>`);
+  show(`<span class="section-label">UN MONDE À HABITER, PAS À CONQUÉRIR</span><h2>${intro ? 'Une planète inconnue.<br>Votre prochain foyer.' : 'Le guide des pionniers'}</h2><p>Votre planète est générée à partir d’un numéro unique. Le bouton « Nouvelle planète » permet de choisir un autre terrain et un biome. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">${intro ? 'Fonder ma colonie →' : 'Revenir sur Kepler →'}</button>`);
   $('begin').onclick = () => { close(); save(); };
 }
 $('guide').onclick = () => guide();
@@ -232,12 +237,32 @@ $('settings').onclick = () => {
     } catch { say('Import impossible : choisissez un fichier JSON de sauvegarde NÉON valide. Votre colonie est conservée.'); }
   };
   $('back').onclick = close;
-  $('reset').onclick = () => {
-    show('<span class="section-label">NOUVELLE EXPÉDITION</span><h2>Repartir du premier jour ?</h2><p>Les bâtiments et les réserves de cette colonie seront effacés sur cet appareil.</p><button class="primary" id="confirm-reset">Oui, recommencer</button> <button id="keep">Garder ma colonie</button>');
-    $('keep').onclick = close;
-    $('confirm-reset').onclick = () => { state = fresh(); moving = null; selected = '5,5'; chosen = null; placing = null; ({ zoom, center } = homeCamera()); save(); render(); close(); say('Un nouveau départ. Commençons par quelques prélèvements autour du module.'); };
-  };
+  $('reset').onclick = newWorld;
 };
+function newWorld() {
+  let candidate = fresh();
+  show(`<span class="section-label">CARTOGRAPHIE ORBITALE</span><h2>Votre prochain monde.</h2><p>Découvrez un nouveau terrain. Le même numéro et le même biome donnent toujours la même carte.</p><div class="world-form"><label>Biome<select id="biome">${Object.entries(BIOMES).map(([key,b]) => `<option value="${key}">${b.name}</option>`).join('')}</select></label><label>Numéro du monde<input id="world-seed" type="number" min="0" max="4294967295" step="1" value="${candidate.world.seed}"></label></div><div id="world-preview" aria-hidden="true"></div><p class="planet-summary" id="world-summary"></p><button id="reroll">↻ Autre planète</button><p>Fonder une nouvelle colonie remplacera la progression actuelle. Vous pouvez d’abord l’exporter depuis les options.</p><button class="primary" id="land">Fonder cette colonie</button> <button id="stay">Garder ma colonie</button>`);
+  const preview = () => {
+    const input = $('world-seed');
+    const valid = input.value !== '' && input.checkValidity() && Number.isInteger(Number(input.value));
+    $('land').disabled = !valid;
+    if (!valid) { $('world-summary').textContent = 'Saisissez un entier entre 0 et 4 294 967 295.'; return; }
+    candidate = fresh(Date.now(), Number(input.value), $('biome').value);
+    $('world-preview').innerHTML = renderMap(candidate, { zoom: .8, idPrefix: 'preview' });
+    $('world-summary').textContent = `${worldOf(candidate).filter(t => t.terrain !== 'water' && !t.node).length - 1} terrains libres · 20 gisements renouvelables · zone d’atterrissage dégagée`;
+  };
+  $('world-seed').oninput = preview; $('biome').onchange = preview;
+  $('reroll').onclick = () => { $('world-seed').value = randomSeed(); preview(); };
+  $('stay').onclick = close;
+  $('land').onclick = () => {
+    if ($('land').disabled) return;
+    state = fresh(Date.now(), candidate.world.seed, candidate.world.biome);
+    selected = '5,5'; chosen = placing = moving = null; ({ zoom, center } = homeCamera());
+    save(); render(); close(); say('Atterrissage réussi. Explorez les gisements et construisez votre nouvelle colonie.');
+  };
+  preview();
+}
+$('new-world').onclick = newWorld;
 $('sound').onclick = async () => {
   try {
     if (!audio) {

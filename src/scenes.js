@@ -1,104 +1,100 @@
-import { WORLD, BUILDINGS, RESOURCES, canPlace, population } from './engine.js?v=3.2.0';
-export const project = (x, y) => ({ x: 550 + (x - y) * 44, y: 180 + (x + y) * 23 });
-const diamond = '0,-23 44,0 0,23 -44,0';
-const polygon = (points, fill, extra = '') => `<polygon points="${points}" fill="${fill}" ${extra}/>`;
-function base() {
-  return `<ellipse cy="12" rx="43" ry="22" fill="#122e3540"/>${polygon('-35,-4 0,-22 35,-4 0,14','#adc2b5')}${polygon('-35,-4 0,14 0,22 -35,4','#6d9290')}${polygon('0,14 35,-4 35,4 0,22','#527b7d')}`;
+import { BUILDINGS, RESOURCES, canPlace, population, worldOf } from './engine.js?v=4.0.0';
+import { BIOMES } from './world.js?v=4.0.0';
+export const project = (x, y) => ({ x: 550 + (x - y) * 40, y: 170 + (x + y) * 22 });
+const diamond = '0,-22 40,0 0,22 -40,0';
+const poly = (points, fill, attrs='') => `<polygon points="${points}" fill="${fill}" ${attrs}/>`;
+function block(x,y,w,d,h,color='#dae5ee',roof='#f3f5ee',side='#819eae') {
+  return `<g transform="translate(${x} ${y})">${poly(`-${w},0 0,${d} 0,${d-h} -${w},-${h}`,color)}${poly(`0,${d} ${w},0 ${w},-${h} 0,${d-h}`,side)}${poly(`-${w},-${h} 0,-${d+h} ${w},-${h} 0,${d-h}`,roof)}<path d="M-${w} -${h}L0 ${d-h}L${w} -${h}" fill="none" stroke="#fff" stroke-opacity=".45"/></g>`;
 }
-function box(x, y, w, h, color = '#dedfc5') {
-  return `<g transform="translate(${x} ${y})">${polygon(`-${w},0 0,${w/2} 0,${w/2-h} -${w},-${h}`,color)}${polygon(`0,${w/2} ${w},0 ${w},-${h} 0,${w/2-h}`,'#8ea8a1')}${polygon(`-${w},-${h} 0,-${w/2+h} ${w},-${h} 0,${w/2-h}`,'#e9e9d3')}</g>`;
+function windows(x,y,n=3) {
+  return Array.from({length:n},(_,i)=>`<path d="M${x+i*6} ${y+i*3}v7l4 2v-7Z" fill="#132b45"/><path d="M${x+i*6+.8} ${y+i*3+1}l2.4 1.2v3l-2.4 -1.2Z" fill="#8de8ed"/>`).join('');
 }
-function tree(x=0, y=0, k=1, tint='#83bfa2') {
-  return `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="4" rx="20" ry="10" fill="#193d4640"/><path d="M0 4V-40M0 -15L-13 -29M0 -25L13 -38" fill="none" stroke="#476b66" stroke-width="5"/><path d="M-24 -37Q-31 -58 -10 -62Q5 -84 21 -63Q43 -43 20 -34Q-3 -26 -24 -37" fill="${tint}"/><path d="M-24 -37Q-10 -47 16 -43L23 -34Q-5 -25 -24 -37" fill="#4e9188"/><path d="M-12 -59Q0 -68 10 -60" stroke="#c2e1b4" stroke-width="3" fill="none" opacity=".6"/></g>`;
+const pad = () => `<ellipse cy="10" rx="40" ry="21" fill="#061e34" opacity=".3"/>${block(0,0,34,18,5,'#516778','#a1b8bc','#304c63')}<path d="M-29 -4L0 11L29 -4" fill="none" stroke="#8ff4df" stroke-width="1.5"/>`;
+function dish(x,y) { return `<g transform="translate(${x} ${y})"><path d="M0 0V-15" stroke="#a8c3d4" stroke-width="2"/><path d="M-9 -20Q0 -7 9 -20Z" fill="#eef6f1"/><path d="M0 -15L3 -24" stroke="#e6bd72" stroke-width="1.5"/></g>`; }
+function tree(x,y,scale=1,leaf='#70c9a0') {
+  return `<g transform="translate(${x} ${y}) scale(${scale})"><ellipse cy="4" rx="15" ry="7" fill="#102c42" opacity=".24"/><path d="M0 2V-35M0 -16L-9 -26M0 -12L9 -22" stroke="#596a70" stroke-width="3"/>${poly('-19,-22 0,-60 20,-22 0,-10',leaf)}${poly('0,-60 20,-22 0,-10','#346b75','opacity=".45"')}${poly('-13,-36 0,-60 5,-38','#d2ffde','opacity=".4"')}<circle cx="-8" cy="-27" r="1.5" fill="#e2ffc6"/></g>`;
 }
-function crystal(x=0,y=0,k=1) {
-  return `<g transform="translate(${x} ${y}) scale(${k})">${polygon('-10,-4 -14,-35 0,-60 12,-38 10,-6 0,0','#9a87c5')}${polygon('0,-60 12,-38 10,-6 0,0','#b5a4e1')}${polygon('0,-60 -14,-35 -10,-4 0,0','#786ca8')}${polygon('0,-60 12,-38 0,-30 -14,-35','#e0ccf2')}</g>`;
+function crystal(x,y,scale=1) {
+  return `<g transform="translate(${x} ${y}) scale(${scale})"><ellipse cy="2" rx="14" ry="6" fill="#be7aff" opacity=".18"/>${poly('-10,0 -12,-25 0,-48 12,-25 9,0 0,6','#9d70df')}${poly('0,-48 12,-25 9,0 0,6','#d6b3ff')}${poly('0,-48 -12,-25 0,-17','#f3d9ff')}<path d="M0 -17V6" stroke="#f3d9ff" stroke-width="1.5"/></g>`;
 }
-export function buildingSymbol(type, level=1) {
-  let art=base();
-  if(type==='pod'||type==='habitat') {
-    art+=box(0,0,28,29+level*4);
-    art+=`<path d="M-25 -26L-4 -15V-5L-25 -16Z" fill="#467c8c"/><path d="M5 -15L24 -25V-16L5 -6Z" fill="#285a6b"/><path d="M-21 -23L-7 -16" stroke="#a9e6dc" stroke-width="2"/><path d="M8 -15L20 -21" stroke="#a9e6dc" stroke-width="2"/>`;
-    art+=polygon('-19,-36 0,-46 19,-36 0,-26',type==='pod'?'#d4ac7d':'#83aaa6');
-    art+=`<path d="M-6 -33L6 -39" stroke="#faf2d5" stroke-width="3"/>`;
-    if(level>1)art+=box(19,-9,10,39);
-    if(level>2)art+=`<path d="M-18 -39V-66" stroke="#b3c8b7" stroke-width="2"/><circle cx="-18" cy="-67" r="3" fill="#f6dc9b"/>`;
+export function buildingSymbol(type,level=1) {
+  let art = pad();
+  if (type === 'pod') {
+    art += block(0,-3,27,14,28,'#d8e2e5','#f1e9cc','#7695ac') + windows(-23,-24,3);
+    art += `<path d="M4 -12l17 -9v12L4 0Z" fill="#183954"/><path d="M9 -11l8 -4v8l-8 4Z" fill="#65d6e3"/>`;
+    art += block(-3,-33,16,8,5,'#c28e57','#ffd08a','#a1754c') + dish(18,-31);
+    art += `<path d="M-25 -18l-6 3v15l6 -3Z" fill="#7aa9ab"/><path d="M-31 -13v8" stroke="#80f5d5" stroke-width="2"/>`;
   }
-  if(type==='solar') {
-    art+=`<path d="M-16 3V-27M18 3V-44" stroke="#adc7bb" stroke-width="4"/>`;
-    art+=polygon('-38,-27 11,-52 39,-38 -10,-13','#284c63','stroke="#a3c6bd" stroke-width="2"');
-    art+=`<path d="M-26 -33L2 -19M-14 -39L14 -25M-2 -45L26 -31M-24 -20L25 -45" stroke="#82bfc9" stroke-width="1.3"/><path d="M-34 -28L10 -50" stroke="#caede0" stroke-width="2"/>`;
-    if(level>1)art+=box(22,9,9,17);
-    if(level>2)art+=`<path d="M-27 7V-10L-12 -18" stroke="#dcdfbc" stroke-width="3"/><circle cx="-12" cy="-18" r="4" fill="#f7d784"/>`;
+  if(type === 'habitat') {
+    art += block(0,-3,26,14,26+level*10,'#b7d8df','#ecf4ed','#6d9aad');
+    for(let i=0;i<level;i++) art += windows(-23,-24-i*10,4);
+    art += `<path d="M5 -10l16 -8v12L5 2Z" fill="#16384a"/>`;
+    art += block(0,-32-level*10,19,10,5,'#50a3a6','#8be1cb','#307f92');
+    art += `<path d="M7 -${29+level*10}l12 -6v8l-12 6Z" fill="#c2fff1" opacity=".6"/>`;
+    art += tree(27,5,.27,'#b1de8a');
   }
-  if(type==='pump') {
-    art+=`<path d="M-24 -10V-39Q-24 -52 -8 -52Q8 -52 8 -39V-10Z" fill="#7db3b8"/><ellipse cx="-8" cy="-39" rx="16" ry="9" fill="#cbe2d1"/><ellipse cx="-8" cy="-10" rx="16" ry="9" fill="#578f9b"/><path d="M-19 -34V-15M-13 -32V-13" stroke="#b7e6de" stroke-width="2"/><path d="M8 -28H22V2" stroke="#a9c6b8" stroke-width="6" fill="none"/>`;
-    if(level>1)art+=`<path d="M15 -5V-29" stroke="#9ac7c7" stroke-width="12"/><ellipse cx="15" cy="-29" rx="6" ry="4" fill="#dae7d0"/>`;
-    if(level>2)art+=`<path d="M-8 -46V-67M-23 -62H7" stroke="#d3debc" stroke-width="3"/>`;
+  if(type === 'solar') {
+    art += block(0,3,14,7,9,'#a8b7b6','#e6e9cd','#637e98');
+    for(let i=0;i<(level>1?2:1);i++) {
+      const y=-15-i*22,x=i?12:-6;
+      art += `<g transform="translate(${x} ${y})"><path d="M0 15V-5" stroke="#adc3cc" stroke-width="4"/>${poly('-28,-7 7,-25 31,-13 -4,5','#183a67','stroke="#98d7ec" stroke-width="2"')}<path d="M-19 -12L5 0M-10 -17L14 -5M-1 -21L23 -9M-16 -1L19 -19" stroke="#56b8e8" stroke-width="1"/>${poly('-28,-7 7,-25 18,-20 -17,-2','#8cecff','opacity=".16"')}</g>`;
+    }
+    if(level===3) art+=block(-23,3,8,4,18,'#ddc98a','#fff0ad','#9d9772');
   }
-  if(type==='greenhouse') {
-    art+=`<path d="M-31 0V-12A31 37 0 0 1 62 0V0Z" transform="translate(-15 0) scale(.67 1)" fill="#75bca7"/>`;
-    art+=`<path d="M-31 0A31 39 0 0 1 31 0Q0 22 -31 0Z" fill="#8ac9b2" fill-opacity=".65" stroke="#d0e6c4" stroke-width="2"/>`;
-    art+=tree(-8,-2,.42,'#c6d99c');
-    art+=`<path d="M0 -39V11M0 -39Q-22 -18 -17 7M0 -39Q22 -18 17 7M-29 -13Q0 2 29 -13" fill="none" stroke="#daebc7" stroke-width="1.5" opacity=".7"/>`;
-    if(level>1)art+=tree(18,7,.35,'#d2de9f');
-    if(level>2)art+=tree(-26,6,.3,'#debdb5');
+  if(type === 'pump') {
+    art += `<path d="M-25 -8V-42h31v34" fill="#a8dbe3"/><ellipse cx="-9.5" cy="-42" rx="15.5" ry="8" fill="#ecf9ee"/><ellipse cx="-9.5" cy="-8" rx="15.5" ry="8" fill="#519bb1"/><path d="M-20 -35v20M-14 -32v20" stroke="#e4fffa" stroke-width="3"/><path d="M6 -30h17v28" fill="none" stroke="#557a92" stroke-width="8"/><path d="M6 -32h17v28" fill="none" stroke="#b3d5d9" stroke-width="4"/>`;
+    art += `<path d="M-20 -18Q-10 -12 1 -18v8q-11 7 -21 0Z" fill="#45dfe7" opacity=".8"/>`;
+    if(level>1)art += block(22,6,9,5,22,'#a5c9d4','#e3eee6','#6b9fb7');
+    if(level>2)art += dish(-9,-46);
   }
-  if(type==='mine') {
-    art+=box(-8,0,19,24);
-    art+=`<path d="M10 -4L23 -49L39 -41L25 10Z" fill="#799b96"/><path d="M23 -49L39 -41L28 -34L13 -42Z" fill="#d9d9ba"/><path d="M19 -33L30 -27M16 -22L27 -16" stroke="#dfbd87" stroke-width="4"/><path d="M-21 -13L-7 -6" stroke="#9be4cf" stroke-width="4"/>`;
-    if(level>1)art+=crystal(-28,8,.3);
-    if(level>2)art+=crystal(-13,17,.25);
+  if(type === 'greenhouse') {
+    art += `<path d="M-30 0Q-33 -46 0 -50Q33 -46 30 0Q0 25 -30 0" fill="#55beae" fill-opacity=".65" stroke="#c4f7d6" stroke-width="2"/>`;
+    art += tree(-13,-1,.45,'#def2a1')+tree(10,3,.55,'#9cecbd');
+    art += `<path d="M0 -50V15M0 -50Q-22 -23 -18 9M0 -50Q22 -23 18 9M-29 -18Q0 -1 29 -18" fill="none" stroke="#ddffe5" stroke-opacity=".65" stroke-width="1.5"/><path d="M-23 -28Q-19 -39 -7 -43" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".4"/>`;
+    if(level>1)art+=block(26,6,8,4,12,'#b9d7b4','#edf1bd','#7ca69c');
+    if(level>2)art+=tree(-29,7,.35,'#ebd3a5');
   }
-  if(type==='beacon') {
-    art+=box(0,0,22,17);
-    art+=`<path d="M-7 -16L-4 -85H4L7 -16Z" fill="#cad8c5"/><ellipse cy="-72" rx="26" ry="15" fill="none" stroke="#a6d7c5" stroke-width="5" transform="rotate(-28 0 -72)"/><path d="M0 -90L8 -73L0 -57L-8 -73Z" fill="#edda9f"/><circle cy="-108" r="4" fill="#f6e4b2"/><g class="beacon-waves" stroke="#cae7c3" fill="none" opacity=".4"><ellipse cy="-108" rx="15" ry="7"/><ellipse cy="-108" rx="25" ry="12"/></g>`;
+  if(type === 'mine') {
+    art += block(-10,-2,18,10,24,'#b5b9c8','#e2d4ba','#757f9a')+windows(-25,-22,2);
+    art += `<path d="M5 3L17 -57L29 -51L19 10Z" fill="#dcaf64"/><path d="M17 -57L29 -51L23 -43L11 -49Z" fill="#ffe6a4"/><path d="M12 -35l12 6M9 -22l12 6" stroke="#786d67" stroke-width="5"/><path d="M26 -49v35l-5 7" stroke="#a5b9c9" stroke-width="3"/>`;
+    art += crystal(-23,9,.35);if(level>1)art+=crystal(27,12,.45);if(level>2)art+=dish(-10,-28);
   }
-  return art;
+  if(type === 'beacon') {
+    art += block(0,-1,25,13,12,'#c6d1dd','#e5edf2','#7e8ba6');
+    art += `<path d="M-10 -10L-5 -89h10l5 79Z" fill="#8e9ab9"/><path d="M-5 -89H0v84l-10 -5Z" fill="#e0e6ed"/><path d="M0 -83v65" stroke="#8ffff0" stroke-width="3"/><ellipse cy="-66" rx="24" ry="10" fill="none" stroke="#e5cc91" stroke-width="4"/><ellipse cy="-85" rx="16" ry="7" fill="none" stroke="#b4ebec" stroke-width="3"/><circle cy="-100" r="6" fill="#dcfff4"/><g class="beacon-waves" fill="none" stroke="#8fffe7"><ellipse cy="-100" rx="25" ry="11"/><ellipse cy="-100" rx="37" ry="17" opacity=".4"/></g>`;
+  }
+  return `<g class="structure">${art}</g>`;
 }
-function nodeArt(tile) {
-  if(tile.node==='bio')return tree(-10,3,.8)+tree(17,7,.56,'#b9c995');
-  if(tile.node==='crystal')return crystal(-10,3,.7)+crystal(15,7,.48)+`<ellipse cy="7" rx="27" ry="10" fill="#c4a6ed" opacity=".1"/>`;
-  if(tile.node==='ore')return polygon('-31,2 -25,-15 -7,-25 9,-11 10,8 -10,15','#a6aaa0')+polygon('-25,-15 -7,-25 9,-11 -9,-5','#d5c8ac')+polygon('8,7 12,-16 25,-22 34,-6 27,13','#818f8b')+polygon('12,-16 25,-22 34,-6 22,-1','#c6bfa8');
-  if(tile.node==='water')return `<g stroke="#b2e6d7" fill="none"><ellipse cy="-2" rx="26" ry="10" opacity=".45"/><ellipse cy="-2" rx="13" ry="5" opacity=".7"/></g><path d="M0 -25Q-14 -11 0 -9Q14 -11 0 -25" fill="#c0f0e0" opacity=".7"/>`;
+function nature(t,palette) {
+  if(t.node==='bio') return tree(-14,2,.85,palette.leaf)+tree(16,7,.65,palette.leaf)+tree(1,12,.42,palette.leaf);
+  if(t.node==='crystal') return crystal(-12,0,.8)+crystal(14,8,.6)+crystal(-2,12,.4);
+  if(t.node==='ore') return poly('-29,1 -23,-17 -8,-28 8,-17 11,5 -9,14','#788caa')+poly('-23,-17 -8,-28 8,-17 -9,-7','#c8d5e0')+poly('5,6 12,-12 25,-20 35,-3 25,13','#9aabbb')+`<path d="M-18 -9l10 -5M14 -6l8 -5" stroke="#ffdb9b" stroke-width="3"/>`;
+  if(t.node==='water') return `<g class="water-source"><ellipse cy="1" rx="24" ry="10" fill="#8bf7ed" opacity=".15"/><ellipse cy="1" rx="18" ry="7" fill="none" stroke="#9af8ee" opacity=".6"/><path d="M0 -28Q-17 -10 0 -7Q17 -10 0 -28" fill="#bcfff6"/><path d="M-3 -18q-4 5 0 6" stroke="#fff" fill="none" stroke-width="2"/></g>`;
   return '';
 }
-export function renderMap(state, { selection=null, placing=null, zoom=1, center={x:550,y:410} }={}) {
+export function renderMap(state,{selection=null,placing=null,zoom=1,center={x:550,y:390},idPrefix='world'}={}) {
+  const theme=BIOMES[state.world?.biome]||BIOMES.emerald;
+  const tiles=[...worldOf(state)].sort((a,b)=>a.x+a.y-b.x-b.y||a.x-b.x);
   const buildings=Object.fromEntries(state.buildings.map(b=>[b.id,b]));
-  const width=1100/zoom,height=800/zoom;
-  const view=`${center.x-width/2} ${center.y-height/2} ${width} ${height}`;
+  const tileMap=Object.fromEntries(tiles.map(t=>[t.id,t]));
   let ground='',objects='';
-  const tiles=[...WORLD].sort((a,b)=>a.x+a.y-b.x-b.y||a.x-b.x);
   for(const t of tiles) {
-    const p=project(t.x,t.y),b=buildings[t.id];
-    const palette=t.terrain==='water'?['#639e9e','#629695']:t.terrain==='sand'?['#9da991','#a6b298']:['#799b87','#83a48e','#8bab94'];
-    let color=palette[(t.x*3+t.y*7)%palette.length];
-    if((t.x===5||t.y===5)&&!t.node&&!b)color='#a8b39c';
-    const side=polygon('-44,0 0,23 0,42 -44,19','#4b736d')+polygon('0,23 44,0 44,19 0,42','#365e60');
-    const placeable=placing&&canPlace(state,t.id);
-    const label=b?`${BUILDINGS[b.type].name}, niveau ${b.level}`:t.node?`Collecter : ${RESOURCES[t.node].name}`:'Terrain libre';
-    const interactive=b||t.node||placeable;
-    ground+=`<g transform="translate(${p.x} ${p.y})">${side}${polygon(diamond,color)}<path d="M-44 0L0 -23L44 0" fill="none" stroke="#d0dec029" stroke-width="1"/></g>`;
+    const p=project(t.x,t.y),b=buildings[t.id],variant=t.variant??((t.x*7+t.y*13)%1000);
+    const water=t.terrain==='water';
+    const color=water?'transparent':t.terrain==='sand'?theme.sand:theme.grass[Math.abs(variant)%3];
+    const available=placing&&canPlace(state,t.id);
+    const label=b?`${BUILDINGS[b.type].name}, niveau ${b.level}`:t.node?`${RESOURCES[t.node].name} · collecter`:'Terrain disponible';
+    const coast=!water&&[[1,0],[0,1],[-1,0],[0,-1]].some(([dx,dy])=>tileMap[`${t.x+dx},${t.y+dy}`]?.terrain==='water');
+    ground+=`<g transform="translate(${p.x} ${p.y})">${!water?poly('-40,0 0,22 0,32 -40,10','#3b5968')+poly('0,22 40,0 40,10 0,32','#293e58'):''}${poly(diamond,color)}${coast?`<path d="M-38 1L0 22L38 1" fill="none" stroke="${theme.sand}" stroke-width="3"/>`:''}${water?`<path class="water-line" d="M-20 1l12 6m13 -11 12 6" stroke="#b1f4ed" opacity="${variant%3===0?.22:.06}" fill="none"/>`:poly('-40,0 0,-22 0,0', '#fff','opacity=".035"')}</g>`;
     let detail='';
-    if(!b&&!t.node&&t.terrain==='grass'&&(t.x*5+t.y)%4===0)detail=`<path d="M-15 1l-3 -7m3 7l4 -5M17 8l2 -6" stroke="#cee0b270" stroke-width="1.5"/>`;
-    objects+=`<g class="tile ${selection===t.id?'selected':''} ${placeable?'buildable':''} ${placing&&!placeable?'unavailable':''}" ${placing ? `data-object="${t.id}" pointer-events="none" aria-hidden="true"` : `data-tile="${t.id}" ${t.node ? `data-node="${t.id}"` : ''}`} transform="translate(${p.x} ${p.y})" role="button" tabindex="${!placing && interactive?0:-1}" aria-label="${label}" ${placing&&!placeable?'aria-disabled="true"':''}><polygon class="hit" points="${diamond}" fill="transparent"/>${detail}${t.node?nodeArt(t):''}${b?buildingSymbol(b.type,b.level):''}${placeable?'<path class="place-mark" d="M-7 0H7M0 -5V5" stroke="#e4f3c3" stroke-width="2"/>':''}<polygon class="outline" points="${diamond}" fill="none" stroke="#e6edbc" stroke-width="2"/>${b&&b.type!=='pod'?`<g class="level"><rect x="-10" y="21" width="20" height="12" rx="5" fill="#244748"/><text x="0" y="30" text-anchor="middle" fill="#d5e7be" font-size="8" font-family="Arial">${'I'.repeat(b.level)}</text></g>`:''}<title>${label}${t.node?' · '+(t.node==='crystal'?3:5)+' par collecte':''}</title></g>`;
+    if(!water&&!b&&!t.node) {
+      if(variant%4===0) detail=`<path d="M-18 3l-2 -6m2 6 4 -4M17 6l3 -5" stroke="${theme.leaf}" stroke-width="2" opacity=".8"/>`;
+      if(variant%7===0)detail+=`<circle cx="-10" cy="-4" r="2" fill="#f8d7b0"/><circle cx="-5" cy="-1" r="1.5" fill="#f0bcd8"/>`;
+    }
+    objects+=`<g class="tile ${selection===t.id?'selected':''} ${available?'buildable':''}" transform="translate(${p.x} ${p.y})" ${placing?'pointer-events="none" aria-hidden="true"':`data-tile="${t.id}" ${t.node?`data-node="${t.id}"`:''} role="button" tabindex="${b||t.node?0:-1}" aria-label="${label}"`}><polygon class="hit" points="${diamond}" fill="transparent"/>${detail}${nature(t,theme)}${b?buildingSymbol(b.type,b.level):''}<polygon class="outline" points="${diamond}" fill="none" stroke="#c7ffdb" stroke-width="2"/>${b?`<g class="level"><rect x="-14" y="20" width="28" height="14" rx="7" fill="#102435" stroke="#73d9c5" stroke-opacity=".4"/><text y="30" text-anchor="middle" fill="#d6ffed" font-size="9" font-family="Arial">${'I'.repeat(b.level)}</text></g>`:''}</g>`;
   }
-  // Placement hit areas sit above tall sprites so adjacent structures cannot
-  // intercept a click on an otherwise free footprint.
-  const placementOverlay = placing ? tiles.map(t => {
-    const p = project(t.x, t.y), available = canPlace(state, t.id);
-    return `<g class="tile ${available ? 'buildable' : 'unavailable'}" data-tile="${t.id}" transform="translate(${p.x} ${p.y})" role="button" tabindex="${available ? 0 : -1}" aria-label="${available ? 'Construire ici' : 'Terrain indisponible'}" aria-disabled="${!available}"><polygon class="hit" points="${diamond}" fill="transparent"/><polygon class="outline" points="${diamond}" fill="none" stroke="#e6edbc" stroke-width="2"/></g>`;
-  }).join('') : '';
-  const walkers = tiles.filter(t => (t.x === 5 || t.y === 5) && !t.node && !buildings[t.id]).slice(0, Math.min(8, Math.ceil(population(state) / 3))).map((t, i) => {
-    const p = project(t.x, t.y);
-    return `<g transform="translate(${p.x + 12} ${p.y + 3})" pointer-events="none"><ellipse cy="3" rx="5" ry="2.5" fill="#244e4b44"/><path d="M-2 1V-5M2 1V-5" stroke="#365b61" stroke-width="2"/><rect x="-3" y="-12" width="6" height="8" rx="2" fill="${i % 2 ? '#d8b58b' : '#d8e2c8'}"/><circle cy="-15" r="4" fill="#e5e8d0"/><path d="M-2 -15H2" stroke="#5c9ea8" stroke-width="2"/></g>`;
-  }).join('');
-  const roads = tiles.filter(t => !t.node && t.terrain !== 'water' && (t.x === 5 || t.y === 5)).map(t => {
-    const p = project(t.x, t.y);
-    return `<g transform="translate(${p.x} ${p.y})" pointer-events="none"><path d="M-30 -15L30 15M-30 15L30 -15" stroke="#dfd2a3" stroke-width="9" opacity=".22"/><circle cx="-32" cy="0" r="2" fill="#ffe9b1"/></g>`;
-  }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view}" aria-label="Carte de Première Aube" role="group"><defs><filter id="soft-glow"><feGaussianBlur stdDeviation="5"/></filter><radialGradient id="island-glow"><stop stop-color="#acc6a5" stop-opacity=".12"/><stop offset="1" stop-color="#acc6a5" stop-opacity="0"/></radialGradient></defs><ellipse cx="550" cy="480" rx="500" ry="300" fill="url(#island-glow)"/><ellipse cx="550" cy="507" rx="370" ry="178" fill="#061d2440"/>${ground}${roads}${objects}${walkers}<g pointer-events="none" class="atmosphere"><ellipse cx="350" cy="290" rx="150" ry="30" fill="#e6f9ed" opacity=".07" filter="url(#soft-glow)"/><ellipse cx="760" cy="540" rx="200" ry="25" fill="#e6f9ed" opacity=".06" filter="url(#soft-glow)"/></g>${placementOverlay}<g class="drone" transform="translate(558 300)" pointer-events="none"><ellipse cy="70" rx="12" ry="5" fill="#193b3b30"/><g class="drone-float"><ellipse rx="12" ry="6" fill="#e6e8ce"/><path d="M-7 0H7" stroke="#86c9c3" stroke-width="3"/><path d="M-18 -3H-11M11 -3H18" stroke="#c5d6c0" stroke-width="2"/></g></g></svg>`;
+  const overlay=placing?tiles.filter(t=>canPlace(state,t.id)).map(t=>{const p=project(t.x,t.y);return `<g class="tile buildable" data-tile="${t.id}" transform="translate(${p.x} ${p.y})" role="button" tabindex="0" aria-label="Choisir cet emplacement"><polygon class="hit" points="${diamond}"/><path d="M-6 0H6M0 -4V4" stroke="#c7ffe0" stroke-width="2"/><polygon class="outline" points="${diamond}" fill="none" stroke="#e9ffc8" stroke-width="2"/></g>`;}).join(''):'';
+  const people=tiles.filter(t=>t.terrain!=='water'&&!t.node&&!buildings[t.id]&&Math.abs(t.x-5)+Math.abs(t.y-5)<5).slice(0,Math.min(12,Math.ceil(population(state)/3))).map((t,i)=>{const p=project(t.x,t.y);return `<g transform="translate(${p.x} ${p.y})" pointer-events="none"><g class="colonist" style="animation-delay:-${i}s"><ellipse cy="4" rx="4" ry="2" fill="#11263e" opacity=".4"/><path d="M-2 2v-5m4 5v-5" stroke="#273950" stroke-width="2"/><rect x="-3" y="-10" width="6" height="7" rx="2" fill="${i%2?'#ffd5a1':'#e5f5eb'}"/><circle cy="-13" r="3.5" fill="#eff9f6"/><path d="M-2 -13h4" stroke="#329db5" stroke-width="2"/></g></g>`;}).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${center.x-550/zoom} ${center.y-390/zoom} ${1100/zoom} ${780/zoom}" role="group" aria-label="Carte de la colonie"><defs><radialGradient id="ocean-light"><stop stop-color="${theme.water}"/><stop offset="1" stop-color="${theme.deep}"/></radialGradient><filter id="mist"><feGaussianBlur stdDeviation="8"/></filter></defs><rect x="-2000" y="-2000" width="5000" height="5000" fill="${theme.deep}"/><ellipse cx="550" cy="390" rx="900" ry="600" fill="url(#ocean-light)"/><g class="ocean-rings" fill="none" stroke="#77dce3" opacity=".08"><ellipse cx="550" cy="430" rx="540" ry="290"/><ellipse cx="550" cy="430" rx="590" ry="320"/></g>${ground}${objects}${people}<g class="atmosphere" pointer-events="none" fill="#d7f6f7" filter="url(#mist)" opacity=".1"><ellipse cx="250" cy="270" rx="110" ry="22"/><ellipse cx="800" cy="580" rx="170" ry="20"/></g>${overlay}</svg>`.replaceAll('ocean-light', `${idPrefix}-ocean-light`).replaceAll('id="mist"', `id="${idPrefix}-mist"`).replaceAll('url(#mist)', `url(#${idPrefix}-mist)`);
 }
-export function buildingPreview(type) {
-  return `<svg viewBox="-58 -122 116 160" aria-hidden="true">${buildingSymbol(type,type==='habitat'?2:1)}</svg>`;
-}
+export function buildingPreview(type) { return `<svg viewBox="-55 -122 110 158" aria-hidden="true">${buildingSymbol(type,type==='habitat'?2:1)}</svg>`; }

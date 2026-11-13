@@ -4,6 +4,16 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 
 **https://jdrye.github.io/neon/**
 
+## Version 4 — Mondes procéduraux et nouvelle direction graphique
+
+L’interface et les sept illustrations de bâtiments ont été redessinées : architecture spatiale, verrières, panneaux solaires, végétation facettée, rivages, eau, colons animés et grandes cartes de construction. Le rendu reste en SVG natif, sans moteur externe ni téléchargement d’assets.
+
+- Chaque nouvelle partie génère une carte de 15 × 15 cases avec un littoral, un étang et des ressources placées aléatoirement.
+- **Nouvelle planète** ouvre un aperçu : choisissez Émeraude, Ambre ou Boréale, tirez une autre carte ou saisissez un numéro entre 0 et 4 294 967 295.
+- La terre est connectée, la zone centrale est dégagée et cinq gisements de chaque ressource naturelle sont disponibles. Les biomes modifient l’ambiance visuelle, pas les règles économiques.
+- Le numéro, le biome et la version du générateur sont enregistrés. Recharger ou importer une sauvegarde restitue exactement la carte. Les anciennes sauvegardes conservent le terrain historique et leurs constructions.
+- Examiner d’autres planètes ne modifie pas la partie. **Fonder cette colonie** remplace la progression après l’avertissement affiché ; exportez votre sauvegarde si vous souhaitez la conserver.
+
 ## Collecter, construire, faire grandir
 
 - Une carte isométrique SVG originale, avec déplacement par glissement, zoom et recentrage.
@@ -36,7 +46,7 @@ Dans les options (⚙), exportez votre colonie en fichier JSON pour la conserver
 
 La production hors ligne est créditée au retour, dans la limite de 30 minutes. Si le stockage est bloqué, la session reste jouable. Recommencer demande confirmation.
 
-Les ressources et bâtiments sont accessibles au clavier (Tab, Entrée ou Espace). Échap ferme les fenêtres ou annule un placement. Sur mobile, la caméra est rapprochée au départ ; le glissement déplace la carte. Une fiche permet aussi de collecter la ressource sélectionnée. Les animations suivent la préférence système de réduction des mouvements. Son d’ambiance synthétisé, facultatif, désactivé au chargement et suspendu lorsque l’onglet est masqué.
+Les ressources et bâtiments sont accessibles au clavier (Tab, Entrée ou Espace). Échap ferme les fenêtres ou annule un placement. Sur mobile, la caméra montre le terrain au départ ; le glissement déplace la carte. Une fiche permet aussi de collecter la ressource sélectionnée. Les animations suivent la préférence système de réduction des mouvements. Son d’ambiance synthétisé, facultatif, désactivé au chargement et suspendu lorsque l’onglet est masqué.
 
 ## Développement
 
@@ -50,6 +60,7 @@ npm run dev
 ```
 
 - `src/engine.js` : économie, collecte, construction, niveaux, production et sauvegardes.
+- `src/world.js` : génération déterministe v1, biomes et numéros de mondes.
 - `src/scenes.js` : projection isométrique et illustrations SVG.
 - `src/app.js` : interface, caméra, interactions et audio.
 - `src/style.css` : présentation et adaptation mobile.
@@ -69,4 +80,6 @@ Trois recherches permanentes permettent d’investir les réserves dans la produ
 
 Après le port stellaire, débloquez les trois technologies et accueillez 28 pionniers, puis atteignez 52 pionniers avec quatre bâtiments de niveau III. Les sauvegardes antérieures reprennent avec aucune recherche acquise.
 
-La carte comporte des chemins éclairés et des brumes animées ; les animations respectent la réduction des mouvements.
+La carte comporte des rivages, des brumes et des colons animés ; les animations respectent la réduction des mouvements.
+
+Les tests procéduraux contrôlent 300 graines (connectivité, ressources, zone centrale, capacité), la reproductibilité, la migration des sauvegardes et trois parcours complets jusqu’à la métropole. Le générateur v1 doit rester immuable : toute évolution modifiant ses sorties nécessite une nouvelle version et le maintien de la lecture v1.
