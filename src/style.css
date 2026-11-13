@@ -7,3 +7,5 @@
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.world{touch-action:none}
 .dismantle{font-size:8px;color:#a9bbad;border:0;display:block;margin:12px auto 0;padding:4px}
 #mobile-population{display:none}@media(max-width:760px){#mobile-population{display:inline}}
+
+.goal-checklist{list-style:none;padding:0;margin:12px 0;font-size:11px;line-height:1.9;color:var(--muted)}.goal-checklist .done{color:var(--green)}.goal-checklist span{margin-right:5px}.production-clock{display:flex;gap:9px;align-items:center}.production-clock progress{width:64px;height:4px;accent-color:var(--green)}.tile.regenerating{opacity:.45}.move-building{width:100%;margin-top:12px;font-size:11px;color:var(--green)}

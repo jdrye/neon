@@ -1,11 +1,12 @@
-import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle } from './engine.js?v=3.0.1';
-import { renderMap, buildingPreview, project } from './scenes.js?v=3.0.1';
+import { RESOURCES, BUILDINGS, GOALS, WORLD, TILE_MAP, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY } from './engine.js?v=3.1.0';
+import { renderMap, buildingPreview, project } from './scenes.js?v=3.1.0';
 
 const $ = id => document.getElementById(id);
 const KEY = 'neon-colony-v2';
 let state = fresh(), stored = false, selected = '5,5', chosen = null, placing = null;
 const homeCamera = () => window.innerWidth <= 760 ? { zoom: 1.4, center: { x: 550, y: 340 } } : { zoom: 1, center: { x: 550, y: 410 } };
 let { zoom, center } = homeCamera();
+let moving = null;
 let audio = null, sound = false;
 try { const raw = localStorage.getItem(KEY); stored = !!raw; state = restore(raw); } catch { /* Session-only mode remains playable. */ }
 const offlineCycles = advance(state);
@@ -38,6 +39,7 @@ function drawStats() {
   $('goal-count').textContent = current < 0 ? '05 / 05' : `0${current + 1} / 05`;
   $('goal-title').textContent = goal ? goal.name : 'Une colonie parmi les étoiles';
   $('goal-text').textContent = goal ? goal.text + (current === 0 ? ` (${Math.min(5, state.harvests)}/5)` : current === 4 ? ` (${population(state)}/16 habitants)` : '') : 'Les pionniers ont trouvé leur foyer. Continuez à bâtir, améliorer et prendre soin de ce monde.';
+  $('goal-checklist').innerHTML = goalSteps(state, current).map(step => `<li class="${step.done ? 'done' : ''}"><span aria-hidden="true">${step.done ? '✓' : '○'}</span> ${step.text}</li>`).join('');
   $('goal-track').innerHTML = GOALS.map((_, i) => `<i class="${state.claimed.includes(i) ? 'done' : ''}"></i>`).join('');
   $('goal-reward').innerHTML = goal ? `RÉCOMPENSE ${Object.entries(goal.reward).map(([k, n]) => `<span>${RESOURCES[k].icon} +${n}</span>`).join('')}` : '✧ Expédition accomplie · exploration libre';
   const action = $('inspect-action');
@@ -55,7 +57,7 @@ function drawMap() {
   $('zoom-out').disabled = zoom <= .8;
   $('zoom-in').disabled = zoom >= 1.8;
   $('placement').hidden = !placing;
-  if (placing) $('placement').querySelector('span').textContent = `${BUILDINGS[placing].name} · choisissez une case claire`;
+  if (placing) $('placement').querySelector('span').textContent = `${moving ? 'Déplacer : ' : ''}${BUILDINGS[placing].name} · choisissez une case claire`;
   $('map-tip').textContent = placing ? 'Les cases illuminées sont constructibles. Le coût est débité uniquement à la pose.' : 'Cliquez pour collecter · Glissez pour explorer · + / − pour zoomer';
 }
 const shortDescription = {
@@ -79,6 +81,9 @@ function drawInspector() {
     const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : b.type === 'habitat' ? `${6 * b.level} pionniers accueillis` : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
     panel.innerHTML = `<div class="preview">${buildingPreview(b.type)}</div><span class="eyebrow">BÂTIMENT · NIVEAU ${b.level}</span><h2>${d.name}</h2><p>${d.description}</p><p class="detail">${yieldText}</p>${max ? '<p>Niveau maximal atteint.</p>' : `<span class="eyebrow">AMÉLIORATION NIVEAU ${b.level + 1}</span>${costs(upgradeCost(b))}<button class="action" id="inspect-action" ${affordable(state, upgradeCost(b)) ? '' : 'disabled'}>Améliorer au niveau ${b.level + 1}</button>`}`;
     if (b.type !== 'pod') {
+      const move = document.createElement('button'); move.className = 'move-building'; move.textContent = 'Déplacer gratuitement';
+      move.onclick = () => { moving = b.id; placing = b.type; chosen = null; drawMap(); say('Choisissez une case illuminée. Échap ou Annuler conserve le bâtiment à sa place.'); focusMap(); };
+      panel.append(move);
       const remove = document.createElement('button'); remove.className = 'dismantle'; remove.textContent = 'Démonter et récupérer 50 %';
       remove.onclick = () => {
         show(`<span class="section-label">RÉORGANISER LA COLONIE</span><h2>Libérer ce terrain ?</h2><p>Le bâtiment sera démonté. Vous récupérerez la moitié des matériaux investis, améliorations comprises.</p>${costs(salvage(b))}<button class="primary" id="confirm-dismantle">Démonter</button> <button id="keep-building">Conserver</button>`);
@@ -93,14 +98,37 @@ function drawInspector() {
     $('collect').onclick = () => collect(selected);
   } else panel.innerHTML = '<span class="eyebrow">UN TERRAIN À IMAGINER</span><h2>Votre prochain projet.</h2><p>Choisissez une construction ci-dessous. Les terrains disponibles s’illumineront sur la carte.</p><p class="detail">Les sources et la flore restent protégées.</p>';
 }
-function render() { drawMap(); drawCatalog(); drawInspector(); drawStats(); }
+function updateTimers() {
+  const now = Date.now();
+  const progress = Math.max(0, Math.min(1, (now - state.lastTick) / CYCLE));
+  $('cycle-progress').value = progress;
+  $('cycle-label').textContent = `Prochaine production dans ${Math.max(1, Math.ceil((1 - progress) * CYCLE / 1000))} s`;
+  document.querySelectorAll('[data-node]').forEach(el => {
+    const remaining = Math.max(0, (state.cooldowns[el.dataset.node] || 0) - now);
+    el.classList.toggle('regenerating', remaining > 0);
+    el.setAttribute('aria-label', `${RESOURCES[TILE_MAP[el.dataset.node].node].name} · ${remaining ? 'en régénération' : 'prêt à collecter'}`);
+  });
+  const collectButton = $('collect');
+  if (collectButton) {
+    const remaining = Math.max(0, (state.cooldowns[selected] || 0) - now);
+    collectButton.disabled = remaining > 0;
+    collectButton.textContent = remaining ? `Régénération · ${(remaining / 1000).toFixed(1)} s` : `Collecter ${RESOURCES[TILE_MAP[selected].node].name.toLowerCase()}`;
+  }
+}
+function render() {
+  const active = document.activeElement;
+  const focusId = active?.id, tileId = active?.dataset?.tile, buildType = active?.dataset?.build;
+  drawMap(); drawCatalog(); drawInspector(); drawStats(); updateTimers();
+  const target = focusId ? $(focusId) : tileId ? $('scene').querySelector(`[data-tile="${tileId}"]`) : buildType ? $('catalog').querySelector(`[data-build="${buildType}"]`) : null;
+  target?.focus({ preventScroll: true });
+}
 function focusMap() { if (window.innerWidth <= 760) $('world').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-function cancelPlacement() { placing = null; chosen = null; render(); }
+function cancelPlacement() { moving = null; placing = null; chosen = null; render(); }
 $('cancel').onclick = cancelPlacement;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').open) cancelPlacement(); });
 $('catalog').addEventListener('click', e => {
   const card = e.target.closest('[data-build]'); if (!card) return;
-  advance(state); chosen = card.dataset.build; selected = null;
+  advance(state); moving = null; chosen = card.dataset.build; selected = null;
   placing = unlocked(state, chosen) && affordable(state, BUILDINGS[chosen].cost) ? chosen : null;
   render();
   say(placing ? `${BUILDINGS[chosen].name} : choisissez une case illuminée. Vous pouvez annuler sans dépenser de ressources.` : !unlocked(state, chosen) ? `Pour ce projet, construisez d’abord : ${BUILDINGS[BUILDINGS[chosen].requires].name}.` : 'Récoltez les ressources manquantes, indiquées en rose. Les bâtiments déjà en service continuent de produire.');
@@ -127,8 +155,8 @@ function collect(id) {
 function actOnTile(id) {
   advance(state);
   if (placing) {
-    const result = build(state, placing, id);
-    if (result.ok) { placing = null; chosen = null; selected = id; }
+    const result = moving ? relocate(state, moving, id) : build(state, placing, id);
+    if (result.ok) { moving = null; placing = null; chosen = null; selected = id; }
     handle(result); return;
   }
   chosen = null; selected = id;
@@ -174,12 +202,33 @@ function showEnding() {
   $('continue').onclick = close;
 }
 $('settings').onclick = () => {
-  show('<span class="section-label">VOTRE EXPÉDITION</span><h2>Options de bord</h2><p>La sauvegarde est automatique sur cet appareil et ce navigateur. L’ancienne aventure Première Aube reste dans une sauvegarde séparée. Aucune donnée n’est envoyée à un serveur.</p><p>Les animations respectent le réglage « réduire les mouvements » de votre appareil.</p><div class="settings-actions"><button id="reset" class="danger">Recommencer la colonie</button><button id="back">Revenir au jeu</button></div>');
+  show('<span class="section-label">VOTRE EXPÉDITION</span><h2>Options de bord</h2><p>La sauvegarde est automatique sur cet appareil et ce navigateur. L’ancienne aventure Première Aube reste dans une sauvegarde séparée. Aucune donnée n’est envoyée à un serveur.</p><p>Les animations respectent le réglage « réduire les mouvements » de votre appareil.</p><div class="settings-actions"><button id="export-save">Exporter la sauvegarde</button><button id="import-save">Importer une sauvegarde</button><input id="save-file" type="file" accept=".json,application/json" hidden><button id="reset" class="danger">Recommencer la colonie</button><button id="back">Revenir au jeu</button></div>');
+  $('export-save').onclick = () => {
+    advance(state); save();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'neon-colonie.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say('Sauvegarde exportée. Conservez ce fichier pour retrouver votre colonie.');
+  };
+  $('import-save').onclick = () => $('save-file').click();
+  $('save-file').onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      if (file.size > 1000000) throw new Error('Fichier trop volumineux.');
+      const candidate = importSave(await file.text());
+      show(`<span class="section-label">REPRENDRE UNE EXPÉDITION</span><h2>Importer cette colonie ?</h2><p>${candidate.buildings.length} bâtiments · ${population(candidate)} pionniers. Cette sauvegarde remplacera votre colonie actuelle. Exportez votre progression avant de la remplacer si vous souhaitez la conserver.</p><button id="confirm-import" class="primary">Remplacer et reprendre</button> <button id="cancel-import">Annuler</button>`);
+      $('cancel-import').onclick = close;
+      $('confirm-import').onclick = () => {
+        state = candidate; advance(state); moving = null; chosen = null; placing = null; selected = '5,5';
+        save(); render(); close(); say('Colonie importée. Votre expédition peut reprendre.');
+      };
+    } catch { say('Import impossible : choisissez un fichier JSON de sauvegarde NÉON valide. Votre colonie est conservée.'); }
+  };
   $('back').onclick = close;
   $('reset').onclick = () => {
     show('<span class="section-label">NOUVELLE EXPÉDITION</span><h2>Repartir du premier jour ?</h2><p>Les bâtiments et les réserves de cette colonie seront effacés sur cet appareil.</p><button class="primary" id="confirm-reset">Oui, recommencer</button> <button id="keep">Garder ma colonie</button>');
     $('keep').onclick = close;
-    $('confirm-reset').onclick = () => { state = fresh(); selected = '5,5'; chosen = null; placing = null; ({ zoom, center } = homeCamera()); save(); render(); close(); say('Un nouveau départ. Commençons par quelques prélèvements autour du module.'); };
+    $('confirm-reset').onclick = () => { state = fresh(); moving = null; selected = '5,5'; chosen = null; placing = null; ({ zoom, center } = homeCamera()); save(); render(); close(); say('Un nouveau départ. Commençons par quelques prélèvements autour du module.'); };
   };
 };
 $('sound').onclick = async () => {
@@ -198,6 +247,7 @@ $('sound').onclick = async () => {
 document.addEventListener('visibilitychange', () => { if (audio) { if (document.hidden) audio.suspend(); else if (sound) audio.resume(); } if (document.hidden) save(); });
 window.addEventListener('pagehide', save);
 setInterval(() => { const cycles = advance(state); if (cycles) { save(); drawStats(); } }, 1000);
+setInterval(updateTimers, 100);
 render();
 if (!stored) guide(true);
 else if (offlineCycles && Object.values(rates(state)).some(n => n > 0)) { save(); say(`Heureux de vous retrouver. Vos installations ont produit pendant votre absence (${offlineCycles} cycles, maximum 30 minutes).`); }
