@@ -44,7 +44,7 @@ test('Carte et constructions identiques après sauvegarde/import ; anciennes car
   old.buildings.push({id:'4,5',type:'solar',level:3});
   const restored=restore(JSON.stringify(old),100);
   assert.deepEqual(worldOf(restored),WORLD);assert.deepEqual(restored.buildings,old.buildings);
-  for(const world of [{seed:1,generator:2,biome:'emerald'},{seed:-1,generator:1,biome:'emerald'},{seed:1,generator:1,biome:'__proto__'}]) {
+  for(const world of [{seed:1,generator:3,biome:'emerald'},{seed:-1,generator:1,biome:'emerald'},{seed:1,generator:1,biome:'__proto__'}]) {
     assert.throws(()=>importSave(JSON.stringify({...old,world})));
   }
 });

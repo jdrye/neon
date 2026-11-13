@@ -1,13 +1,13 @@
-import { BIOMES, randomSeed } from './world.js?v=4.0.0';
-import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY, RESEARCH, research, productionMultiplier } from './engine.js?v=4.0.0';
-import { renderMap, buildingPreview, project } from './scenes.js?v=4.0.0';
+import { BIOMES, randomSeed } from './world.js?v=4.1.0';
+import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY, RESEARCH, researchCost, research, productionMultiplier } from './engine.js?v=4.1.0';
+import { renderMap, buildingPreview, project } from './scenes.js?v=4.1.0';
 
 const $ = id => document.getElementById(id);
 const KEY = 'neon-colony-v2';
 let state = fresh(), stored = false, selected = '5,5', chosen = null, placing = null;
 const homeCamera = () => window.innerWidth <= 760 ? { zoom: .8, center: { x: 550, y: 390 } } : { zoom: 1, center: { x: 550, y: 390 } };
 let { zoom, center } = homeCamera();
-let moving = null;
+let moving = null, category = 'all';
 let audio = null, sound = false;
 try { const raw = localStorage.getItem(KEY); stored = !!raw; state = restore(raw); } catch { /* Session-only mode remains playable. */ }
 const offlineCycles = advance(state);
@@ -56,10 +56,10 @@ function drawMap() {
   const theme = BIOMES[state.world?.biome] || BIOMES.emerald;
   $('planet-name').textContent = state.world ? theme.name : 'Première Aube';
   $('planet-description').textContent = state.world ? theme.subtitle : 'Votre colonie historique · terrain préservé';
-  $('planet-code').textContent = state.world ? `MONDE ${state.world.seed}` : 'MONDE HISTORIQUE';
+  $('planet-code').textContent = state.world ? `MONDE ${state.world.seed} · ${state.world.generator === 2 ? '31 × 31' : '15 × 15'}` : 'MONDE HISTORIQUE';
   $('scene').innerHTML = renderMap(state, { selection: selected, placing, zoom, center });
   $('zoom-label').textContent = `${Math.round(zoom * 100)} %`;
-  $('zoom-out').disabled = zoom <= .6;
+  $('zoom-out').disabled = zoom <= .4;
   $('zoom-in').disabled = zoom >= 1.8;
   $('placement').hidden = !placing;
   if (placing) $('placement').querySelector('span').textContent = `${moving ? 'Déplacer : ' : ''}${BUILDINGS[placing].name} · choisissez une case claire`;
@@ -68,9 +68,16 @@ function drawMap() {
 const shortDescription = {
   solar: 'Énergie renouvelable', habitat: '+6 pionniers / niveau', pump: 'Eau atmosphérique',
   greenhouse: 'Culture de biomasse', mine: 'Minerai & cristaux', beacon: 'Votre lien avec les étoiles',
+  wind: '+6 énergies / niveau', residence: '+12 pionniers / niveau', hydroponics: '+8 biomasses · +2 eaux', quarry: '+8 minerais / niveau', synthesizer: '+3 cristaux / niveau', laboratory: 'Recherches : coût −25 %',
+};
+document.querySelector('.catalog-filters').onclick = e => {
+  const button = e.target.closest('[data-category]'); if (!button) return;
+  category = button.dataset.category;
+  document.querySelectorAll('[data-category]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.category === category)));
+  drawCatalog();
 };
 function drawCatalog() {
-  $('catalog').innerHTML = Object.entries(BUILDINGS).filter(([key]) => key !== 'pod').map(([key, d]) => `<button class="build-card ${unlocked(state, key) ? '' : 'locked'}" data-build="${key}" aria-pressed="${chosen === key}" aria-label="Construire : ${d.name}"><span class="tag">${unlocked(state, key) ? 'CONSTRUIRE' : 'À DÉBLOQUER'}</span><span class="art">${buildingPreview(key)}</span><span class="name">${d.name}</span><span class="description">${shortDescription[key]}</span>${costs(d.cost)}${unlocked(state, key) ? '' : `<span class="lock-note">Requis : ${BUILDINGS[d.requires].name}</span>`}</button>`).join('');
+  $('catalog').innerHTML = Object.entries(BUILDINGS).filter(([key]) => key !== 'pod').map(([key, d]) => `<button ${category !== 'all' && category !== (d.housing ? 'housing' : d.output ? 'production' : 'special') ? 'hidden' : ''} class="build-card ${unlocked(state, key) ? '' : 'locked'}" data-build="${key}" aria-pressed="${chosen === key}" aria-label="Construire : ${d.name}"><span class="tag">${unlocked(state, key) ? 'CONSTRUIRE' : 'À DÉBLOQUER'}</span><span class="art">${buildingPreview(key)}</span><span class="name">${d.name}</span><span class="description">${shortDescription[key]}</span>${costs(d.cost)}${unlocked(state, key) ? '' : `<span class="lock-note">Requis : ${BUILDINGS[d.requires].name}</span>`}</button>`).join('');
 }
 function drawInspector() {
   const panel = $('inspector');
@@ -83,7 +90,7 @@ function drawInspector() {
   const b = state.buildings.find(b => b.id === selected), tile = tileOf(state, selected);
   if (b) {
     const d = BUILDINGS[b.type], max = b.level >= d.max;
-    const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : b.type === 'habitat' ? `${6 * b.level} pionniers accueillis` : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
+    const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : d.housing ? `${d.housing * b.level} pionniers accueillis` : b.type === 'laboratory' ? 'Recherches non acquises : coût réduit de 25 %'  : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
     panel.innerHTML = `<div class="preview">${buildingPreview(b.type)}</div><span class="eyebrow">BÂTIMENT · NIVEAU ${b.level}</span><h2>${d.name}</h2><p>${d.description}</p><p class="detail">${yieldText}</p>${max ? '<p>Niveau maximal atteint.</p>' : `<span class="eyebrow">AMÉLIORATION NIVEAU ${b.level + 1}</span>${costs(upgradeCost(b))}<button class="action" id="inspect-action" ${affordable(state, upgradeCost(b)) ? '' : 'disabled'}>Améliorer au niveau ${b.level + 1}</button>`}`;
     if (b.type !== 'pod') {
       const move = document.createElement('button'); move.className = 'move-building'; move.textContent = 'Déplacer gratuitement';
@@ -123,7 +130,7 @@ function updateTimers() {
 function drawResearch() {
   $('research-cards').innerHTML = Object.entries(RESEARCH).map(([key, def]) => {
     const done = (state.research || []).includes(key);
-    return `<article class="research-card ${done ? 'researched' : ''}"><span class="research-icon">${{optics:'☀',ecology:'❧',geology:'◈'}[key]}</span><span class="eyebrow">${done ? 'TECHNOLOGIE ACQUISE' : 'RECHERCHE'}</span><h3>${def.name}</h3><p>${def.text}</p>${done ? '<p class="detail">✓ Bonus permanent actif</p>' : `${costs(def.cost)}<button data-research="${key}" ${state.buildings.some(b => b.type === def.requires) && affordable(state, def.cost) ? '' : 'disabled'}>Débloquer</button><small>Requis : ${BUILDINGS[def.requires].name}</small>`}</article>`;
+    return `<article class="research-card ${done ? 'researched' : ''}"><span class="research-icon">${{optics:'☀',ecology:'❧',geology:'◈'}[key]}</span><span class="eyebrow">${done ? 'TECHNOLOGIE ACQUISE' : 'RECHERCHE'}</span><h3>${def.name}</h3><p>${def.text}</p>${done ? '<p class="detail">✓ Bonus permanent actif</p>' : `${costs(researchCost(state, key))}<button data-research="${key}" ${state.buildings.some(b => b.type === def.requires) && affordable(state, researchCost(state, key)) ? '' : 'disabled'}>Débloquer</button><small>Requis : ${BUILDINGS[def.requires].name}</small>`}</article>`;
   }).join('');
 }
 $('research-cards').onclick = e => { const button = e.target.closest('[data-research]'); if (button) { advance(state); handle(research(state, button.dataset.research)); } };
@@ -175,7 +182,7 @@ function actOnTile(id) {
   if (tileOf(state, id)?.node) collect(id);
   else { drawMap(); drawCatalog(); drawInspector(); drawStats(); }
 }
-let pointer = null, dragged = false;
+let pointer = null, dragged = false, panFrame = null;
 $('world').addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
   pointer = { x: e.clientX, y: e.clientY, center: { ...center }, id: e.pointerId };
@@ -188,8 +195,9 @@ $('world').addEventListener('pointermove', e => {
   dragged = true;
   $('world').setPointerCapture(e.pointerId);
   const scale = Math.max(1100 / zoom / $('world').clientWidth, 780 / zoom / $('world').clientHeight);
-  center = { x: Math.max(150, Math.min(950, pointer.center.x - dx * scale)), y: Math.max(180, Math.min(700, pointer.center.y - dy * scale)) };
-  drawMap();
+  const positions = worldOf(state).map(t => project(t.x, t.y));
+  center = { x: Math.max(Math.min(...positions.map(p=>p.x)), Math.min(Math.max(...positions.map(p=>p.x)), pointer.center.x - dx * scale)), y: Math.max(Math.min(...positions.map(p=>p.y)), Math.min(Math.max(...positions.map(p=>p.y)), pointer.center.y - dy * scale)) };
+  if (panFrame === null) panFrame = requestAnimationFrame(() => { panFrame = null; drawMap(); });
 });
 $('world').addEventListener('pointerup', () => { pointer = null; });
 $('world').addEventListener('pointercancel', () => { pointer = null; dragged = false; });
@@ -201,7 +209,8 @@ $('world').addEventListener('keydown', e => {
   }
 });
 $('zoom-in').onclick = () => { zoom = Math.min(1.8, Math.round((zoom + .2) * 10) / 10); drawMap(); };
-$('zoom-out').onclick = () => { zoom = Math.max(.6, Math.round((zoom - .2) * 10) / 10); drawMap(); };
+$('zoom-out').onclick = () => { zoom = Math.max(.4, Math.round((zoom - .2) * 10) / 10); drawMap(); };
+$('overview').onclick = () => { zoom = state.world?.generator === 2 ? .4 : .8; center = { x: 550, y: 390 }; drawMap(); };
 $('center').onclick = () => { ({ zoom, center } = homeCamera()); drawMap(); };
 function guide(intro = false) {
   show(`<span class="section-label">UN MONDE À HABITER, PAS À CONQUÉRIR</span><h2>${intro ? 'Une planète inconnue.<br>Votre prochain foyer.' : 'Le guide des pionniers'}</h2><p>Votre planète est générée à partir d’un numéro unique. Le bouton « Nouvelle planète » permet de choisir un autre terrain et un biome. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">${intro ? 'Fonder ma colonie →' : 'Revenir sur Kepler →'}</button>`);
@@ -248,8 +257,8 @@ function newWorld() {
     $('land').disabled = !valid;
     if (!valid) { $('world-summary').textContent = 'Saisissez un entier entre 0 et 4 294 967 295.'; return; }
     candidate = fresh(Date.now(), Number(input.value), $('biome').value);
-    $('world-preview').innerHTML = renderMap(candidate, { zoom: .8, idPrefix: 'preview' });
-    $('world-summary').textContent = `${worldOf(candidate).filter(t => t.terrain !== 'water' && !t.node).length - 1} terrains libres · 20 gisements renouvelables · zone d’atterrissage dégagée`;
+    $('world-preview').innerHTML = renderMap(candidate, { zoom: .4, idPrefix: 'preview' });
+    $('world-summary').textContent = `${worldOf(candidate).filter(t => t.terrain !== 'water' && !t.node).length - 1} terrains libres · ${worldOf(candidate).filter(t => t.node).length} gisements renouvelables · zone d’atterrissage dégagée`;
   };
   $('world-seed').oninput = preview; $('biome').onchange = preview;
   $('reroll').onclick = () => { $('world-seed').value = randomSeed(); preview(); };

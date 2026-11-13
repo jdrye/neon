@@ -4,11 +4,30 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 
 **https://jdrye.github.io/neon/**
 
+## Version 4.1 — Grandes cartes et nouveaux bâtiments
+
+Les nouvelles parties utilisent un continent de **31 × 31 cases (961 cases)**, contre 225 auparavant, soit 4,27 fois la surface de la grille. Elles proposent 56 gisements renouvelables (14 de chaque ressource naturelle). Les sauvegardes historiques et les cartes 15 × 15 gardent leur géographie ; pour profiter d’un grand continent, créez une nouvelle planète après avoir exporté votre colonie si vous souhaitez la conserver.
+
+La caméra peut parcourir l’ensemble du terrain. Le bouton **▦ Vue d’ensemble** montre la carte entière ; le bouton de recentrage revient à la colonie. Le catalogue propose des filtres Production, Logements et Science et exploration.
+
+| Nouveau bâtiment | Prérequis | Effet par niveau |
+| --- | --- | --- |
+| Éolienne orbitale | Centrale solaire | +6 énergies / cycle |
+| Résidence collective | Habitat | +12 pionniers |
+| Ferme hydroponique | Serre vivante | +8 biomasses et +2 eaux / cycle |
+| Carrière automatisée | Extracteur doux | +8 minerais / cycle |
+| Synthétiseur cristallin | Extracteur doux | +3 cristaux / cycle |
+| Institut scientifique | Habitat | −25 % sur le coût des recherches non acquises, arrondi au supérieur |
+
+Les cinq premiers bâtiments s’améliorent jusqu’au niveau III. L’institut a un niveau unique et son bonus ne se cumule pas. Le démonter retire la réduction des recherches futures ; les recherches déjà acquises restent actives. Les technologies existantes conservent leurs cibles : la recherche solaire double la centrale solaire, pas l’éolienne.
+
+Le générateur v2 est indépendant du v1. Les sauvegardes enregistrent la version nécessaire pour reconstruire le bon terrain, même si les deux cartes ont le même numéro et le même biome.
+
 ## Version 4 — Mondes procéduraux et nouvelle direction graphique
 
 L’interface et les sept illustrations de bâtiments ont été redessinées : architecture spatiale, verrières, panneaux solaires, végétation facettée, rivages, eau, colons animés et grandes cartes de construction. Le rendu reste en SVG natif, sans moteur externe ni téléchargement d’assets.
 
-- Chaque nouvelle partie génère une carte de 15 × 15 cases avec un littoral, un étang et des ressources placées aléatoirement.
+- Les parties créées en version 4.0 utilisent une carte de 15 × 15 cases avec un littoral, un étang et des ressources placées aléatoirement.
 - **Nouvelle planète** ouvre un aperçu : choisissez Émeraude, Ambre ou Boréale, tirez une autre carte ou saisissez un numéro entre 0 et 4 294 967 295.
 - La terre est connectée, la zone centrale est dégagée et cinq gisements de chaque ressource naturelle sont disponibles. Les biomes modifient l’ambiance visuelle, pas les règles économiques.
 - Le numéro, le biome et la version du générateur sont enregistrés. Recharger ou importer une sauvegarde restitue exactement la carte. Les anciennes sauvegardes conservent le terrain historique et leurs constructions.

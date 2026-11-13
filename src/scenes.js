@@ -1,5 +1,5 @@
-import { BUILDINGS, RESOURCES, canPlace, population, worldOf } from './engine.js?v=4.0.0';
-import { BIOMES } from './world.js?v=4.0.0';
+import { BUILDINGS, RESOURCES, canPlace, population, worldOf } from './engine.js?v=4.1.0';
+import { BIOMES } from './world.js?v=4.1.0';
 export const project = (x, y) => ({ x: 550 + (x - y) * 40, y: 170 + (x + y) * 22 });
 const diamond = '0,-22 40,0 0,22 -40,0';
 const poly = (points, fill, attrs='') => `<polygon points="${points}" fill="${fill}" ${attrs}/>`;
@@ -62,6 +62,44 @@ export function buildingSymbol(type,level=1) {
   if(type === 'beacon') {
     art += block(0,-1,25,13,12,'#c6d1dd','#e5edf2','#7e8ba6');
     art += `<path d="M-10 -10L-5 -89h10l5 79Z" fill="#8e9ab9"/><path d="M-5 -89H0v84l-10 -5Z" fill="#e0e6ed"/><path d="M0 -83v65" stroke="#8ffff0" stroke-width="3"/><ellipse cy="-66" rx="24" ry="10" fill="none" stroke="#e5cc91" stroke-width="4"/><ellipse cy="-85" rx="16" ry="7" fill="none" stroke="#b4ebec" stroke-width="3"/><circle cy="-100" r="6" fill="#dcfff4"/><g class="beacon-waves" fill="none" stroke="#8fffe7"><ellipse cy="-100" rx="25" ry="11"/><ellipse cy="-100" rx="37" ry="17" opacity=".4"/></g>`;
+  }
+  if(type === 'wind') {
+    art += block(0,0,17,9,10,'#aabcca','#e3eee7','#6f849e');
+    art += `<path d="M-5 0L-2 -69h4L5 0Z" fill="#cfdee4"/><g class="turbine" transform="translate(0 -67)"><path d="M0 0L-5 -28Q2 -36 4 -27L3 -4Z" fill="#e7faf1"/><path d="M0 0L27 6Q33 13 23 12L2 3Z" fill="#9acbd6"/><path d="M0 0L-18 22Q-27 23 -21 15L-3 0Z" fill="#bddfeb"/><circle r="5" fill="#7ae6d2"/></g>`;
+    if(level>1)art += block(-23,6,7,4,17,'#bac8d1','#eff6dc','#7292ab');
+    if(level>2)art += block(23,6,7,4,17,'#bac8d1','#eff6dc','#7292ab');
+  }
+  if(type === 'residence') {
+    art += block(-10,-2,18,10,38+level*12,'#d8c6c3','#f6ebdb','#8b8caa');
+    art += block(16,5,14,8,26+level*9,'#a8ccd4','#d8f5ec','#6a8caa');
+    for(let i=0;i<level+2;i++) art += windows(-25,-20-i*10,3);
+    for(let i=0;i<level+1;i++) art += windows(4,-13-i*9,2);
+    art += tree(23,14,.3,'#b6e7a3');
+  }
+  if(type === 'hydroponics') {
+    for(let i=0;i<3;i++) {
+      art += block(-18+i*17,3,8,5,10+level*3,'#67a99f','#b1eec7','#386f86');
+      art += `<path d="M${-24+i*17} -${10+level*3}q6 -20 12 0" fill="#79dba9" stroke="#cef7cc" stroke-width="1.5"/>`;
+    }
+    art += `<path d="M-29 9L0 22L29 9" fill="none" stroke="#7be5ed" stroke-width="3"/>`;
+    if(level>1)art += dish(26,-15);
+  }
+  if(type === 'quarry') {
+    art += poly('-28,0 0,-16 28,0 0,16','#293d56')+poly('-18,0 0,-10 18,0 0,10','#52647c');
+    art += block(-22,2,9,5,20,'#d8af70','#ffe0a4','#987a64');
+    art += `<path d="M-22 -22V-48H21" fill="none" stroke="#ddbc7d" stroke-width="5"/><path d="M-22 -48L4 -22" stroke="#8c8e99" stroke-width="2"/><path d="M18 -48v27l-6 8h12l-6 -8" fill="none" stroke="#d0dee1" stroke-width="2"/>`;
+    for(let i=0;i<level;i++) art += block(15-i*10,11,5,3,6,'#9fa8b7','#cfd2d9','#647b93');
+  }
+  if(type === 'synthesizer') {
+    art += block(0,0,24,13,17,'#a9b4d5','#d9d9f2','#6f799f');
+    art += `<path d="M-17 -17V-54Q0 -66 17 -54V-17Q0 -6 -17 -17Z" fill="#ba9de6" fill-opacity=".3" stroke="#cfbaf1" stroke-width="2"/>`;
+    art += crystal(0,-20,.6+level*.12);
+    art += `<ellipse cy="-53" rx="17" ry="8" fill="none" stroke="#c9c8f1" stroke-width="3"/><ellipse cy="-18" rx="17" ry="8" fill="none" stroke="#9ef4ef" stroke-width="3"/>`;
+  }
+  if(type === 'laboratory') {
+    art += block(0,0,28,15,25,'#d1daed','#f1f4f2','#7f92b7')+windows(-24,-20,4);
+    art += `<path d="M-17 -33a17 17 0 0 1 34 0Z" fill="#aeccea" stroke="#dfeef6" stroke-width="2"/><ellipse cy="-41" rx="24" ry="8" fill="none" stroke="#bba3ed" stroke-width="2" transform="rotate(-30 0 -41)"/><circle cy="-41" r="4" fill="#c4f9f5"/>`;
+    art += dish(24,-28);
   }
   return `<g class="structure">${art}</g>`;
 }
