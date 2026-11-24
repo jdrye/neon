@@ -27,16 +27,15 @@ jobs:
           server=$!
           trap 'kill "$server"' EXIT
           curl --fail --silent --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:4173/dist/ >/dev/null
-          for layout in desktop mobile; do
-            result="$RUNNER_TEMP/neon-$layout.html"
-            google-chrome --headless --disable-gpu --no-sandbox --no-first-run \
-              --user-data-dir="$RUNNER_TEMP/neon-profile-$layout" --virtual-time-budget=10000 \
-              --dump-dom "http://127.0.0.1:4173/tests/rover.browser.html?$layout" >"$result"
-            if ! grep -q '<output id="result" data-status="passed">' "$result"; then
-              sed -n '/<output id="result"/,/<iframe/p' "$result" | head -c 3000
-              exit 1
-            fi
-          done
+          npm run build:preview -- "$RUNNER_TEMP/neon-captures/NEON-Kepler.html"
+          node scripts/test-browser.mjs http://127.0.0.1:4173 "$RUNNER_TEMP/neon-captures"
+      - name: Save playable preview and in-game screenshots
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kepler-en-jeu
+          path: ${{ runner.temp }}/neon-captures/
+          retention-days: 14
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:

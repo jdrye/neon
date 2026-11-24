@@ -1,5 +1,5 @@
-import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=4.2.0';
-import { SURVEYS, restoreSurvey, surveyProgress, surveyRoute } from './survey.js?v=4.2.0';
+import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=5.0.0';
+import { SURVEYS, restoreSurvey, surveyProgress, surveyRoute } from './survey.js?v=5.0.0';
 export const VERSION = 2;
 export const LIMIT = 9999;
 export const RESOURCES = {

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><meta charset="utf-8"><title>Parcours du rover</title>
+<html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parcours du rover</title>
 <output id="result" data-status="running"></output><iframe title="Colonie de test"></iframe>
 <script type="module">
 const frame = document.querySelector('iframe');
@@ -30,8 +30,24 @@ function loadGame() {
 try {
   check(!state(), 'Ce parcours nécessite un profil de navigateur vierge.');
   await loadGame();
+  const art = new Set([...frame.contentDocument.querySelectorAll('image[href$=".webp"], img[src$=".webp"]')]
+    .map(el => el.getAttribute('href') || el.getAttribute('src')));
+  art.add('./src/art/landing.webp');
+  await Promise.all([...art].map(async source => {
+    const img = new Image();
+    img.src = new URL(source, frame.contentDocument.baseURI);
+    await img.decode();
+    check(img.naturalWidth > 0, 'Illustration illisible : ' + source);
+  }));
   click('#begin');
   const map = one('#scene > svg');
+  const pod = one('[data-tile="5,5"] .structure image');
+  const podBox = pod.getBoundingClientRect();
+  check(podBox.width >= 55, 'Module pionnier lisible au cadrage initial');
+  const target = frame.contentDocument.elementFromPoint(podBox.left + podBox.width*.5, podBox.top + podBox.height*.65);
+  check(target?.closest('[data-tile]')?.dataset.tile === '5,5', 'Zone de sélection du module illustré');
+  target.dispatchEvent(new frame.contentWindow.MouseEvent('click', {bubbles:true}));
+  check(one('#inspector h2').textContent === 'Module pionnier', 'Sélection au pointeur sur le bâtiment');
   const viewBox = map.getAttribute('viewBox');
   click('#overview');
   check(map === one('#scene > svg') && map.getAttribute('viewBox') !== viewBox, 'Vue d’ensemble');
@@ -42,6 +58,7 @@ try {
   check(state().harvests === 2 && map === one('#scene > svg'), 'Collecte sur la carte');
   click('#survey-open');
   click('[data-survey-select="prism"]');
+  await one('.survey-landscape').decode();
   click('#survey-locate');
   const pin = one('[data-survey-site="prism"]');
   const pinBox = pin.getBoundingClientRect(), mapBox = one('#world').getBoundingClientRect();

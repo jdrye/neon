@@ -4,6 +4,14 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 
 **https://jdrye.github.io/neon/**
 
+## Version 5.0 — Kepler illustrée
+
+Les quinze bâtiments, les pionniers, le rover et les gisements sont illustrés en vue isométrique. Les installations de niveau II et III reçoivent des équipements visibles tels que des batteries, des réservoirs ou des modules d’habitation. Des chemins relient les bâtiments voisins.
+
+Les falaises plongent dans la mer et les étangs ont des berges basses. Les frondaisons émeraude, les bosquets cuivrés d’Ambre et les conifères de Boréale donnent à chaque monde sa végétation. La caméra adapte son échelle à la taille de l’écran. La vue d’ensemble cadre la carte entière, y compris sur téléphone. Les colonies sauvegardées profitent de ces changements dès leur ouverture.
+
+Pour essayer une colonie déjà développée, l’aperçu **NEON-Kepler.html** s’ouvre directement dans un navigateur. Il embarque les illustrations et utilise une sauvegarde dédiée. Les pull requests proposent cet aperçu et deux captures du jeu dans l’archive **kepler-en-jeu** de GitHub Actions. Pour le générer localement, lancez `npm run build:preview`, puis ouvrez `dist/NEON-Kepler.html`.
+
 ## Version 4.2 — Les expéditions du rover
 
 Depuis la carte, ouvrez **Expéditions** pour localiser trois sites et consulter le carnet. Le **hangar à rover** coûte 10 minerais et 3 cristaux. Au début d’une partie, une collecte de minerai et une de cristaux suffisent pour le construire. Choisissez ensuite un site et envoyez le rover avec ses provisions.
@@ -39,7 +47,7 @@ Le générateur v2 est indépendant du v1. Les sauvegardes enregistrent la versi
 
 ## Version 4 — Mondes procéduraux et nouvelle direction graphique
 
-L’interface et les sept illustrations de bâtiments ont été redessinées : architecture spatiale, verrières, panneaux solaires, végétation facettée, rivages, eau, colons animés et grandes cartes de construction. Le rendu reste en SVG natif, sans moteur externe ni téléchargement d’assets.
+La version 4 utilisait sept modèles de bâtiments dessinés en SVG, des colons animés et des cartes de construction illustrées.
 
 - Les parties créées en version 4.0 utilisent une carte de 15 × 15 cases avec un littoral, un étang et des ressources placées aléatoirement.
 - **Nouvelle planète** ouvre un aperçu : choisissez Émeraude, Ambre ou Boréale, tirez une autre carte ou saisissez un numéro entre 0 et 4 294 967 295.
@@ -95,7 +103,7 @@ npm run dev
 - `src/engine.js` : économie, collecte, construction, niveaux, production et sauvegardes.
 - `src/world.js` : génération déterministe v1, biomes et numéros de mondes.
 - `src/survey.js`, `src/survey-panel.js`, `src/survey-art.js` : itinéraires du rover, carnet et illustrations des spécimens.
-- `src/scenes.js` : projection isométrique et illustrations SVG.
+- `src/terrain.js`, `src/scenes.js` et `src/art/` gèrent les reliefs, la caméra et les illustrations WebP du jeu.
 - `src/app.js` : interface, caméra, interactions et audio.
 - `src/style.css` : présentation et adaptation mobile.
 - `scripts/build.mjs` : copie des fichiers statiques dans `dist/`.

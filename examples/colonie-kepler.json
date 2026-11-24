@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "world": {
+    "generator": 2,
+    "seed": 4821,
+    "biome": "emerald"
+  },
+  "resources": {
+    "ore": 4,
+    "bio": 80,
+    "water": 83,
+    "crystal": 22,
+    "energy": 184
+  },
+  "buildings": [
+    {
+      "id": "5,5",
+      "type": "pod",
+      "level": 1
+    },
+    {
+      "id": "4,6",
+      "type": "solar",
+      "level": 1
+    },
+    {
+      "id": "5,3",
+      "type": "habitat",
+      "level": 2
+    },
+    {
+      "id": "6,5",
+      "type": "pump",
+      "level": 1
+    },
+    {
+      "id": "4,4",
+      "type": "greenhouse",
+      "level": 1
+    },
+    {
+      "id": "8,5",
+      "type": "mine",
+      "level": 1
+    },
+    {
+      "id": "2,4",
+      "type": "wind",
+      "level": 1
+    },
+    {
+      "id": "5,1",
+      "type": "residence",
+      "level": 1
+    },
+    {
+      "id": "4,1",
+      "type": "laboratory",
+      "level": 1
+    },
+    {
+      "id": "7,6",
+      "type": "hangar",
+      "level": 1
+    },
+    {
+      "id": "7,2",
+      "type": "hydroponics",
+      "level": 1
+    },
+    {
+      "id": "7,0",
+      "type": "beacon",
+      "level": 1
+    }
+  ],
+  "research": [],
+  "survey": {
+    "completed": [],
+    "active": null
+  },
+  "harvests": 44,
+  "claimed": [
+    1,
+    0,
+    2,
+    3,
+    4
+  ],
+  "lastTick": 0,
+  "cooldowns": {},
+  "sound": false
+}
