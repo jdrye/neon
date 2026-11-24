@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#091522">
 <meta name="description" content="Bâtissez une colonie paisible sur une planète inconnue. Un jeu 2D isométrique : collecte, construction et exploration.">
-<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=4.1.0">
+<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=4.2.0">
 </head>
 <body>
 <header><a class="brand" href="./">NÉON<span>LES PIONNIERS DE L’AUBE</span></a><div class="expedition"><span class="live-dot"></span> KEPLER · SECTEUR 01 <small>UN NOUVEAU MONDE, À VOTRE RYTHME</small></div><div class="tools"><button id="new-world">Nouvelle planète</button><button id="sound" aria-pressed="false" title="Ambiance sonore">♪</button><button id="guide">Guide de bord</button><button id="settings" aria-label="Options">⚙</button></div></header>
@@ -12,6 +12,7 @@
 <div class="layout">
 <section class="map-panel" aria-label="Carte isométrique de la colonie">
 <div class="map-heading"><p>VOTRE COLONIE · <span id="colony-stage">CAMP PIONNIER</span> <span id="mobile-population"></span></p><h1 id="planet-name">Archipel d’émeraude</h1><p class="subtitle" id="planet-description">Forêts lumineuses · lagons turquoise</p></div>
+<button id="survey-open" class="survey-launcher" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m16.5 7.5-3 6-6 3 3-6Z"/></svg><span>Expéditions</span><small id="survey-status">0 / 3</small></button>
 <div class="world" id="world"><div id="scene"></div><div id="float-layer" aria-hidden="true"></div></div>
 <div class="map-toolbar"><span class="weather">☀ <span id="planet-code">MONDE INCONNU</span></span><div><button id="zoom-out" aria-label="Dézoomer">−</button><span id="zoom-label">100 %</span><button id="zoom-in" aria-label="Zoomer">+</button><button id="overview" title="Vue d’ensemble" aria-label="Voir toute la carte">▦</button><button id="center" title="Recentrer la carte" aria-label="Recentrer la carte">⌾</button></div></div>
 <div id="placement" hidden><span></span><button id="cancel">Annuler ×</button></div>
@@ -28,5 +29,5 @@
 <footer><span>EXPLORER. RÉCOLTER. FAIRE GRANDIR.</span><span class="production-clock"><progress id="cycle-progress" max="1" value="0" aria-label="Progression du cycle de production"></progress><span id="cycle-label">Production douce · un cycle toutes les 12 s</span></span><span>Votre progression reste sur cet appareil.</span></footer>
 </main>
 <dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="./src/app.js?v=4.1.0"></script>
+<script type="module" src="./src/app.js?v=4.2.0"></script>
 </body></html>

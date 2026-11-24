@@ -21,6 +21,22 @@ jobs:
         run: npm test
       - name: Build static game
         run: npm run build
+      - name: Play the rover expedition on desktop and mobile layouts
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >"$RUNNER_TEMP/neon-http.log" 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          curl --fail --silent --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:4173/dist/ >/dev/null
+          for layout in desktop mobile; do
+            result="$RUNNER_TEMP/neon-$layout.html"
+            google-chrome --headless --disable-gpu --no-sandbox --no-first-run \
+              --user-data-dir="$RUNNER_TEMP/neon-profile-$layout" --virtual-time-budget=10000 \
+              --dump-dom "http://127.0.0.1:4173/tests/rover.browser.html?$layout" >"$result"
+            if ! grep -q '<output id="result" data-status="passed">' "$result"; then
+              sed -n '/<output id="result"/,/<iframe/p' "$result" | head -c 3000
+              exit 1
+            fi
+          done
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:

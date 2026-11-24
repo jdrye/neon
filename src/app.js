@@ -1,6 +1,8 @@
-import { BIOMES, randomSeed } from './world.js?v=4.1.0';
-import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, NODE_DELAY, RESEARCH, researchCost, research, productionMultiplier } from './engine.js?v=4.1.0';
-import { renderMap, buildingPreview, project } from './scenes.js?v=4.1.0';
+import { BIOMES, randomSeed } from './world.js?v=4.2.0';
+import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, buildRequirement, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, RESEARCH, researchCost, research, productionMultiplier, startSurvey, finishSurvey } from './engine.js?v=4.2.0';
+import { renderMap, buildingPreview, project, cameraViewBox, cameraBounds, roverPosition } from './scenes.js?v=4.2.0';
+import { SURVEYS, surveySites, surveyRoute, surveyProgress } from './survey.js?v=4.2.0';
+import { surveyPanel, updateSurveyPanel } from './survey-panel.js?v=4.2.0';
 
 const $ = id => document.getElementById(id);
 const KEY = 'neon-colony-v2';
@@ -17,7 +19,11 @@ function save() {
   catch { $('save-state').textContent = 'Session uniquement · stockage bloqué'; }
 }
 function say(text) { $('message').textContent = text; }
-function show(html) { $('modal-content').innerHTML = html; if (!$('modal').open) $('modal').showModal(); }
+function show(html) {
+  $('modal-content').innerHTML = html;
+  $('modal').setAttribute('aria-label', $('modal-content').querySelector('h2')?.textContent || 'Kepler');
+  if (!$('modal').open) $('modal').showModal();
+}
 function close() { $('modal').close(); }
 $('modal').querySelector('.close').onclick = close;
 $('modal').addEventListener('click', e => {
@@ -58,17 +64,24 @@ function drawMap() {
   $('planet-description').textContent = state.world ? theme.subtitle : 'Votre colonie historique · terrain préservé';
   $('planet-code').textContent = state.world ? `MONDE ${state.world.seed} · ${state.world.generator === 2 ? '31 × 31' : '15 × 15'}` : 'MONDE HISTORIQUE';
   $('scene').innerHTML = renderMap(state, { selection: selected, placing, zoom, center });
-  $('zoom-label').textContent = `${Math.round(zoom * 100)} %`;
-  $('zoom-out').disabled = zoom <= .4;
-  $('zoom-in').disabled = zoom >= 1.8;
+  roverElement = $('scene').querySelector('[data-rover]');
+  drawCamera();
   $('placement').hidden = !placing;
   if (placing) $('placement').querySelector('span').textContent = `${moving ? 'Déplacer : ' : ''}${BUILDINGS[placing].name} · choisissez une case claire`;
   $('map-tip').textContent = placing ? 'Les cases illuminées sont constructibles. Le coût est débité uniquement à la pose.' : 'Cliquez pour collecter · Glissez pour explorer · + / − pour zoomer';
+}
+let roverElement = null;
+function drawCamera() {
+  $('scene').firstElementChild.setAttribute('viewBox', cameraViewBox(center, zoom));
+  $('zoom-label').textContent = `${Math.round(zoom * 100)} %`;
+  $('zoom-out').disabled = zoom <= .4;
+  $('zoom-in').disabled = zoom >= 1.8;
 }
 const shortDescription = {
   solar: 'Énergie renouvelable', habitat: '+6 pionniers / niveau', pump: 'Eau atmosphérique',
   greenhouse: 'Culture de biomasse', mine: 'Minerai & cristaux', beacon: 'Votre lien avec les étoiles',
   wind: '+6 énergies / niveau', residence: '+12 pionniers / niveau', hydroponics: '+8 biomasses · +2 eaux', quarry: '+8 minerais / niveau', synthesizer: '+3 cristaux / niveau', laboratory: 'Recherches : coût −25 %',
+  hangar: 'Départ des expéditions', observatory: '+4 cristaux · +4 énergies / cycle',
 };
 document.querySelector('.catalog-filters').onclick = e => {
   const button = e.target.closest('[data-category]'); if (!button) return;
@@ -77,21 +90,27 @@ document.querySelector('.catalog-filters').onclick = e => {
   drawCatalog();
 };
 function drawCatalog() {
-  $('catalog').innerHTML = Object.entries(BUILDINGS).filter(([key]) => key !== 'pod').map(([key, d]) => `<button ${category !== 'all' && category !== (d.housing ? 'housing' : d.output ? 'production' : 'special') ? 'hidden' : ''} class="build-card ${unlocked(state, key) ? '' : 'locked'}" data-build="${key}" aria-pressed="${chosen === key}" aria-label="Construire : ${d.name}"><span class="tag">${unlocked(state, key) ? 'CONSTRUIRE' : 'À DÉBLOQUER'}</span><span class="art">${buildingPreview(key)}</span><span class="name">${d.name}</span><span class="description">${shortDescription[key]}</span>${costs(d.cost)}${unlocked(state, key) ? '' : `<span class="lock-note">Requis : ${BUILDINGS[d.requires].name}</span>`}</button>`).join('');
+  $('catalog').innerHTML = Object.entries(BUILDINGS).filter(([key]) => key !== 'pod').map(([key, d]) => {
+    const reason = buildRequirement(state, key);
+    const group = d.housing ? 'housing' : d.output && !d.requiresSurveys ? 'production' : 'special';
+    const alreadyBuilt = d.unique && state.buildings.some(b => b.type === key);
+    return `<button ${category !== 'all' && category !== group ? 'hidden' : ''} class="build-card ${reason ? 'locked' : ''}" data-build="${key}" aria-pressed="${chosen === key}" aria-label="${d.name}"><span class="tag">${alreadyBuilt ? 'EN SERVICE' : reason ? 'À DÉBLOQUER' : 'CONSTRUIRE'}</span><span class="art">${buildingPreview(key)}</span><span class="name">${d.name}</span><span class="description">${shortDescription[key]}</span>${costs(d.cost)}${reason ? `<span class="lock-note">${reason}</span>` : ''}</button>`;
+  }).join('');
 }
 function drawInspector() {
   const panel = $('inspector');
   if (chosen) {
     const d = BUILDINGS[chosen], ready = unlocked(state, chosen);
-    panel.innerHTML = `<div class="preview">${buildingPreview(chosen)}</div><span class="eyebrow">PROJET DE CONSTRUCTION</span><h2>${d.name}</h2><p>${d.description}</p>${costs(d.cost)}${!ready ? `<p>Requis : ${BUILDINGS[d.requires].name}.</p>` : ''}<button class="action" id="inspect-action" ${ready && affordable(state, d.cost) ? '' : 'disabled'}>${placing ? 'Choisissez une case sur la carte' : 'Choisir un emplacement'}</button>`;
+    panel.innerHTML = `<div class="preview">${buildingPreview(chosen)}</div><span class="eyebrow">PROJET DE CONSTRUCTION</span><h2>${d.name}</h2><p>${d.description}</p>${costs(d.cost)}${ready ? '' : `<p>${buildRequirement(state, chosen)}</p>`}<button class="action" id="inspect-action" ${ready && affordable(state, d.cost) ? '' : 'disabled'}>${placing ? 'Choisissez une case sur la carte' : 'Choisir un emplacement'}</button>`;
     $('inspect-action').onclick = () => { placing = chosen; drawMap(); drawInspector(); focusMap(); };
     return;
   }
   const b = state.buildings.find(b => b.id === selected), tile = tileOf(state, selected);
   if (b) {
     const d = BUILDINGS[b.type], max = b.level >= d.max;
-    const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : d.housing ? `${d.housing * b.level} pionniers accueillis` : b.type === 'laboratory' ? 'Recherches non acquises : coût réduit de 25 %'  : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
+    const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : d.housing ? `${d.housing * b.level} pionniers accueillis` : b.type === 'laboratory' ? 'Recherches non acquises : coût réduit de 25 %' : b.type === 'hangar' ? 'Un rover · une sortie à la fois' : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
     panel.innerHTML = `<div class="preview">${buildingPreview(b.type)}</div><span class="eyebrow">BÂTIMENT · NIVEAU ${b.level}</span><h2>${d.name}</h2><p>${d.description}</p><p class="detail">${yieldText}</p>${max ? '<p>Niveau maximal atteint.</p>' : `<span class="eyebrow">AMÉLIORATION NIVEAU ${b.level + 1}</span>${costs(upgradeCost(b))}<button class="action" id="inspect-action" ${affordable(state, upgradeCost(b)) ? '' : 'disabled'}>Améliorer au niveau ${b.level + 1}</button>`}`;
+    if (b.type === 'hangar') addSurveyLink(panel);
     if (b.type !== 'pod') {
       const move = document.createElement('button'); move.className = 'move-building'; move.textContent = 'Déplacer gratuitement';
       move.onclick = () => { moving = b.id; placing = b.type; chosen = null; drawMap(); say('Choisissez une case illuminée. Échap ou Annuler conserve le bâtiment à sa place.'); focusMap(); };
@@ -108,17 +127,29 @@ function drawInspector() {
     const r = RESOURCES[tile.node];
     panel.innerHTML = `<span class="eyebrow">RESSOURCE RENOUVELABLE</span><h2 style="color:${r.color}">${r.icon} ${r.name}</h2><p>${tile.node === 'bio' ? 'Prélevez les fibres végétales sans abattre les arbres. La flore se régénère naturellement.' : tile.node === 'water' ? 'Une source d’eau pure, alimentée par les pluies de Kepler.' : tile.node === 'crystal' ? 'Des fragments lumineux affleurent sans cesse à la surface.' : 'Des fragments minéraux à transformer en structures durables.'}</p><p class="detail">+${tile.node === 'crystal' ? 3 : 5} par collecte · renouvellement en 2,5 s</p><button class="action" id="collect">Collecter ${r.name.toLowerCase()}</button>`;
     $('collect').onclick = () => collect(selected);
+    const site = Object.entries(surveySites(worldOf(state))).find(([, t]) => t.id === selected);
+    if (site) addSurveyLink(panel, site[0]);
   } else panel.innerHTML = '<span class="eyebrow">UN TERRAIN À IMAGINER</span><h2>Votre prochain projet.</h2><p>Choisissez une construction ci-dessous. Les terrains disponibles s’illumineront sur la carte.</p><p class="detail">Les sources et la flore restent protégées.</p>';
 }
 function updateTimers() {
   const now = Date.now();
+  const trip = state.survey.active;
+  if (trip && roverElement) {
+    const progress = surveyProgress(trip, now);
+    // Keep the vehicle at a waypoint for players who prefer reduced motion.
+    const position = reducedMotion.matches ? (progress < .5 ? 0 : progress < 1 ? .5 : 1) : progress;
+    const point = roverPosition(surveyRoute(worldOf(state), trip.origin, trip.site), position);
+    roverElement.setAttribute('transform', `translate(${point.x} ${point.y})`);
+  }
   const progress = Math.max(0, Math.min(1, (now - state.lastTick) / CYCLE));
   $('cycle-progress').value = progress;
   $('cycle-label').textContent = `Prochaine production dans ${Math.max(1, Math.ceil((1 - progress) * CYCLE / 1000))} s`;
   $('scene').querySelectorAll('[data-node]').forEach(el => {
     const remaining = Math.max(0, (state.cooldowns[el.dataset.node] || 0) - now);
-    el.classList.toggle('regenerating', remaining > 0);
-    el.setAttribute('aria-label', `${RESOURCES[tileOf(state, el.dataset.node).node].name} · ${remaining ? 'en régénération' : 'prêt à collecter'}`);
+    if (el.classList.contains('regenerating') !== (remaining > 0)) {
+      el.classList.toggle('regenerating', remaining > 0);
+      el.setAttribute('aria-label', `${RESOURCES[tileOf(state, el.dataset.node).node].name} · ${remaining ? 'en régénération' : 'prêt à collecter'}`);
+    }
   });
   const collectButton = $('collect');
   if (collectButton) {
@@ -134,10 +165,15 @@ function drawResearch() {
   }).join('');
 }
 $('research-cards').onclick = e => { const button = e.target.closest('[data-research]'); if (button) { advance(state); handle(research(state, button.dataset.research)); } };
-function render() {
+function render(redrawMap = true) {
   const active = document.activeElement;
   const focusId = active?.id, tileId = active?.dataset?.tile, buildType = active?.dataset?.build;
-  drawMap(); drawCatalog(); drawInspector(); drawStats(); drawResearch(); updateTimers();
+  if (redrawMap) drawMap();
+  else {
+    $('scene').querySelector('.tile.selected')?.classList.remove('selected');
+    $('scene').querySelector(`[data-tile="${selected}"]`)?.classList.add('selected');
+  }
+  drawCatalog(); drawInspector(); drawStats(); drawResearch(); updateTimers(); updateSurveyHud();
   const target = focusId ? $(focusId) : tileId ? $('scene').querySelector(`[data-tile="${tileId}"]`) : buildType ? $('catalog').querySelector(`[data-build="${buildType}"]`) : null;
   target?.focus({ preventScroll: true });
 }
@@ -145,16 +181,20 @@ function focusMap() { if (window.innerWidth <= 760) $('world').scrollIntoView({ 
 function cancelPlacement() { moving = null; placing = null; chosen = null; render(); }
 $('cancel').onclick = cancelPlacement;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').open) cancelPlacement(); });
-$('catalog').addEventListener('click', e => {
-  const card = e.target.closest('[data-build]'); if (!card) return;
-  advance(state); moving = null; chosen = card.dataset.build; selected = null;
+function selectProject(type) {
+  advance(state); moving = null; chosen = type; selected = null;
   placing = unlocked(state, chosen) && affordable(state, BUILDINGS[chosen].cost) ? chosen : null;
   render();
-  say(placing ? `${BUILDINGS[chosen].name} : choisissez une case illuminée. Vous pouvez annuler sans dépenser de ressources.` : !unlocked(state, chosen) ? `Pour ce projet, construisez d’abord : ${BUILDINGS[BUILDINGS[chosen].requires].name}.` : 'Récoltez les ressources manquantes, indiquées en rose. Les bâtiments déjà en service continuent de produire.');
+  say(placing ? `${BUILDINGS[chosen].name} : choisissez une case illuminée. Vous pouvez annuler sans dépenser de ressources.` : buildRequirement(state, chosen) || 'Récoltez les ressources manquantes, indiquées en rose. Les bâtiments déjà en service continuent de produire.');
   if (placing) focusMap();
+}
+$('catalog').addEventListener('click', e => {
+  const card = e.target.closest('[data-build]');
+  if (card) selectProject(card.dataset.build);
 });
-function handle(result) {
-  if (result.ok) { save(); render(); }
+function handle(result, redrawMap = true) {
+  if (result.ok) save();
+  if (result.ok || !redrawMap) render(redrawMap);
   say(result.message + (result.rewards?.length ? ` Étape accomplie : ${result.rewards.join(' · ')}. Récompense ajoutée !` : ''));
   if (result.rewards?.includes('Première Aube')) showEnding();
 }
@@ -168,7 +208,7 @@ function floating(id, text) {
   $('float-layer').append(e); setTimeout(() => e.remove(), 1500);
 }
 function collect(id) {
-  advance(state); const result = harvest(state, id); handle(result);
+  advance(state); const result = harvest(state, id); handle(result, false);
   if (result.ok) floating(id, `+${result.amount} ${RESOURCES[result.resource].icon}`);
 }
 function actOnTile(id) {
@@ -180,8 +220,61 @@ function actOnTile(id) {
   }
   chosen = null; selected = id;
   if (tileOf(state, id)?.node) collect(id);
-  else { drawMap(); drawCatalog(); drawInspector(); drawStats(); }
+  else render(false);
 }
+
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function addSurveyLink(panel, site) {
+  const button = document.createElement('button');
+  button.className = 'action';
+  button.textContent = site ? `Explorer · ${SURVEYS[site].name}` : 'Ouvrir le carnet d’exploration';
+  button.onclick = () => openSurvey(site);
+  panel.append(button);
+}
+function updateSurveyHud() {
+  const { active, completed } = state.survey, now = Date.now();
+  const remaining = active ? Math.ceil((1 - surveyProgress(active, now)) * SURVEYS[active.site].duration / 1000) : 0;
+  const status = active ? (remaining ? `${remaining} s` : 'Rover de retour') : `${completed.length} / ${Object.keys(SURVEYS).length}`;
+  if ($('survey-status').textContent !== status) $('survey-status').textContent = status;
+  $('survey-open').classList.toggle('rover-ready', !!active && remaining === 0);
+  const panel = $('modal').open && $('modal-content').querySelector('.survey-panel');
+  if (panel) updateSurveyPanel(panel, state, now);
+}
+function openSurvey(site) {
+  const { active, completed } = state.survey;
+  const key = site || active?.site || Object.keys(SURVEYS).find(k => !completed.includes(k)) || 'flora';
+  show(surveyPanel(state, key));
+  updateSurveyHud();
+  $('modal-content').querySelector(`[data-survey-select="${key}"]`).focus();
+}
+$('survey-open').onclick = () => openSurvey();
+$('modal-content').addEventListener('click', e => {
+  const button = e.target.closest('button'), panel = button?.closest('.survey-panel');
+  if (!panel) return;
+  const site = panel.dataset.site;
+  if (button.dataset.surveySelect) openSurvey(button.dataset.surveySelect);
+  if (button.id === 'survey-start' || button.id === 'survey-claim') {
+    advance(state);
+    handle(button.id === 'survey-start' ? startSurvey(state, site) : finishSurvey(state));
+    openSurvey(site);
+  }
+  if (button.dataset.surveyProject) {
+    close();
+    document.querySelector('[data-category="special"]').click();
+    selectProject(button.dataset.surveyProject);
+    if (!placing) $('inspector').scrollIntoView({ block: 'nearest' });
+    else $('world').scrollIntoView({ block: 'nearest' });
+  }
+  if (button.id === 'survey-locate') {
+    const tile = surveySites(worldOf(state))[site];
+    close(); moving = chosen = placing = null; selected = tile.id;
+    const p = project(tile.x, tile.y);
+    center = { x: p.x, y: p.y - 30 }; zoom = 1.2;
+    render();
+    $('scene').querySelector(`[data-survey-site="${site}"]`).focus({ preventScroll: true });
+    $('world').scrollIntoView({ block: 'nearest' });
+  }
+});
 let pointer = null, dragged = false, panFrame = null;
 $('world').addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
@@ -189,31 +282,43 @@ $('world').addEventListener('pointerdown', e => {
   dragged = false;
 });
 $('world').addEventListener('pointermove', e => {
-  if (!pointer) return;
+  if (!pointer || e.pointerId !== pointer.id) return;
   const dx = e.clientX - pointer.x, dy = e.clientY - pointer.y;
   if (Math.abs(dx) + Math.abs(dy) < 8 && !dragged) return;
   dragged = true;
   $('world').setPointerCapture(e.pointerId);
   const scale = Math.max(1100 / zoom / $('world').clientWidth, 780 / zoom / $('world').clientHeight);
-  const positions = worldOf(state).map(t => project(t.x, t.y));
-  center = { x: Math.max(Math.min(...positions.map(p=>p.x)), Math.min(Math.max(...positions.map(p=>p.x)), pointer.center.x - dx * scale)), y: Math.max(Math.min(...positions.map(p=>p.y)), Math.min(Math.max(...positions.map(p=>p.y)), pointer.center.y - dy * scale)) };
-  if (panFrame === null) panFrame = requestAnimationFrame(() => { panFrame = null; drawMap(); });
+  const bounds = cameraBounds(worldOf(state));
+  center = {
+    x: Math.max(bounds.left, Math.min(bounds.right, pointer.center.x - dx * scale)),
+    y: Math.max(bounds.top, Math.min(bounds.bottom, pointer.center.y - dy * scale)),
+  };
+  if (panFrame === null) panFrame = requestAnimationFrame(() => { panFrame = null; drawCamera(); });
 });
 $('world').addEventListener('pointerup', () => { pointer = null; });
 $('world').addEventListener('pointercancel', () => { pointer = null; dragged = false; });
-$('world').addEventListener('click', e => { if (dragged) { dragged = false; return; } const tile = e.target.closest('[data-tile]'); if (tile) actOnTile(tile.dataset.tile); });
+$('world').addEventListener('click', e => {
+  if (dragged) { dragged = false; return; }
+  const pin = e.target.closest('[data-survey-site]');
+  if (pin) { openSurvey(pin.dataset.surveySite); return; }
+  const tile = e.target.closest('[data-tile]');
+  if (tile) actOnTile(tile.dataset.tile);
+});
 $('world').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-survey-site]')) {
+    e.preventDefault(); openSurvey(e.target.dataset.surveySite); return;
+  }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-tile]')) {
     e.preventDefault(); const id = e.target.dataset.tile; actOnTile(id);
     $('scene').querySelector(`[data-tile="${id}"]`)?.focus({ preventScroll: true });
   }
 });
-$('zoom-in').onclick = () => { zoom = Math.min(1.8, Math.round((zoom + .2) * 10) / 10); drawMap(); };
-$('zoom-out').onclick = () => { zoom = Math.max(.4, Math.round((zoom - .2) * 10) / 10); drawMap(); };
-$('overview').onclick = () => { zoom = state.world?.generator === 2 ? .4 : .8; center = { x: 550, y: 390 }; drawMap(); };
-$('center').onclick = () => { ({ zoom, center } = homeCamera()); drawMap(); };
+$('zoom-in').onclick = () => { zoom = Math.min(1.8, Math.round((zoom + .2) * 10) / 10); drawCamera(); };
+$('zoom-out').onclick = () => { zoom = Math.max(.4, Math.round((zoom - .2) * 10) / 10); drawCamera(); };
+$('overview').onclick = () => { zoom = state.world?.generator === 2 ? .4 : .8; center = { x: 550, y: 390 }; drawCamera(); };
+$('center').onclick = () => { ({ zoom, center } = homeCamera()); drawCamera(); };
 function guide(intro = false) {
-  show(`<span class="section-label">UN MONDE À HABITER, PAS À CONQUÉRIR</span><h2>${intro ? 'Une planète inconnue.<br>Votre prochain foyer.' : 'Le guide des pionniers'}</h2><p>Votre planète est générée à partir d’un numéro unique. Le bouton « Nouvelle planète » permet de choisir un autre terrain et un biome. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">${intro ? 'Fonder ma colonie →' : 'Revenir sur Kepler →'}</button>`);
+  show(`<span class="section-label">UN MONDE À HABITER, PAS À CONQUÉRIR</span><h2>${intro ? 'Une planète inconnue.<br>Votre prochain foyer.' : 'Le guide des pionniers'}</h2><p>Votre planète est générée à partir d’un numéro unique. Le bouton « Nouvelle planète » permet de choisir un autre terrain et un biome. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li><li><strong>Explorez</strong> avec le rover. Le bouton Expéditions donne accès à trois sites et aux plans de l’observatoire des aurores.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">${intro ? 'Fonder ma colonie →' : 'Revenir sur Kepler →'}</button>`);
   $('begin').onclick = () => { close(); save(); };
 }
 $('guide').onclick = () => guide();
@@ -287,7 +392,7 @@ $('sound').onclick = async () => {
 };
 document.addEventListener('visibilitychange', () => { if (audio) { if (document.hidden) audio.suspend(); else if (sound) audio.resume(); } if (document.hidden) save(); });
 window.addEventListener('pagehide', save);
-setInterval(() => { const cycles = advance(state); if (cycles) { save(); drawStats(); drawResearch(); } }, 1000);
+setInterval(() => { const cycles = advance(state); if (cycles) { save(); drawStats(); drawResearch(); } updateSurveyHud(); }, 1000);
 setInterval(updateTimers, 100);
 render();
 if (!stored) guide(true);
