@@ -1,4 +1,4 @@
-import { artUrl } from './art-url.js?v=5.0.0';
+import { artUrl } from './art-url.js?v=6.0.0';
 // The mesh belongs to the renderer. The generator's tile coordinates remain the game board.
 export const project = (x, y) => ({ x: 550 + (x - y) * 40, y: 170 + (x + y) * 22 });
 

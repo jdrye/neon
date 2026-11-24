@@ -1,4 +1,4 @@
-import { artUrl } from './art-url.js?v=5.0.0';
+import { artUrl } from './art-url.js?v=6.0.0';
 // The same specimen silhouettes identify a destination in the field book and on the map.
 const symbols = {
   flora: '<path d="M-7 7Q-12-5 8-9Q12 6-4 7M-8 10 5-5M-3 4-4-1M1 0 5 0"/>',

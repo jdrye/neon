@@ -1,5 +1,7 @@
-import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=5.0.0';
-import { SURVEYS, restoreSurvey, surveyProgress, surveyRoute } from './survey.js?v=5.0.0';
+import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=6.0.0';
+import { SURVEYS, restoreSurvey, surveyProgress, surveyRoute } from './survey.js?v=6.0.0';
+import { CHAPTERS, HOME, RIGS, departurePerks, freshFrontier, maneuver, replay, restoreFrontier, sector } from './frontier.js?v=6.0.0';
+import { WORKSHOPS, worksites } from './crews.js?v=6.0.0';
 export const VERSION = 2;
 export const LIMIT = 9999;
 export const RESOURCES = {
@@ -24,6 +26,7 @@ export const BUILDINGS = {
   synthesizer: { name: 'Synthétiseur cristallin', icon: '⟡', description: 'Fait croître des cristaux purs : 3 cristaux par cycle et par niveau.', cost: { ore: 45, crystal: 25, water: 20, energy: 30 }, output: { crystal: 3 }, max: 3, requires: 'mine' },
   laboratory: { name: 'Institut scientifique', icon: '⚛', description: 'Réduit de 25 % le coût des recherches encore non acquises. Bonus unique, non cumulable.', cost: { ore: 35, bio: 20, crystal: 15, energy: 20 }, max: 1, requires: 'habitat' },
   hangar: { name: 'Hangar à rover', icon: '⚙', description: 'Abrite le rover de terrain. Choisissez un site dans le carnet d’exploration pour envoyer le véhicule prélever un spécimen.', cost: { ore: 10, crystal: 3 }, max: 1, unique: true },
+  lighthouse: { name: 'Phare des marées', icon: '✺', description: 'Son faisceau relie les îles au port stellaire. Produit 5 énergies et 3 cristaux par cycle.', cost: { ore: 80, bio: 35, crystal: 45, energy: 60 }, output: { energy: 5, crystal: 3 }, max: 1, unique: true, requires: 'beacon', requiresCouncil: true },
   observatory: { name: 'Observatoire des aurores', icon: '✧', description: 'La collection des trois spécimens permet de construire cet observatoire. Ses capteurs produisent 4 cristaux et 4 énergies par cycle.', cost: { ore: 28, bio: 12, crystal: 12, energy: 8 }, output: { crystal: 4, energy: 4 }, max: 1, unique: true, requiresSurveys: true },
 };
 export const GOALS = [
@@ -91,13 +94,39 @@ export function tileOf(s, id) {
   return tileIndexes.get(world).get(id);
 }
 export function fresh(now = Date.now(), seed = randomSeed(), biome = 'emerald') {
-  return { version: VERSION, world: seed === null ? null : { generator: 2, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], survey: { completed: [], active: null }, harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
+  return { version: VERSION, world: seed === null ? null : { generator: 2, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], crews: [], frontier: freshFrontier(), survey: { completed: [], active: null }, harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
 }
 export function has(s, type) { return s.buildings.some(b => b.type === type); }
 export function population(s) { return 4 + s.buildings.reduce((n, b) => n + (BUILDINGS[b.type].housing || 0) * b.level, 0); }
+export function crewCapacity(s) {
+  return Math.min(6, 1 + Math.floor((population(s) - 4) / 6)) + Number(s.frontier.decisions.includes('guild'));
+}
+export function colonySites(s, moving = null) {
+  return worksites(worldOf(s), s.buildings, s.frontier.decisions, moving);
+}
+export function assignCrew(s, id, assign) {
+  const index = s.crews.indexOf(id), building = s.buildings.find(b => b.id === id);
+  if (!building || !WORKSHOPS[building.type]) return { ok: false, message: 'Cette installation ne reçoit pas d’équipe de terrain.' };
+  if (!assign && index >= 0) {
+    s.crews.splice(index, 1);
+    return { ok: true, message: 'Équipe rappelée. Elle peut rejoindre un autre atelier.' };
+  }
+  if (!assign || index >= 0 || s.crews.length >= crewCapacity(s)) return { ok: false, message: 'Rappelez une équipe ou accueillez davantage de pionniers.' };
+  s.crews.push(id);
+  return { ok: true, message: `Une équipe rejoint le bâtiment « ${BUILDINGS[building.type].name} ».` };
+}
 export function rates(s) {
   const r = Object.fromEntries(Object.keys(RESOURCES).map(k => [k, 0]));
   for (const b of s.buildings) for (const [key, n] of Object.entries(BUILDINGS[b.type].output || {})) r[key] += n * b.level * productionMultiplier(s, b.type);
+  if (s.crews.length) {
+    const inspect = colonySites(s);
+    for (const id of s.crews.slice(0, crewCapacity(s))) {
+      const b = s.buildings.find(building => building.id === id);
+      if (!b) continue;
+      const site = inspect(b.type, id);
+      if (site) r[site.resource] += site.total;
+    }
+  }
   return r;
 }
 export function grant(s, resources) { for (const [k, v] of Object.entries(resources)) s.resources[k] = Math.min(LIMIT, s.resources[k] + v); }
@@ -122,6 +151,7 @@ export function buildRequirement(s, type) {
   if (!Object.hasOwn(BUILDINGS, type) || type === 'pod') return 'Construction indisponible.';
   const def = BUILDINGS[type];
   if (def.unique && has(s, type)) return 'Déjà construit dans la colonie.';
+  if (def.requiresCouncil && s.frontier.decisions.length < CHAPTERS.length) return 'Rapportez trois fragments et prenez les trois décisions du conseil.';
   if (def.requires && !has(s, def.requires)) return `Requis : ${BUILDINGS[def.requires].name}.`;
   if (def.requiresSurveys && s.survey.completed.length < Object.keys(SURVEYS).length) return 'Rapportez les trois spécimens du carnet d’exploration.';
   return '';
@@ -132,6 +162,7 @@ export function startSurvey(s, site, now = Date.now()) {
   if (!Object.hasOwn(SURVEYS, site)) return { ok: false, message: 'Site inconnu.' };
   const hangar = s.buildings.find(b => b.type === 'hangar');
   if (!hangar) return { ok: false, message: 'Construisez un hangar à rover pour partir.' };
+  if (s.frontier.active) return { ok: false, message: 'Le rover est en reconnaissance. Ramenez-le au camp depuis les Opérations.' };
   if (s.survey.active) return { ok: false, message: 'Terminez la sortie en cours avant un nouveau départ.' };
   if (s.survey.completed.includes(site)) return { ok: false, message: 'Ce spécimen figure déjà dans le carnet.' };
   if (!affordable(s, SURVEYS[site].cost)) return { ok: false, message: 'Réunissez les provisions du départ.' };
@@ -207,6 +238,10 @@ export function restore(raw, now = Date.now()) {
     s.lastTick = Number.isFinite(parsed.lastTick) ? Math.min(now, Math.max(0, parsed.lastTick)) : now;
     s.research = Array.isArray(parsed.research) ? [...new Set(parsed.research.filter(key => Object.hasOwn(RESEARCH, key)))] : [];
     s.survey = restoreSurvey(parsed.survey, worldOf(s), now);
+    s.frontier = restoreFrontier(parsed.frontier, s.world);
+    if (s.survey.active) s.frontier.active = null;
+    const workshops = new Set(s.buildings.filter(b => WORKSHOPS[b.type]).map(b => b.id));
+    s.crews = Array.isArray(parsed.crews) ? [...new Set(parsed.crews.filter(id => workshops.has(id)))].slice(0, 7) : [];
     s.sound = parsed.sound === true;
     return s;
   } catch { return fresh(now); }
@@ -223,6 +258,7 @@ export function dismantle(s, id) {
   if (!b || b.type === 'pod') return { ok: false, message: 'Le module pionnier doit rester en place.' };
   grant(s, salvage(b));
   s.buildings = s.buildings.filter(b => b.id !== id);
+  s.crews = s.crews.filter(site => site !== id);
   return { ok: true, message: 'Terrain libéré. La moitié des matériaux investis a été récupérée.' };
 }
 
@@ -232,7 +268,8 @@ export function relocate(s, from, to) {
   if (!building || building.type === 'pod') return { ok: false, message: 'Le module pionnier doit rester en place.' };
   if (!canPlace(s, to)) return { ok: false, message: 'Choisissez une case de terrain libre.' };
   building.id = to;
-  return { ok: true, message: `${BUILDINGS[building.type].name} déplacé. Niveau et production conservés.` };
+  s.crews = s.crews.map(site => site === from ? to : site);
+  return { ok: true, message: `${BUILDINGS[building.type].name} déplacé. Son niveau est conservé.` };
 }
 export function goalSteps(s, index) {
   const built = type => ({ text: BUILDINGS[type].name, done: has(s, type) });
@@ -255,4 +292,50 @@ export function importSave(raw, now = Date.now()) {
     throw new Error('Sauvegarde NÉON incompatible ou incomplète.');
   }
   return restore(raw, now);
+}
+
+export function openTraverse(s, rig) {
+  if (!Object.hasOwn(RIGS, rig)) return { ok: false, message: 'Équipement de rover inconnu.' };
+  if (!has(s, 'hangar')) return { ok: false, message: 'Construisez un hangar à rover pour prendre la piste.' };
+  if (s.survey.active || s.frontier.active) return { ok: false, message: 'Le rover est déjà en mission.' };
+  if (!affordable(s, RIGS[rig].cost)) return { ok: false, message: 'Les provisions de cette configuration sont insuffisantes.' };
+  pay(s, RIGS[rig].cost);
+  s.frontier.sorties++;
+  s.frontier.active = { rig, perks: departurePerks(s.frontier.decisions), steps: [] };
+  return { ok: true, message: 'Le rover est au camp avancé. Le signal est marqué sur la carte.' };
+}
+export function fieldState(s) {
+  if (!s.frontier.active) return null;
+  const board = sector(s.world, s.frontier.sorties);
+  return { board, drive: replay(board, s.frontier.active) };
+}
+export function driveRover(s, action) {
+  const field = fieldState(s);
+  if (!field) return { ok: false, message: 'Aucune reconnaissance en cours.' };
+  const result = maneuver(field.board, field.drive, action);
+  if (result.ok) s.frontier.active.steps.push(action);
+  return result;
+}
+export function dockRover(s, recall = false) {
+  const field = fieldState(s);
+  if (!field || (!recall && (field.drive.at !== HOME || field.drive.trail.length < 2))) return { ok: false, message: 'Ramenez le rover au camp avant de décharger.' };
+  const { drive, board } = field;
+  const cargo = recall ? { ore: 0, crystal: 0 } : { ...drive.cargo };
+  const signal = !recall && drive.signal;
+  if (signal) { s.frontier.signals++; cargo.crystal += 4; }
+  grant(s, cargo);
+  const [progress, target] = board.order.progress(drive);
+  const order = !recall && progress >= target;
+  if (order) { s.frontier.orders++; grant(s, board.order.reward); }
+  s.frontier.last = { number: s.frontier.sorties, recalled: recall, signal, order, ...cargo };
+  s.frontier.active = null;
+  return { ok: true, message: recall ? 'Rover rapatrié. La soute a été laissée sur le terrain.' : signal ? 'Fragment transmis au conseil. La cargaison a rejoint les réserves.' : 'Sortie terminée. La cargaison a rejoint les réserves.' };
+}
+export function decideCouncil(s, key) {
+  const index = s.frontier.decisions.length, chapter = CHAPTERS[index];
+  if (!chapter || index >= s.frontier.signals || !Object.hasOwn(chapter.options, key)) return { ok: false, message: 'Le conseil attend le prochain fragment du signal.' };
+  const option = chapter.options[key];
+  if (!affordable(s, option.cost)) return { ok: false, message: 'Les réserves ne permettent pas encore ce projet.' };
+  pay(s, option.cost); s.frontier.decisions.push(key);
+  return { ok: true, message: `Décision adoptée. ${option.effect}` };
 }

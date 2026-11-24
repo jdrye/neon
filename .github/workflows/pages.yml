@@ -21,7 +21,7 @@ jobs:
         run: npm test
       - name: Build static game
         run: npm run build
-      - name: Play the rover expedition on desktop and mobile layouts
+      - name: Play the rover expedition and tidal campaign on desktop and mobile
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 >"$RUNNER_TEMP/neon-http.log" 2>&1 &
           server=$!

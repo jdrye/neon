@@ -73,6 +73,38 @@ async function checkLayout(name,width,height) {
     if (pictures<20 || await evaluate('window.innerWidth')!==width) throw Error('Dimensions ou illustrations incorrectes.');
     const capture=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
     await writeFile(join(output,'kepler-'+name+'.png'),Buffer.from(capture.data,'base64'));
+    // Use the same pointer or touch sequence as a player in the standalone edition.
+    async function press(selector) {
+      const point = await evaluate(`(() => {
+        const el=document.querySelector(${JSON.stringify(selector)});
+        if (!el || el.disabled) throw Error('Commande indisponible');
+        el.scrollIntoView({block:'nearest',behavior:'instant'});
+        const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+      })()`);
+      if (name==='mobile') {
+        await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
+        await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+      } else {
+        await call('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...point});
+        await call('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...point});
+      }
+    }
+    await press('#frontier-open');
+    await waitFor(()=>evaluate(`!!document.querySelector('[data-op="launch"]')`),'le poste de pilotage');
+    await press('[data-op="launch"]');
+    await waitFor(()=>evaluate('!!document.querySelector(".field-map")'),'la carte tactique');
+    await press('[data-op="scan"]');
+    await press('.field-move');
+    await waitFor(()=>evaluate(`JSON.parse(localStorage.getItem(document.documentElement.dataset.saveKey)).frontier.active.steps.length===2`),'les commandes du radar et du rover');
+    await evaluate(`(async () => {
+      const dialog=document.querySelector('#modal'); dialog.scrollTop=0;
+      if(dialog.scrollWidth>dialog.clientWidth) throw Error('Console plus large que l’écran');
+      const imgs=[...dialog.querySelectorAll('img, image')].map(el=>el.getAttribute('src') || el.getAttribute('href'));
+      await Promise.all([...new Set(imgs)].map(url=>{const i=new Image();i.src=url;return i.decode();}));
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    })()`);
+    const field=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+    await writeFile(join(output,'marees-'+name+'.png'),Buffer.from(field.data,'base64'));
     console.log(name+' '+width+' × '+height+' · partie jouée, aperçu hors ligne et '+pictures+' illustrations décodées.');
   } finally {
     socket?.close();
