@@ -1,4 +1,5 @@
-import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=4.1.0';
+import { generateWorld, generateLargeWorld, randomSeed, BIOMES } from './world.js?v=4.2.0';
+import { SURVEYS, restoreSurvey, surveyProgress, surveyRoute } from './survey.js?v=4.2.0';
 export const VERSION = 2;
 export const LIMIT = 9999;
 export const RESOURCES = {
@@ -22,6 +23,8 @@ export const BUILDINGS = {
   quarry: { name: 'Carrière automatisée', icon: '⬢', description: 'Une installation spécialisée : 8 minerais par cycle et par niveau.', cost: { ore: 50, crystal: 18, energy: 25 }, output: { ore: 8 }, max: 3, requires: 'mine' },
   synthesizer: { name: 'Synthétiseur cristallin', icon: '⟡', description: 'Fait croître des cristaux purs : 3 cristaux par cycle et par niveau.', cost: { ore: 45, crystal: 25, water: 20, energy: 30 }, output: { crystal: 3 }, max: 3, requires: 'mine' },
   laboratory: { name: 'Institut scientifique', icon: '⚛', description: 'Réduit de 25 % le coût des recherches encore non acquises. Bonus unique, non cumulable.', cost: { ore: 35, bio: 20, crystal: 15, energy: 20 }, max: 1, requires: 'habitat' },
+  hangar: { name: 'Hangar à rover', icon: '⚙', description: 'Abrite le rover de terrain. Choisissez un site dans le carnet d’exploration pour envoyer le véhicule prélever un spécimen.', cost: { ore: 10, crystal: 3 }, max: 1, unique: true },
+  observatory: { name: 'Observatoire des aurores', icon: '✧', description: 'La collection des trois spécimens permet de construire cet observatoire. Ses capteurs produisent 4 cristaux et 4 énergies par cycle.', cost: { ore: 28, bio: 12, crystal: 12, energy: 8 }, output: { crystal: 4, energy: 4 }, max: 1, unique: true, requiresSurveys: true },
 };
 export const GOALS = [
   { name: 'Premiers prélèvements', text: 'Collecter 5 fois dans le paysage.', reward: { ore: 10, energy: 5 }, check: s => s.harvests >= 5 },
@@ -88,7 +91,7 @@ export function tileOf(s, id) {
   return tileIndexes.get(world).get(id);
 }
 export function fresh(now = Date.now(), seed = randomSeed(), biome = 'emerald') {
-  return { version: VERSION, world: seed === null ? null : { generator: 2, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
+  return { version: VERSION, world: seed === null ? null : { generator: 2, seed: seed >>> 0, biome: Object.hasOwn(BIOMES, biome) ? biome : 'emerald' }, resources: { ore: 8, bio: 6, water: 4, crystal: 0, energy: 8 }, buildings: [{ id: '5,5', type: 'pod', level: 1 }], research: [], survey: { completed: [], active: null }, harvests: 0, claimed: [], lastTick: now, cooldowns: {}, sound: false };
 }
 export function has(s, type) { return s.buildings.some(b => b.type === type); }
 export function population(s) { return 4 + s.buildings.reduce((n, b) => n + (BUILDINGS[b.type].housing || 0) * b.level, 0); }
@@ -115,13 +118,45 @@ export function harvest(s, id, now = Date.now()) {
   const rewards = collectRewards(s);
   return { ok: true, resource: tile.node, amount, rewards, message: `+${amount} ${RESOURCES[tile.node].name.toLowerCase()} · La nature se renouvelle, à son rythme.` };
 }
-export function unlocked(s, type) { const def = BUILDINGS[type]; return !!def && (!def.requires || has(s, def.requires)); }
+export function buildRequirement(s, type) {
+  if (!Object.hasOwn(BUILDINGS, type) || type === 'pod') return 'Construction indisponible.';
+  const def = BUILDINGS[type];
+  if (def.unique && has(s, type)) return 'Déjà construit dans la colonie.';
+  if (def.requires && !has(s, def.requires)) return `Requis : ${BUILDINGS[def.requires].name}.`;
+  if (def.requiresSurveys && s.survey.completed.length < Object.keys(SURVEYS).length) return 'Rapportez les trois spécimens du carnet d’exploration.';
+  return '';
+}
+export function unlocked(s, type) { return !buildRequirement(s, type); }
+
+export function startSurvey(s, site, now = Date.now()) {
+  if (!Object.hasOwn(SURVEYS, site)) return { ok: false, message: 'Site inconnu.' };
+  const hangar = s.buildings.find(b => b.type === 'hangar');
+  if (!hangar) return { ok: false, message: 'Construisez un hangar à rover pour partir.' };
+  if (s.survey.active) return { ok: false, message: 'Terminez la sortie en cours avant un nouveau départ.' };
+  if (s.survey.completed.includes(site)) return { ok: false, message: 'Ce spécimen figure déjà dans le carnet.' };
+  if (!affordable(s, SURVEYS[site].cost)) return { ok: false, message: 'Réunissez les provisions du départ.' };
+  if (!surveyRoute(worldOf(s), hangar.id, site).length) return { ok: false, message: 'Aucun itinéraire terrestre vers ce site.' };
+  pay(s, SURVEYS[site].cost);
+  s.survey.active = { site, origin: hangar.id, startedAt: now };
+  return { ok: true, message: `Le rover est parti vers le site « ${SURVEYS[site].name} ».` };
+}
+
+export function finishSurvey(s, now = Date.now()) {
+  const trip = s.survey.active;
+  if (!trip || surveyProgress(trip, now) < 1) return { ok: false, message: 'Le rover doit être de retour pour récupérer son chargement.' };
+  const survey = SURVEYS[trip.site];
+  grant(s, survey.reward);
+  s.survey.completed.push(trip.site);
+  s.survey.active = null;
+  return { ok: true, message: `Spécimen rapporté : ${survey.specimen}. Les matériaux ont rejoint vos réserves.` };
+}
 export function canPlace(s, id) {
   const t = tileOf(s, id);
   return !!t && t.terrain !== 'water' && !t.node && !s.buildings.some(b => b.id === id);
 }
 export function build(s, type, id) {
-  if (!BUILDINGS[type] || type === 'pod' || !unlocked(s, type)) return { ok: false, message: 'Construisez d’abord le bâtiment requis.' };
+  const requirement = buildRequirement(s, type);
+  if (requirement) return { ok: false, message: requirement };
   if (!canPlace(s, id)) return { ok: false, message: 'Choisissez une case de terrain libre, hors de l’eau et des ressources.' };
   const def = BUILDINGS[type];
   if (!affordable(s, def.cost)) return { ok: false, message: 'Il manque des ressources. La fiche du bâtiment indique les quantités nécessaires.' };
@@ -163,6 +198,7 @@ export function restore(raw, now = Date.now()) {
     const seen = new Set(['5,5']);
     for (const b of parsed.buildings) {
       if (!b || b.type === 'pod' || !Object.hasOwn(BUILDINGS, b.type) || !tileOf(s, b.id) || seen.has(b.id)) continue;
+      if (BUILDINGS[b.type].unique && has(s, b.type)) continue;
       if (tileOf(s, b.id).terrain === 'water' || tileOf(s, b.id).node) continue;
       s.buildings.push({ id: b.id, type: b.type, level: Math.max(1, Math.min(BUILDINGS[b.type].max, Math.floor(Number(b.level)) || 1)) }); seen.add(b.id);
     }
@@ -170,6 +206,7 @@ export function restore(raw, now = Date.now()) {
     s.claimed = Array.isArray(parsed.claimed) ? [...new Set(parsed.claimed.filter(i => Number.isInteger(i) && i >= 0 && i < GOALS.length))] : [];
     s.lastTick = Number.isFinite(parsed.lastTick) ? Math.min(now, Math.max(0, parsed.lastTick)) : now;
     s.research = Array.isArray(parsed.research) ? [...new Set(parsed.research.filter(key => Object.hasOwn(RESEARCH, key)))] : [];
+    s.survey = restoreSurvey(parsed.survey, worldOf(s), now);
     s.sound = parsed.sound === true;
     return s;
   } catch { return fresh(now); }

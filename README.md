@@ -4,6 +4,20 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 
 **https://jdrye.github.io/neon/**
 
+## Version 4.2 — Les expéditions du rover
+
+Depuis la carte, ouvrez **Expéditions** pour localiser trois sites et consulter le carnet. Le **hangar à rover** coûte 10 minerais et 3 cristaux. Au début d’une partie, une collecte de minerai et une de cristaux suffisent pour le construire. Choisissez ensuite un site et envoyez le rover avec ses provisions.
+
+| Site | Spécimen | Aller-retour | Provisions | Matériaux rapportés |
+| --- | --- | --- | --- | --- |
+| Forêt des brumes | Fougère de verre | 24 s | 4 eaux, 2 énergies | 16 biomasses, 6 eaux |
+| Falaises ocre | Basalte rubané | 36 s | 6 biomasses, 3 énergies | 22 minerais, 4 cristaux |
+| Champ de prismes | Prisme irisé | 48 s | 6 eaux, 4 énergies | 14 cristaux, 8 minerais |
+
+Le rover suit un itinéraire terrestre depuis son hangar. Vous pouvez continuer à bâtir ou quitter le jeu pendant le trajet. À son retour, **Récupérer le spécimen** ajoute la cargaison aux réserves et le rapport au carnet. Une seule sortie peut être engagée à la fois. Un hangar déplacé pendant une sortie sert de base à la suivante.
+
+Rapporter les trois spécimens débloque **l’observatoire des aurores**, qui produit **4 cristaux et 4 énergies par cycle**. Le hangar et l’observatoire sont chacun limités à un exemplaire par colonie. Les sites utilisent des gisements déjà présents sur les cartes historiques, 15 × 15 et 31 × 31. La collecte habituelle reste possible sur ces gisements.
+
 ## Version 4.1 — Grandes cartes et nouveaux bâtiments
 
 Les nouvelles parties utilisent un continent de **31 × 31 cases (961 cases)**, contre 225 auparavant, soit 4,27 fois la surface de la grille. Elles proposent 56 gisements renouvelables (14 de chaque ressource naturelle). Les sauvegardes historiques et les cartes 15 × 15 gardent leur géographie ; pour profiter d’un grand continent, créez une nouvelle planète après avoir exporté votre colonie si vous souhaitez la conserver.
@@ -80,6 +94,7 @@ npm run dev
 
 - `src/engine.js` : économie, collecte, construction, niveaux, production et sauvegardes.
 - `src/world.js` : génération déterministe v1, biomes et numéros de mondes.
+- `src/survey.js`, `src/survey-panel.js`, `src/survey-art.js` : itinéraires du rover, carnet et illustrations des spécimens.
 - `src/scenes.js` : projection isométrique et illustrations SVG.
 - `src/app.js` : interface, caméra, interactions et audio.
 - `src/style.css` : présentation et adaptation mobile.
@@ -102,3 +117,5 @@ Après le port stellaire, débloquez les trois technologies et accueillez 28 pio
 La carte comporte des rivages, des brumes et des colons animés ; les animations respectent la réduction des mouvements.
 
 Les tests procéduraux contrôlent 300 graines (connectivité, ressources, zone centrale, capacité), la reproductibilité, la migration des sauvegardes et trois parcours complets jusqu’à la métropole. Le générateur v1 doit rester immuable : toute évolution modifiant ses sorties nécessite une nouvelle version et le maintien de la lecture v1.
+
+Les tests du rover vérifient les itinéraires terrestres, le paiement au départ, la reprise hors ligne, la récupération unique des cargaisons et un parcours complet jusqu’à l’observatoire. GitHub Actions joue également la première expédition dans Chrome aux formats ordinateur et mobile.

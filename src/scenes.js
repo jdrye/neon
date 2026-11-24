@@ -1,6 +1,21 @@
-import { BUILDINGS, RESOURCES, canPlace, population, worldOf } from './engine.js?v=4.1.0';
-import { BIOMES } from './world.js?v=4.1.0';
+import { BUILDINGS, RESOURCES, canPlace, population, worldOf } from './engine.js?v=4.2.0';
+import { BIOMES } from './world.js?v=4.2.0';
+import { SURVEYS, surveyProgress, surveyRoute, surveySites } from './survey.js?v=4.2.0';
+import { roverSymbol, specimenMark } from './survey-art.js?v=4.2.0';
 export const project = (x, y) => ({ x: 550 + (x - y) * 40, y: 170 + (x + y) * 22 });
+export function cameraViewBox(center, zoom) {
+  return `${center.x - 550 / zoom} ${center.y - 390 / zoom} ${1100 / zoom} ${780 / zoom}`;
+}
+
+const boundsCache = new WeakMap();
+export function cameraBounds(tiles) {
+  if (!boundsCache.has(tiles)) {
+    const points = tiles.map(t => project(t.x, t.y));
+    const x = points.map(p => p.x), y = points.map(p => p.y);
+    boundsCache.set(tiles, { left: Math.min(...x), right: Math.max(...x), top: Math.min(...y), bottom: Math.max(...y) });
+  }
+  return boundsCache.get(tiles);
+}
 const diamond = '0,-22 40,0 0,22 -40,0';
 const poly = (points, fill, attrs='') => `<polygon points="${points}" fill="${fill}" ${attrs}/>`;
 function block(x,y,w,d,h,color='#dae5ee',roof='#f3f5ee',side='#819eae') {
@@ -101,6 +116,22 @@ export function buildingSymbol(type,level=1) {
     art += `<path d="M-17 -33a17 17 0 0 1 34 0Z" fill="#aeccea" stroke="#dfeef6" stroke-width="2"/><ellipse cy="-41" rx="24" ry="8" fill="none" stroke="#bba3ed" stroke-width="2" transform="rotate(-30 0 -41)"/><circle cy="-41" r="4" fill="#c4f9f5"/>`;
     art += dish(24,-28);
   }
+  if (type === 'hangar') {
+    art += block(-4,-3,26,14,24,'#bed1c9','#e3debd','#648499');
+    art += `<path d="m-30-27 14-21 39 18 0 6-26 13Z" fill="#dfa45e"/><path d="m-16-48 19-9 33 20-13 7Z" fill="#ffdb94"/>
+      <path d="m-24-20 19 9v16l-19-10Z" fill="#213e4b"/><path d="m-24-20 19 9" stroke="#91e5d9" stroke-width="2"/>
+      <path d="m7-14 13-7m-13 11 13-7m-13 11 13-7" stroke="#314e60" stroke-width="2"/>
+      <g transform="translate(7 11) scale(.85)">${roverSymbol()}</g>`;
+    art += dish(19,-42);
+  }
+  if (type === 'observatory') {
+    art += block(0,-1,28,15,19,'#b9c4da','#eee6e9','#6a829a') + windows(-24,-17,3);
+    art += `<path d="M-22-24a22 22 0 0 1 44 0q-22 16-44 0Z" fill="#8e8bb9" stroke="#e5dbff" stroke-width="2"/>
+      <path d="M-2-45q-12 10-10 25m10-25q14 9 15 25" fill="none" stroke="#e2dafa" stroke-width="1.5"/>
+      <path d="m-6-36 21-25 10 8-23 23Z" fill="#c8d9e1" stroke="#43526e" stroke-width="2"/>
+      <path d="m13-60 4-6 15 9-6 7Z" fill="#e6d4aa"/><ellipse cx="24" cy="-61" rx="8" ry="3" transform="rotate(30 24 -61)" fill="#99f0e8"/>
+      <path d="m5 0 19-10" stroke="#c4abff" stroke-width="2.5"/>`;
+  }
   return `<g class="structure">${art}</g>`;
 }
 function nature(t,palette) {
@@ -109,6 +140,36 @@ function nature(t,palette) {
   if(t.node==='ore') return poly('-29,1 -23,-17 -8,-28 8,-17 11,5 -9,14','#788caa')+poly('-23,-17 -8,-28 8,-17 -9,-7','#c8d5e0')+poly('5,6 12,-12 25,-20 35,-3 25,13','#9aabbb')+`<path d="M-18 -9l10 -5M14 -6l8 -5" stroke="#ffdb9b" stroke-width="3"/>`;
   if(t.node==='water') return `<g class="water-source"><ellipse cy="1" rx="24" ry="10" fill="#8bf7ed" opacity=".15"/><ellipse cy="1" rx="18" ry="7" fill="none" stroke="#9af8ee" opacity=".6"/><path d="M0 -28Q-17 -10 0 -7Q17 -10 0 -28" fill="#bcfff6"/><path d="M-3 -18q-4 5 0 6" stroke="#fff" fill="none" stroke-width="2"/></g>`;
   return '';
+}
+
+export function roverPosition(path, progress) {
+  const distance = (1 - Math.abs(2 * progress - 1)) * (path.length - 1);
+  const index = Math.floor(distance);
+  const a = path[index], b = path[Math.min(index + 1, path.length - 1)];
+  const part = distance - index;
+  return project(a.x + (b.x - a.x) * part, a.y + (b.y - a.y) * part);
+}
+
+function surveyOverlay(state, tiles) {
+  const { active, completed } = state.survey;
+  let trail = '';
+  if (active) {
+    const path = surveyRoute(tiles, active.origin, active.site);
+    const points = path.map(t => { const p = project(t.x, t.y); return `${p.x},${p.y}`; }).join(' ');
+    const pos = roverPosition(path, surveyProgress(active));
+    trail = `<g pointer-events="none" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="${points}" stroke="#183f49" stroke-width="5"/><polyline points="${points}" stroke="#ffda97" stroke-width="2" stroke-dasharray="5 7"/>
+      </g><g data-rover="" transform="translate(${pos.x} ${pos.y})" pointer-events="none">${roverSymbol()}</g>`;
+  }
+  const pins = Object.entries(surveySites(tiles)).map(([key, tile]) => {
+    const p = project(tile.x, tile.y), color = SURVEYS[key].color, done = completed.includes(key);
+    return `<g class="survey-pin" data-survey-site="${key}" tabindex="0" role="button" aria-label="Explorer le site ${SURVEYS[key].name}${done ? ', spécimen rapporté' : ''}" transform="translate(${p.x + 22} ${p.y - 48})" style="color:${color}">
+      <path d="M-3 16-15 38" fill="none" stroke="currentColor" stroke-width="2" pointer-events="none"/>
+      <circle class="pin-ring" r="17" fill="#122b39" stroke="currentColor" stroke-width="2"/>${specimenMark(key)}
+      ${done ? '<circle cx="13" cy="-12" r="6" fill="#abedb8"/><path d="m10-12 2 2 4-5" fill="none" stroke="#184238" stroke-width="1.6"/>' : ''}
+    </g>`;
+  }).join('');
+  return trail + pins;
 }
 export function renderMap(state,{selection=null,placing=null,zoom=1,center={x:550,y:390},idPrefix='world'}={}) {
   const theme=BIOMES[state.world?.biome]||BIOMES.emerald;
@@ -133,6 +194,6 @@ export function renderMap(state,{selection=null,placing=null,zoom=1,center={x:55
   }
   const overlay=placing?tiles.filter(t=>canPlace(state,t.id)).map(t=>{const p=project(t.x,t.y);return `<g class="tile buildable" data-tile="${t.id}" transform="translate(${p.x} ${p.y})" role="button" tabindex="0" aria-label="Choisir cet emplacement"><polygon class="hit" points="${diamond}"/><path d="M-6 0H6M0 -4V4" stroke="#c7ffe0" stroke-width="2"/><polygon class="outline" points="${diamond}" fill="none" stroke="#e9ffc8" stroke-width="2"/></g>`;}).join(''):'';
   const people=tiles.filter(t=>t.terrain!=='water'&&!t.node&&!buildings[t.id]&&Math.abs(t.x-5)+Math.abs(t.y-5)<5).slice(0,Math.min(12,Math.ceil(population(state)/3))).map((t,i)=>{const p=project(t.x,t.y);return `<g transform="translate(${p.x} ${p.y})" pointer-events="none"><g class="colonist" style="animation-delay:-${i}s"><ellipse cy="4" rx="4" ry="2" fill="#11263e" opacity=".4"/><path d="M-2 2v-5m4 5v-5" stroke="#273950" stroke-width="2"/><rect x="-3" y="-10" width="6" height="7" rx="2" fill="${i%2?'#ffd5a1':'#e5f5eb'}"/><circle cy="-13" r="3.5" fill="#eff9f6"/><path d="M-2 -13h4" stroke="#329db5" stroke-width="2"/></g></g>`;}).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${center.x-550/zoom} ${center.y-390/zoom} ${1100/zoom} ${780/zoom}" role="group" aria-label="Carte de la colonie"><defs><radialGradient id="ocean-light"><stop stop-color="${theme.water}"/><stop offset="1" stop-color="${theme.deep}"/></radialGradient><filter id="mist"><feGaussianBlur stdDeviation="8"/></filter></defs><rect x="-2000" y="-2000" width="5000" height="5000" fill="${theme.deep}"/><ellipse cx="550" cy="390" rx="900" ry="600" fill="url(#ocean-light)"/><g class="ocean-rings" fill="none" stroke="#77dce3" opacity=".08"><ellipse cx="550" cy="430" rx="540" ry="290"/><ellipse cx="550" cy="430" rx="590" ry="320"/></g>${ground}${objects}${people}<g class="atmosphere" pointer-events="none" fill="#d7f6f7" filter="url(#mist)" opacity=".1"><ellipse cx="250" cy="270" rx="110" ry="22"/><ellipse cx="800" cy="580" rx="170" ry="20"/></g>${overlay}</svg>`.replaceAll('ocean-light', `${idPrefix}-ocean-light`).replaceAll('id="mist"', `id="${idPrefix}-mist"`).replaceAll('url(#mist)', `url(#${idPrefix}-mist)`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${cameraViewBox(center, zoom)}" role="group" aria-label="Carte de la colonie"><defs><radialGradient id="ocean-light"><stop stop-color="${theme.water}"/><stop offset="1" stop-color="${theme.deep}"/></radialGradient><filter id="mist"><feGaussianBlur stdDeviation="8"/></filter></defs><rect x="-2000" y="-2000" width="5000" height="5000" fill="${theme.deep}"/><ellipse cx="550" cy="390" rx="900" ry="600" fill="url(#ocean-light)"/><g class="ocean-rings" fill="none" stroke="#77dce3" opacity=".08"><ellipse cx="550" cy="430" rx="540" ry="290"/><ellipse cx="550" cy="430" rx="590" ry="320"/></g>${ground}${objects}${people}<g class="atmosphere" pointer-events="none" fill="#d7f6f7" filter="url(#mist)" opacity=".1"><ellipse cx="250" cy="270" rx="110" ry="22"/><ellipse cx="800" cy="580" rx="170" ry="20"/></g>${!placing && idPrefix === 'world' ? surveyOverlay(state, worldOf(state)) : ''}${overlay}</svg>`.replaceAll('ocean-light', `${idPrefix}-ocean-light`).replaceAll('id="mist"', `id="${idPrefix}-mist"`).replaceAll('url(#mist)', `url(#${idPrefix}-mist)`);
 }
 export function buildingPreview(type) { return `<svg viewBox="-55 -122 110 158" aria-hidden="true">${buildingSymbol(type,type==='habitat'?2:1)}</svg>`; }
