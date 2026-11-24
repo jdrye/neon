@@ -99,7 +99,7 @@ export function sector(world, number) {
 }
 
 export function freshFrontier() {
-  return { sorties: 0, signals: 0, orders: 0, decisions: [], active: null, last: null };
+  return { sorties: 0, signals: 0, orders: 0, surgeWins: 0, decisions: [], active: null, last: null };
 }
 export const departurePerks = decisions => decisions.filter(key => ['cells', 'assay', 'passage'].includes(key));
 function reveal(drive, radius) {
@@ -107,14 +107,15 @@ function reveal(drive, radius) {
 }
 function initialDrive(active) {
   const rig = RIGS[active.rig];
-  const max = rig.battery + (active.perks.includes('cells') ? 3 : 0);
-  const drive = { rig: active.rig, perks: active.perks, at: HOME, max, fuel: max, turn: 0, scans: 0, signal: false, cargo: { ore: 0, crystal: 0 }, seen: new Set(), used: new Set(), trail: [HOME] };
-  reveal(drive, rig.sight);
+  const surge = active.surge === true;
+  const max = rig.battery + (active.perks.includes('cells') ? 3 : 0) - Number(surge);
+  const drive = { rig: active.rig, perks: active.perks, surge, sight: surge ? 1 : rig.sight, at: HOME, max, fuel: max, turn: 0, scans: 0, signal: false, cargo: { ore: 0, crystal: 0 }, seen: new Set(), used: new Set(), trail: [HOME] };
+  reveal(drive, drive.sight);
   return drive;
 }
-export const tideHigh = turn => turn % 5 >= 3;
+export const tideHigh = (turn, surge = false) => turn % 5 >= (surge ? 2 : 3);
 export function travelCost(drive, tile, turn = drive.turn) {
-  if (tile.terrain === 'flat') return tideHigh(turn) ? 3 : 1;
+  if (tile.terrain === 'flat' && tideHigh(turn, drive.surge)) return drive.surge ? 4 : 3;
   return tile.terrain === 'rock' && drive.rig !== 'crawler' ? 2 : 1;
 }
 export const radarCost = drive => drive.scans === 0 && drive.perks.includes('passage') ? 0 : 1;
@@ -138,7 +139,7 @@ export function maneuver(board, drive, action) {
   if (!neighbors[drive.at].includes(action) || tile?.terrain === 'rift') return { ok: false, message: 'Choisissez une case voisine accessible.' };
   const cost = travelCost(drive, tile);
   if (drive.fuel < cost) return { ok: false, message: 'La batterie est insuffisante pour ce déplacement.' };
-  drive.fuel -= cost; drive.turn++; drive.at = action; drive.trail.push(action); reveal(drive, RIGS[drive.rig].sight);
+  drive.fuel -= cost; drive.turn++; drive.at = action; drive.trail.push(action); reveal(drive, drive.sight);
   let message = `Arrivée en ${coordinate(action)}.`;
   if (tile.feature === 'base') message = 'Rover au camp. Déchargez la soute ou repartez explorer avec la charge restante.';
   else if (tile.feature && !drive.used.has(action)) {
@@ -169,6 +170,7 @@ export function restoreFrontier(raw, world) {
   result.sorties = bounded(raw.sorties, 1_000_000_000);
   result.signals = bounded(raw.signals, result.sorties);
   result.orders = bounded(raw.orders, result.sorties);
+  result.surgeWins = bounded(raw.surgeWins, Math.max(0,result.signals - 1));
   if (Array.isArray(raw.decisions)) for (const [index, chapter] of CHAPTERS.entries()) {
     const choice = raw.decisions[index];
     if (index >= result.signals || typeof choice !== 'string' || !Object.hasOwn(chapter.options, choice)) break;
@@ -177,7 +179,7 @@ export function restoreFrontier(raw, world) {
   const active = raw.active;
   if (result.sorties > result.signals && active && typeof active.rig === 'string' && Object.hasOwn(RIGS, active.rig) && Array.isArray(active.steps)) {
     const perks = departurePerks(result.decisions).filter(key => Array.isArray(active.perks) && active.perks.includes(key));
-    result.active = { rig: active.rig, perks, steps: [] };
+    result.active = { rig: active.rig, perks, surge: active.surge === true && result.signals > 0, steps: [] };
     const board = sector(world, result.sorties), drive = initialDrive(result.active);
     for (const action of active.steps.slice(0, 64)) {
       if (!maneuver(board, drive, action).ok) break;
@@ -185,7 +187,7 @@ export function restoreFrontier(raw, world) {
     }
   }
   if (raw.last && Number.isSafeInteger(raw.last.number) && raw.last.number >= 1 && raw.last.number <= result.sorties - Number(!!result.active)) {
-    result.last = { number: raw.last.number, recalled: raw.last.recalled === true, order: raw.last.order === true, signal: raw.last.signal === true, ore: bounded(raw.last.ore, 100), crystal: bounded(raw.last.crystal, 100) };
+    result.last = { number: raw.last.number, recalled: raw.last.recalled === true, order: raw.last.order === true, surge: raw.last.surge === true, signal: raw.last.signal === true, ore: bounded(raw.last.ore, 100), crystal: bounded(raw.last.crystal, 100) };
   }
   return result;
 }

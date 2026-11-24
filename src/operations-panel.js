@@ -52,17 +52,18 @@ function crewsPage(s) {
 function lastReport(s) {
   const last = s.frontier.last;
   if (!last) return '';
-  return `<p class="ops-note"><b>Dernier retour · secteur ${last.number}</b><br>${last.recalled ? 'Rapatriement à vide.' : `${last.signal ? 'Fragment transmis. ' : ''}${last.ore} minerais et ${last.crystal} cristaux déchargés.${last.order ? ` Prime du mandat · ${manifest(sector(s.world,last.number).order.reward)}.` : ''}`}</p>`;
+  return `<p class="ops-note"><b>Dernier retour · secteur ${last.number}</b><br>${last.recalled ? 'Rapatriement à vide.' : `${last.signal ? 'Fragment transmis. ' : ''}${last.ore} minerais et ${last.crystal} cristaux déchargés.${last.surge ? ' Prime de vives-eaux · 6 cristaux et 8 énergies.' : ''}${last.order ? ` Prime du mandat · ${manifest(sector(s.world,last.number).order.reward)}.` : ''}`}</p>`;
 }
-function hangarPage(s, rig) {
+function hangarPage(s, rig, surge) {
   const f = s.frontier, next = sector(s.world, f.sorties + 1), def = RIGS[rig];
-  const cards = Object.entries(RIGS).map(([key, r]) => `<button class="rig-card" data-op="rig" data-rig="${key}" aria-pressed="${key === rig}"><b>${r.name}</b><span>${r.battery + (f.decisions.includes('cells') ? 3 : 0)} charges</span></button>`).join('');
+  const cards = Object.entries(RIGS).map(([key, r]) => `<button class="rig-card" data-op="rig" data-rig="${key}" aria-pressed="${key === rig}"><b>${r.name}</b><span>${r.battery + (f.decisions.includes('cells') ? 3 : 0) - Number(surge)} charges</span></button>`).join('');
   let command;
   if (s.survey.active) command = '<p>Le rover est parti chercher un spécimen. Récupérez sa cargaison à son retour pour reprendre le pilotage.</p><button class="primary" data-op="survey">Suivre l’expédition</button>';
   else if (!has(s, 'hangar')) command = '<p>Le module pionnier a repéré le signal. Il faut un hangar pour mettre le rover en route.</p><button class="primary" data-op="project" data-type="hangar">Construire le hangar</button>';
   else command = `<button class="primary" data-op="launch" data-pay-rig="${rig}">Prendre les commandes →</button><small class="funding" data-funding-rig="${rig}"></small>`;
   return `<div class="ops-heading"><div><small>RECONNAISSANCE · SECTEUR ${f.sorties + 1}</small><h3>${next.region.name}</h3></div></div>
     ${f.orders ? `<small class="order-count">${f.orders} mandat${f.orders>1?'s':''} accompli${f.orders>1?'s':''}</small>` : ''}<p>Pilotez le rover jusqu’au signal, puis ramenez le fragment au camp. La brume masque le relief. Un détour vers une borne peut vous donner assez de charge pour prélever un filon.</p>
+    ${f.signals ? `<div class="surge-choice"><button data-op="surge" aria-pressed="${surge}">Vives-eaux ${surge?'activées':'désactivées'}</button><small>Défi facultatif · visibilité d’une case, batterie −1 et pleine mer de trois tours. Ramener le signal rapporte 6 cristaux et 8 énergies supplémentaires.${f.surgeWins ? ` Traversées réussies · ${f.surgeWins}.` : ''}</small></div>` : ''}
     <div class="rig-picker" aria-label="Équipement du rover">${cards}</div><div class="rig-brief">${illustration('rover')}<div><b>${def.name}</b><p>${def.detail}</p><small>Provisions au départ · ${manifest(def.cost)}</small></div></div>
     <details class="field-order" open><summary>Mandat facultatif · ${next.order.name}</summary><p>${next.order.text} Prime au retour · ${manifest(next.order.reward)}.</p></details>
     <div class="ops-command">${command}</div>${lastReport(s)}`;
@@ -95,19 +96,29 @@ function featureMark(feature) {
 function fieldMap(board, drive, route) {
   const near = neighbors[drive.at];
   const paths = drive.trail.map(id => { const p=position(id); return `${p.x},${p.y}`; }).join(' ');
-  const groundTexture = { 'site-flora': 'prairie', 'site-strata': 'sand', 'site-prism': 'rock-shelf' }[board.region.art];
-  const picture = `<pattern id="field-surface" width="175" height="125" patternUnits="userSpaceOnUse"><image href="${artUrl(groundTexture)}" width="175" height="125" preserveAspectRatio="xMidYMid slice"/></pattern>`;
+  const landscapeRow = { 'site-flora': 0, 'site-strata': 1, 'site-prism': 2 }[board.region.art];
+  const tileArt = tile => {
+    const column = tile.terrain === 'flat' ? 2 : tile.terrain === 'plain' ? 0 : 1;
+    const offset = 6 + (tile.id * 13 % 29);
+    const flip = tile.id % 3 === 1 ? -1 : 1;
+    return `<g clip-path="url(#field-hex)"><g transform="scale(${flip} 1)"><svg x="-25" y="-29" width="50" height="58" viewBox="${column*200+offset} ${landscapeRow*200+36-offset} 160 160" preserveAspectRatio="xMidYMid slice"><use href="#field-atlas"/></svg></g></g>`;
+  };
+  const picture = `<clipPath id="field-hex"><polygon points="${hex}"/></clipPath><image id="field-atlas" href="${artUrl('frontier-ground')}" width="600" height="600"/>`;
   let ground='', symbols='', controls='';
   for (const t of board.tiles) {
     const p=position(t.id), trans=`transform="translate(${p.x} ${p.y})"`, seen=drive.seen.has(t.id), current=t.id===drive.at;
     const knownSignal = t.feature === 'signal';
     const reachable = near.includes(t.id) && t.terrain !== 'rift' && travelCost(drive,t) <= drive.fuel;
-    ground += `<g ${trans}><polygon points="${hex}" class="field-tile ${seen ? 'known '+t.terrain : 'fog'}"/>${seen && t.terrain !== 'rift' ? `<polygon points="${hex}" fill="url(#field-surface)" opacity=".26"/>` : ''}${!seen ? `<polygon points="${hex}" fill="url(#field-noise)"/>` : ''}</g>`;
+    const shade = t.terrain==='rift' ? '#132332ad' : t.terrain==='flat' && tideHigh(drive.turn,drive.surge) ? '#38628e70' : '#112b2a29';
+    ground += `<g ${trans}><polygon points="${hex}" class="field-tile ${seen ? 'known '+t.terrain : 'fog'}"/>${seen ? `${tileArt(t)}<polygon points="${hex}" fill="${shade}"/>` : `<polygon points="${hex}" fill="url(#field-noise)"/>`}</g>`;
     let symbol = '';
     if ((seen || knownSignal) && t.feature && (!drive.used.has(t.id) || knownSignal)) symbol=featureMark(t.feature);
-    else if (seen && t.terrain === 'rift') symbol='<path d="m-16 10 10-11 5 2 7-13-2 13-7 4-2 7Z" fill="#080f1a" stroke="#63818b" stroke-width=".8"/>';
-    else if (seen && t.terrain === 'flat') symbol='<path d="M-13 -3q4-4 8 0t8 0t8 0m-22 6q4-4 8 0t8 0" fill="none" stroke="#a5e7de" stroke-width="1.7"/>';
-    else if (seen && t.terrain === 'rock') symbol=`<image href="${artUrl('ore-slate')}" x="-13" y="-12" width="26" height="21" opacity=".7"/>`;
+    else if (seen && t.terrain === 'rift') symbol='<path d="m-24 12 8-13 7 1 7-9 6 2 12-15-8 17-6-1-7 12-5-1-7 11Z" fill="#101b26" stroke="#99b7b3" stroke-opacity=".72" stroke-width=".8"/>';
+    else if (seen && t.terrain === 'flat') symbol='<path d="M8 8q3-3 6 0t6 0m-11 4q3-3 6 0" fill="none" stroke="#d1ffed" stroke-width="1.3"/>';
+    else if (seen && t.terrain==='plain' && t.id%4===0) {
+      const plant = ['fern','amber-fronds','frost-fern'][landscapeRow];
+      symbol=`<image href="${artUrl(plant)}" x="3" y="-20" width="15" height="18"/>`;
+    }
     if (current) symbol=`${t.feature === 'base' ? '<circle r="17" fill="none" stroke="#97f2d4" stroke-dasharray="2 3"/>' : ''}<image href="${artUrl('rover')}" x="-18" y="-16" width="36" height="31"/>`;
     if (symbol) symbols+=`<g ${trans} pointer-events="none">${symbol}</g>`;
     if (reachable) {
@@ -118,26 +129,27 @@ function fieldMap(board, drive, route) {
   const letters = Array.from({length:COLS},(_,i)=>`<text x="${41 + i*52}" y="7">${'ABCDEFG'[i]}</text>`).join('');
   const numbers = Array.from({length:5},(_,i)=>`<text x="9" y="${40+i*45}">${i+1}</text>`).join('');
   const homeTrail = route.length ? [drive.at,...route].map(id => { const p=position(id); return `${p.x},${p.y}`; }).join(' ') : '';
-  return `<svg class="field-map" viewBox="0 -3 403 253" role="group" aria-label="Carte tactique du secteur ${board.number}"><defs>${picture}<pattern id="field-noise" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".75" fill="#76a7ac" opacity=".32"/></pattern></defs><g class="field-coords">${letters}${numbers}</g>${ground}<polyline points="${paths}" fill="none" stroke="#d0b376" stroke-width="2" stroke-dasharray="3 4" pointer-events="none"/>${homeTrail ? `<polyline class="return-line" points="${homeTrail}" fill="none" stroke="#9cf8ed" stroke-linecap="round" stroke-width="3" stroke-dasharray="4 4" pointer-events="none"/>` : ''}${symbols}${controls}</svg>`;
+  return `<svg class="field-map" viewBox="0 -3 403 253" role="group" aria-label="Carte tactique du secteur ${board.number}"><defs>${picture}<pattern id="field-noise" width="74" height="62" patternUnits="userSpaceOnUse"><g fill="none" stroke="#77949b" stroke-width=".65" opacity=".29"><path d="M-6 52q9-13 24-16t22-15T80 1M-5 57q11-13 23-15t26-16T80 8M-5 62q16-12 26-14t28-14T80 16"/></g><circle cx="9" cy="8" r="1" fill="#84a0a6" opacity=".3"/></pattern></defs><g class="field-coords">${letters}${numbers}</g>${ground}<polyline points="${paths}" fill="none" stroke="#d0b376" stroke-width="2" stroke-dasharray="3 4" pointer-events="none"/>${homeTrail ? `<polyline class="return-line" points="${homeTrail}" fill="none" stroke="#9cf8ed" stroke-linecap="round" stroke-width="3" stroke-dasharray="4 4" pointer-events="none"/>` : ''}${symbols}${controls}</svg>`;
 }
 function fieldPage(s, view) {
   const {board, drive} = fieldState(s), atCamp = drive.at === HOME, route = returnRoute(board,drive), reserve = route.cost;
   const charge = radarCost(drive), onRoute = drive.trail.length > 1;
   const legend = [['signal','Signal'],['cache','Borne +5'],['ore','Filon'],['base','Camp']].map(([key,label])=>`<span><svg viewBox="-18 -18 36 36" aria-hidden="true">${featureMark(key)}</svg>${label}</span>`).join('');
-  const tide = tideHigh(drive.turn), until = (tide ? 5 : 3) - drive.turn % 5;
-  const forecast = Array.from({length:5},(_,i) => `<i class="${tideHigh(drive.turn+i)?'high':'low'}" aria-hidden="true"></i>`).join('');
+  const tide = tideHigh(drive.turn,drive.surge), until = (tide ? 5 : drive.surge ? 2 : 3) - drive.turn % 5;
+  const forecast = Array.from({length:5},(_,i) => `<i class="${tideHigh(drive.turn+i,drive.surge)?'high':'low'}" aria-hidden="true"></i>`).join('');
   const [amount, goal, unit] = board.order.progress(drive);
   const safety = drive.fuel < reserve ? 'Batterie trop faible pour ce trajet de retour. Cherchez une borne ou rappelez le rover.' : `Retour connu le plus court · ${reserve} charge${reserve>1?'s':''}, hors recharge.`;
-  return `<div class="field-layout"><div class="field-console" style="--region:${board.region.color}"><div class="field-title"><div><small>SECTEUR ${board.number} · ${coordinate(drive.at)}</small><h3>${board.region.name}</h3></div><b class="field-live">${RIGS[drive.rig].name}</b></div>${fieldMap(board,drive,view.route ? route.path : [])}<div class="field-legend">${legend}</div></div>
+  return `<div class="field-layout"><div class="field-console" style="--region:${board.region.color}"><div class="field-title"><div><small>${drive.surge?'VIVES-EAUX · ':''}SECTEUR ${board.number} · ${coordinate(drive.at)}</small><h3>${board.region.name}</h3></div><b class="field-live">${RIGS[drive.rig].name}</b></div>${fieldMap(board,drive,view.route ? route.path : [])}<div class="field-legend">${legend}</div></div>
     <section class="telemetry"><dl>${tag('Batterie',`${drive.fuel} <small>/ ${drive.max}</small>`)}${tag('Signal',drive.signal?'À bord':coordinate(board.target))}${tag('Soute',`${drive.cargo.ore} <small>minerais</small> · ${drive.cargo.crystal} <small>cristaux</small>`)}</dl>
-    <div class="tide-readout"><div><b>Marée ${tide?'haute':'basse'}</b><span>${forecast}</span></div><small>Bascule dans ${until} tour${until>1?'s':''} · estran ${tide?3:1} ⚡</small></div>
+    <div class="tide-readout"><div><b>Marée ${tide?'haute':'basse'}</b><span>${forecast}</span></div><small>Bascule dans ${until} tour${until>1?'s':''} · estran ${travelCost(drive,{terrain:'flat'})} ⚡</small></div>
     <p class="route-status ${drive.fuel<reserve?'low':''}">${safety}${view.route && route.path.length ? `<br>${route.path[0]===drive.at ? 'Attendez un tour sur place.' : `Première étape · ${coordinate(route.path[0])}.`}` : ''}</p><p class="field-help">Les cases cerclées sont à portée. Le chiffre indique la dépense pour y entrer. Ramenez le signal au camp pour le transmettre.</p>
     <details class="field-order"><summary>Mandat · ${amount} / ${goal} ${unit}</summary><p>${board.order.name}. ${board.order.text} Prime · ${manifest(board.order.reward)}.</p></details>
+    <details class="field-guide"><summary>Lire le terrain</summary><p>Piste · 1 charge. Éboulis · ${drive.rig==='crawler'?1:2}. Estran · 1 à marée basse, ${drive.surge?4:3} à marée haute. Les failles sont infranchissables. Une borne redonne jusqu’à 5 charges.</p></details>
     <div class="drive-actions"><button data-op="route" aria-pressed="${view.route}" ${atCamp?'disabled':''}>${view.route?'Masquer le retour':'Tracer le retour'}</button><button data-op="wait" ${drive.fuel?'':'disabled'}>Attendre · 1 ⚡</button><button data-op="scan" ${canScan(drive)?'':'disabled'}>Balayer au radar · ${charge} ⚡</button><button class="primary" data-op="dock" ${atCamp&&onRoute?'':'disabled'}>Décharger au camp</button></div>
     ${view.recall ? '<div class="recall-check"><p>Le rover reviendra immédiatement. Le signal et les matériaux à bord seront abandonnés.</p><button data-op="rescue">Confirmer le rappel à vide</button> <button data-op="cancel-recall">Continuer la sortie</button></div>' : '<button class="quiet-command" data-op="recall">Rappeler le rover à vide</button>'}</section></div>`;
 }
 export function operationsPanel(s, view) {
-  const body = view.tab === 'crews' ? crewsPage(s) : view.tab === 'council' ? councilPage(s,view.pending) : s.frontier.active ? fieldPage(s,view) : hangarPage(s,view.rig);
+  const body = view.tab === 'crews' ? crewsPage(s) : view.tab === 'council' ? councilPage(s,view.pending) : s.frontier.active ? fieldPage(s,view) : hangarPage(s,view.rig,view.surge);
   const inField = view.tab === 'rover' && !!s.frontier.active;
   return `<div class="operations ${inField ? 'in-field' : ''}"><div class="ops-mast">${illustration('tidal-station')}<div><small>OPÉRATIONS DE KEPLER</small><h2>Le Signal des marées</h2></div></div>
     <nav class="ops-tabs" aria-label="Postes d’opérations">${Object.entries(titles).map(([key,name])=>`<button data-op="tab" data-tab="${key}" aria-pressed="${view.tab===key}">${name}${key==='council' && s.frontier.signals>s.frontier.decisions.length && s.frontier.decisions.length<3 ? ' <i aria-label="Décision disponible">●</i>':''}</button>`).join('')}</nav>

@@ -94,8 +94,23 @@ async function checkLayout(name,width,height) {
     await press('[data-op="launch"]');
     await waitFor(()=>evaluate('!!document.querySelector(".field-map")'),'la carte tactique');
     await press('[data-op="scan"]');
-    await press('.field-move');
-    await waitFor(()=>evaluate(`JSON.parse(localStorage.getItem(document.documentElement.dataset.saveKey)).frontier.active.steps.length===2`),'les commandes du radar et du rover');
+    const itinerary=await evaluate(`(async () => {
+      const {HOME,neighbors,sector}=await import('neon/frontier.js');
+      const state=JSON.parse(localStorage.getItem(document.documentElement.dataset.saveKey));
+      const board=sector(state.world,state.frontier.sorties), queue=[HOME], via=new Map([[HOME,null]]);
+      for (const id of queue) {
+        if (id===board.target) break;
+        for (const next of neighbors[id]) if (!via.has(next) && board.tiles[next].terrain==='plain') { via.set(next,id); queue.push(next); }
+      }
+      const path=[]; for(let id=board.target;id!==HOME;id=via.get(id)) path.unshift(id);
+      return path;
+    })()`);
+    for (const cell of itinerary) {
+      await press(`[data-cell="${cell}"]`);
+      await waitFor(()=>evaluate(`JSON.parse(localStorage.getItem(document.documentElement.dataset.saveKey)).frontier.active.steps.at(-1)===${cell}`),'le déplacement en reconnaissance');
+    }
+    await press('[data-op="route"]');
+    await waitFor(()=>evaluate(`!!document.querySelector('.return-line')`),'la route de retour du signal');
     await evaluate(`(async () => {
       const dialog=document.querySelector('#modal'); dialog.scrollTop=0;
       if(dialog.scrollWidth>dialog.clientWidth) throw Error('Console plus large que l’écran');

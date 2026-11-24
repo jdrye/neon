@@ -308,14 +308,19 @@ let opsView = null;
 $('frontier-cover').src = artUrl('tidal-station');
 $('frontier-open').onclick = () => openOperations(suggestedTab(state));
 function openOperations(tab, message = '') {
-  opsView = { tab, rig: 'scout', pending: null, recall: false, route: false, message };
+  opsView = { tab, rig: 'scout', pending: null, recall: false, route: false, surge: false, message };
   paintOperations();
   $('modal-content').querySelector(`[data-op="tab"][data-tab="${tab}"]`).focus({ preventScroll: true });
   $('modal').scrollTop = 0;
 }
 function paintOperations(focusSelector = '') {
   const top = $('modal').scrollTop;
+  const openDetails = Array.from($('modal-content').querySelectorAll('.in-field details[open]'), el => el.className);
   show(operationsPanel(state, opsView));
+  for (const className of openDetails) {
+    const detail = $('modal-content').querySelector('.in-field details.'+className);
+    if (detail) detail.open = true;
+  }
   updateFunding($('modal-content'),state);
   const focus = (focusSelector && $('modal-content').querySelector(focusSelector)) || $('modal-content').querySelector('[data-op="move"]') || $('modal-content').querySelector(`[data-op="tab"][data-tab="${opsView.tab}"]`);
   focus?.focus({preventScroll:true}); $('modal').scrollTop = top;
@@ -345,7 +350,8 @@ function runOperation(button) {
     case 'survey': openSurvey(); return;
     case 'locate': focusInstallation(siteId); return;
     case 'rig': if (!Object.hasOwn(RIGS,rig)) return; opsView.rig = rig; focus = `[data-rig="${rig}"]`; break;
-    case 'launch': result = openTraverse(state, opsView.rig); break;
+    case 'surge': opsView.surge = !opsView.surge; focus = '[data-op="surge"]'; break;
+    case 'launch': result = openTraverse(state, opsView.rig, opsView.surge); break;
     case 'move': result = driveRover(state,Number(cell)); break;
     case 'scan': result = driveRover(state,'scan'); break;
     case 'wait': result = driveRover(state,'wait'); break;

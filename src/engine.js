@@ -294,14 +294,15 @@ export function importSave(raw, now = Date.now()) {
   return restore(raw, now);
 }
 
-export function openTraverse(s, rig) {
+export function openTraverse(s, rig, surge = false) {
+  if (surge && !s.frontier.signals) return { ok: false, message: 'Rapportez un premier fragment pour naviguer en vives-eaux.' };
   if (!Object.hasOwn(RIGS, rig)) return { ok: false, message: 'Équipement de rover inconnu.' };
   if (!has(s, 'hangar')) return { ok: false, message: 'Construisez un hangar à rover pour prendre la piste.' };
   if (s.survey.active || s.frontier.active) return { ok: false, message: 'Le rover est déjà en mission.' };
   if (!affordable(s, RIGS[rig].cost)) return { ok: false, message: 'Les provisions de cette configuration sont insuffisantes.' };
   pay(s, RIGS[rig].cost);
   s.frontier.sorties++;
-  s.frontier.active = { rig, perks: departurePerks(s.frontier.decisions), steps: [] };
+  s.frontier.active = { rig, perks: departurePerks(s.frontier.decisions), surge: surge === true, steps: [] };
   return { ok: true, message: 'Le rover est au camp avancé. Le signal est marqué sur la carte.' };
 }
 export function fieldState(s) {
@@ -323,11 +324,13 @@ export function dockRover(s, recall = false) {
   const cargo = recall ? { ore: 0, crystal: 0 } : { ...drive.cargo };
   const signal = !recall && drive.signal;
   if (signal) { s.frontier.signals++; cargo.crystal += 4; }
+  const surge = signal && drive.surge;
+  if (surge) { s.frontier.surgeWins++; grant(s, { crystal: 6, energy: 8 }); }
   grant(s, cargo);
   const [progress, target] = board.order.progress(drive);
   const order = !recall && progress >= target;
   if (order) { s.frontier.orders++; grant(s, board.order.reward); }
-  s.frontier.last = { number: s.frontier.sorties, recalled: recall, signal, order, ...cargo };
+  s.frontier.last = { number: s.frontier.sorties, recalled: recall, signal, order, surge, ...cargo };
   s.frontier.active = null;
   return { ok: true, message: recall ? 'Rover rapatrié. La soute a été laissée sur le terrain.' : signal ? 'Fragment transmis au conseil. La cargaison a rejoint les réserves.' : 'Sortie terminée. La cargaison a rejoint les réserves.' };
 }

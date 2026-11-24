@@ -214,3 +214,7 @@ dialog:has(.operations) .close { z-index:3; top:11px; right:11px; background:#10
 @media(max-width:410px) { .decision-options { grid-template-columns:1fr; }.ops-body p { font-size:13px; }.frontier-ribbon .ribbon-name strong { font-size:21px; } }
 .field-order { padding:8px 10px; margin:9px 0; background:#1e3535; border:1px solid #bea67455; border-radius:7px; }.field-order summary { color:#efd0a0; cursor:pointer; font-size:12px; font-weight:600; }.ops-body .field-order p { margin:4px 0 0; font-size:12px; }.order-count { color:#b8dcca; }.lantern-glow { animation:lantern-glow 4s ease-in-out infinite alternate; }@keyframes lantern-glow { from { opacity:.12; } to { opacity:.55; } }
 @media(prefers-reduced-motion:reduce) { .lantern-glow { animation:none; } }
+
+.surge-choice { display:flex; align-items:center; gap:10px; margin:12px 0; padding:9px; border:1px solid #a3836759; border-radius:7px; }.surge-choice button { flex:none; padding:7px 9px; font-size:12px; }.surge-choice [aria-pressed=true] { color:#ffdfac; border-color:#e6b982; background:#493e35; }.surge-choice small { font-size:11px; color:#c9d4c9; }
+
+.field-guide { margin:5px 0 9px; color:#b8d4c9; font-size:11px; }.field-guide summary { cursor:pointer; }.telemetry .field-guide p { font-size:12px; margin:5px 0; }.field-move text { font-size:9px; stroke-width:3px; }.field-move polygon { stroke:#c5ffdf; }

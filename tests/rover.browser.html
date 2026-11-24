@@ -119,6 +119,11 @@ try {
   click('[data-ops-crews]'); click('[data-op="locate"][data-site-id="6,5"]');
   check(one('#inspector h2').textContent==='Centrale solaire', 'Localisation de l’atelier');
   check(!one('#modal').open && frame.contentDocument.documentElement.scrollWidth<=frame.contentWindow.innerWidth, 'Colonie après la campagne');
+  activate(`[data-tile="${springs[2].dataset.tile}"]`);
+  click('#frontier-open'); click('[data-op="surge"]'); click('[data-op="launch"]');
+  check(state().frontier.active.surge && one('.field-title small').textContent.includes('VIVES-EAUX'), 'Départ volontaire en vives-eaux');
+  click('[data-op="recall"]'); click('[data-op="rescue"]');
+  check(!state().frontier.active && state().frontier.last.recalled && state().frontier.signals===1, 'Retour en sécurité après le défi');
   output.dataset.status = 'passed'; output.textContent = 'Parcours terminé.';
 } catch (error) {
   output.dataset.status = 'failed'; output.textContent = error.stack;

@@ -50,8 +50,8 @@ test('300 secteurs reproductibles avec un aller-retour abordable pour les trois 
     assert.equal(board.tiles.filter(t=>t.feature==='cache').length,2);
     for (const t of board.tiles.filter(t=>t.feature)) assert.ok(landRoute(board,HOME,t.id,x=>x.terrain!=='rift'));
     assert.deepEqual(board.tiles,sector({...world},n).tiles);
-    for (const rig of Object.keys(RIGS)) {
-      const active={rig,perks:[],steps:[]}, drive=replay(board,active);
+    for (const rig of Object.keys(RIGS)) for (const surge of [false,true]) {
+      const active={rig,perks:[],surge,steps:[]}, drive=replay(board,active);
       for (const id of [...route,...route.slice(0,-1).reverse(),HOME]) { assert.ok(maneuver(board,drive,id).ok); active.steps.push(id); }
       assert.ok(drive.signal); assert.equal(drive.at,HOME); assert.ok(drive.fuel>=0); assert.deepEqual(drive,replay(board,active));
     }
@@ -168,5 +168,21 @@ test('Anciennes colonies et itinéraires altérés : les données incompatibles 
   const old=importSave(JSON.stringify(raw),0); assert.equal(old.resources.ore,73); assert.equal(old.frontier.active,null); assert.deepEqual(old.crews,[]);
   raw.frontier={sorties:4,signals:2,orders:999,decisions:['guild','passage'],active:{rig:'hauler',perks:['cells','assay'],steps:['wait',{toString:0},'scan']}};
   raw.crews=['5,5','9,99','constructor']; const clean=restore(JSON.stringify(raw),0);
-  assert.equal(clean.resources.ore,73); assert.deepEqual(clean.frontier.decisions,['guild']); assert.deepEqual(clean.frontier.active,{rig:'hauler',perks:[],steps:['wait']}); assert.deepEqual(clean.crews,[]);
+  assert.equal(clean.resources.ore,73); assert.deepEqual(clean.frontier.decisions,['guild']); assert.deepEqual(clean.frontier.active,{rig:'hauler',perks:[],surge:false,steps:['wait']}); assert.deepEqual(clean.crews,[]);
+});
+
+
+test('Vives-eaux facultatives : déblocage, prévisions, reprise et prime réservée au retour du signal', () => {
+  const {s,place,fund,signal}=expedition(192); place('solar'); place('hangar'); fund(RIGS.scout.cost);
+  const stock={...s.resources}; assert.equal(openTraverse(s,'scout',true).ok,false); assert.deepEqual(s.resources,stock);
+  signal('scout'); fund(RIGS.scout.cost); assert.ok(openTraverse(s,'scout',true).ok);
+  const {board,drive}=fieldState(s); assert.equal(drive.max,14); assert.equal(drive.sight,1);
+  assert.equal(travelCost(drive,{terrain:'flat'},2),4); assert.equal(travelCost(drive,{terrain:'flat'},1),1);
+  const route=landRoute(board,HOME,board.target);
+  for (const id of route) assert.ok(driveRover(s,id).ok);
+  const loaded=restore(JSON.stringify(s),s.lastTick); assert.deepEqual(fieldState(loaded).drive,fieldState(s).drive);
+  for (const id of [...route.slice(0,-1).reverse(),HOME]) assert.ok(driveRover(loaded,id).ok);
+  const energy=loaded.resources.energy; assert.ok(dockRover(loaded).ok); assert.equal(loaded.frontier.surgeWins,1);
+  assert.equal(loaded.resources.energy,energy+8+(loaded.frontier.last.order?(board.order.reward.energy||0):0));
+  assert.equal(restore(JSON.stringify(loaded),s.lastTick).frontier.last.surge,true);
 });
