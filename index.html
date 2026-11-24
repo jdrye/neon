@@ -2,8 +2,8 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#091522">
-<meta name="description" content="Bâtissez une colonie paisible sur une planète inconnue. Un jeu 2D isométrique : collecte, construction et exploration.">
-<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=5.0.0">
+<meta name="description" content="Bâtissez une colonie paisible sur une planète inconnue. Pilotez le rover, affectez vos équipes et rallumez le phare des marées.">
+<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=6.0.0">
 </head>
 <body>
 <header>
@@ -14,6 +14,7 @@
 </header>
 <main>
 <section class="resource-bar" aria-label="Réserves de la colonie"><div class="resource-label">VOS RÉSERVES<span id="save-state">Sauvegarde automatique</span></div><div id="resources"></div><div class="population"><span>♙</span><strong id="population">4</strong><small>PIONNIERS</small></div></section>
+<button id="frontier-open" class="frontier-ribbon" aria-haspopup="dialog"><img id="frontier-cover" alt=""><span class="ribbon-name"><small>OPÉRATIONS DE KEPLER</small><strong>Le Signal des marées</strong></span><span class="ribbon-action"><span id="frontier-status">Ouvrir les opérations</span> <b aria-hidden="true">↗</b></span></button>
 <div class="layout">
 <section class="map-panel" aria-label="Carte isométrique de la colonie">
 <div class="map-heading"><p>VOTRE COLONIE · <span id="colony-stage">CAMP PIONNIER</span> <span id="mobile-population"></span></p><h1 id="planet-name">Archipel d’émeraude</h1><p class="subtitle" id="planet-description">Forêts lumineuses · lagons turquoise</p></div>
@@ -34,5 +35,5 @@
 <footer><span class="production-clock"><progress id="cycle-progress" max="1" value="0" aria-label="Progression du cycle de production"></progress><span id="cycle-label">Production douce · un cycle toutes les 12 s</span></span><span>Votre progression reste sur cet appareil.</span></footer>
 </main>
 <dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="./src/app.js?v=5.0.0"></script>
+<script type="module" src="./src/app.js?v=6.0.0"></script>
 </body></html>

@@ -1,9 +1,9 @@
-import { artUrl } from './art-url.js?v=5.0.0';
-import { BUILDINGS, RESOURCES, population, worldOf } from './engine.js?v=5.0.0';
-import { BIOMES } from './world.js?v=5.0.0';
-import { SURVEYS, surveyProgress, surveyRoute, surveySites } from './survey.js?v=5.0.0';
-import { roverSymbol, specimenMark } from './survey-art.js?v=5.0.0';
-import { groundArt, project, terrainOf } from './terrain.js?v=5.0.0';
+import { artUrl } from './art-url.js?v=6.0.0';
+import { BUILDINGS, RESOURCES, colonySites, crewCapacity, population, worldOf } from './engine.js?v=6.0.0';
+import { BIOMES } from './world.js?v=6.0.0';
+import { SURVEYS, surveyProgress, surveyRoute, surveySites } from './survey.js?v=6.0.0';
+import { roverSymbol, specimenMark } from './survey-art.js?v=6.0.0';
+import { groundArt, project, terrainOf } from './terrain.js?v=6.0.0';
 
 export { project };
 export const cameraBounds = tiles => terrainOf(tiles).bounds;
@@ -29,13 +29,14 @@ const structures = {
   pod: [91,89], solar: [82,71,'battery'], habitat: [79,85,'annex'], pump: [73,80,'tank'],
   greenhouse: [82,73,'planter'], mine: [76,88,'cart'], beacon: [75,118], wind: [78,112,'battery'],
   residence: [78,102,'annex'], hydroponics: [86,72,'planter'], quarry: [85,78,'cart'],
-  synthesizer: [73,88,'vial'], laboratory: [83,82], hangar: [88,76], observatory: [83,92],
+  synthesizer: [73,88,'vial'], laboratory: [83,82], hangar: [88,76], observatory: [83,92], lighthouse: [90,137],
 };
 export function buildingSymbol(type, level=1) {
   const [width, height, equipment] = structures[type];
   const rear = equipment && level >= 3 ? sprite(equipment,28,28,-26,1) : '';
   const front = equipment && level >= 2 ? sprite(equipment,27,26,25,18) : '';
-  return `<g class="structure">${rear}${sprite(type,width,height)}${front}</g>`;
+  const glow = type === 'lighthouse' ? '<ellipse class="lantern-glow" cx="2" cy="-77" rx="28" ry="9" fill="#ffe5a5" opacity=".25" pointer-events="none"/>' : '';
+  return `<g class="structure">${rear}${glow}${sprite(type,width,height)}${front}</g>`;
 }
 export function buildingPreview(type, level=1) {
   const [width,height] = structures[type];
@@ -125,10 +126,12 @@ function servicePaths(buildings, map) {
   return d ? `<g fill="none" stroke-linecap="round" pointer-events="none"><path d="${d}" stroke="#6f6856" stroke-width="11"/><path d="${d}" stroke="#d0b992" stroke-width="7"/></g>` : '';
 }
 
-export function renderMap(state,{selection=null,placing=null,zoom=1,center={x:550,y:390},idPrefix='world'}={}) {
+export function renderMap(state,{selection=null,placing=null,moving=null,zoom=1,center={x:550,y:390},idPrefix='world'}={}) {
   const tiles = worldOf(state), map = terrainOf(tiles);
   const biome = state.world?.biome || 'emerald', theme = BIOMES[biome];
   const buildings = new Map(state.buildings.map(b=>[b.id,b]));
+  const inspect = placing ? colonySites(state,moving) : null;
+  const crews = new Set(state.crews.slice(0, crewCapacity(state)));
   const preview = idPrefix !== 'world';
   const colonists = new Map(map.ordered.filter(t => t.terrain!=='water' && !t.node && !buildings.has(t.id) && Math.abs(t.x-5)+Math.abs(t.y-5)<4)
     .slice(0,Math.min(12,Math.ceil(population(state)/3))).map((t,i) => [t.id,i]));
@@ -144,9 +147,13 @@ export function renderMap(state,{selection=null,placing=null,zoom=1,center={x:55
     const i = colonists.get(tile.id);
     const person = i===undefined ? '' : `<g pointer-events="none" class="colonist" style="animation-delay:-${i}s">${sprite(i%2 ? 'scout' : 'pioneer',11,19,5,4)}</g>`;
     const badge = b && !preview ? `<g class="level level-${b.level}" pointer-events="none"><rect x="-11" y="14" width="22" height="12" rx="4" fill="#153238"/><text y="23" text-anchor="middle" fill="#ffe4ae" font-size="9" font-family="sans-serif">${'I'.repeat(b.level)}</text></g>` : '';
-    objects+=`<g class="tile${selection===tile.id?' selected':''}" ${location} ${attrs}>${hit}${shadow}${b ? buildingSymbol(b.type,b.level) : landscapeObject(tile,biome)}${person}${interactive ? outline : ''}${badge}</g>`;
+    const crewMark = b && !preview && crews.has(b.id) ? '<g class="crew-mark" pointer-events="none"><circle cx="19" cy="12" r="7.5" fill="#15393b" stroke="#93e2bf"/><path d="m15 12 3 3 5-6" fill="none" stroke="#beffcf" stroke-width="1.6"/></g>' : '';
+    objects+=`<g class="tile${selection===tile.id?' selected':''}" ${location} ${attrs}>${hit}${shadow}${b ? buildingSymbol(b.type,b.level) : landscapeObject(tile,biome)}${person}${interactive ? outline : ''}${badge}${crewMark}</g>`;
     if (placing && !preview && tile.terrain!=='water' && !tile.node && !b) {
-      overlay+=`<g class="tile buildable" data-tile="${tile.id}" ${location} role="button" tabindex="0" aria-label="Choisir cet emplacement"><polygon class="hit" points="${p.hit}"/><path d="M-5 0H5M0 -3V3" fill="none" stroke="#f1ffd8" stroke-width="1.5"/>${outline}</g>`;
+      const site = inspect(placing,tile.id), favorable = site && (site.terrain || site.partner);
+      const label = 'Choisir cet emplacement' + (site ? ` · avec équipe +${site.total} ${RESOURCES[site.resource].name} par cycle` : '');
+      const sign = favorable ? `<text class="site-gain" y="4" text-anchor="middle">+${site.total}</text>` : '<path d="M-5 0H5M0 -3V3" fill="none" stroke="#f1ffd8" stroke-width="1.5"/>';
+      overlay+=`<g class="tile buildable${favorable ? ' favorable' : ''}" data-tile="${tile.id}" ${location} role="button" tabindex="0" aria-label="${label}"><title>${label}</title><polygon class="hit" points="${p.hit}"/>${sign}${outline}</g>`;
     }
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" class="surface-${biome}" viewBox="${cameraViewBox(center,zoom)}" role="group" aria-label="Carte de la colonie">

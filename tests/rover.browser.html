@@ -86,6 +86,44 @@ try {
   check(one('.survey-cover h3').textContent === 'Fougère de verre', 'Rapport dans le carnet');
   const dialog = one('#modal');
   check(dialog.scrollWidth <= dialog.clientWidth && frame.contentDocument.documentElement.scrollWidth <= frame.contentWindow.innerWidth, 'Débordement horizontal');
+  await loadGame();
+  click('#frontier-open'); click('[data-op="launch"]');
+  check(one('.field-map') && state().frontier.active.rig === 'scout', 'Pilotage depuis une vraie colonie');
+  click('[data-op="scan"]');
+  const { HOME, neighbors, sector } = await import('../dist/src/frontier.js');
+  const board = sector(state().world, state().frontier.sorties);
+  const queue = [HOME], via = new Map([[HOME,null]]);
+  for (const id of queue) {
+    if (id === board.target) break;
+    for (const next of neighbors[id]) if (!via.has(next) && board.tiles[next].terrain === 'plain') { via.set(next,id); queue.push(next); }
+  }
+  const route = [];
+  for (let id=board.target; id!==HOME; id=via.get(id)) route.unshift(id);
+  activate(`[data-cell="${route[0]}"]`);
+  await loadGame(); click('#frontier-open');
+  check(state().frontier.active.steps.join() === ['scan',route[0]].join(), 'Position et radar retrouvés après rechargement');
+  click('[data-op="route"]'); check(one('.return-line'), 'Tracé de retour sur le terrain connu');
+  click('[data-op="recall"]'); click('[data-op="cancel-recall"]');
+  for (const id of [...route.slice(1),...route.slice(0,-1).reverse(),HOME]) activate(`[data-cell="${id}"]`);
+  click('[data-op="dock"]');
+  check(state().frontier.signals===1 && one('[data-op="proposal"]'), 'Premier fragment remis au conseil');
+  click('#modal .close');
+  const springs=[...frame.contentDocument.querySelectorAll('[data-node][aria-label^="Eau"]')];
+  for (const el of springs.slice(0,2)) activate(`[data-tile="${el.dataset.tile}"]`);
+  click('#frontier-open'); click('[data-op="proposal"][data-choice="guild"]'); click('[data-op="ratify"]');
+  check(state().frontier.decisions.join()==='guild', 'Projet du conseil adopté et sauvegardé');
+  click('#modal .close');
+  for (const name of ['Minerai','Cristaux']) activate(`[data-node][aria-label^="${name}"]`);
+  click('[data-build="solar"]'); activate('.buildable[data-tile="6,5"]');
+  click('[data-inspect-crew="6,5"]'); check(state().crews.includes('6,5'), 'Équipe affectée depuis le bâtiment');
+  click('[data-ops-crews]'); click('[data-op="locate"][data-site-id="6,5"]');
+  check(one('#inspector h2').textContent==='Centrale solaire', 'Localisation de l’atelier');
+  check(!one('#modal').open && frame.contentDocument.documentElement.scrollWidth<=frame.contentWindow.innerWidth, 'Colonie après la campagne');
+  activate(`[data-tile="${springs[2].dataset.tile}"]`);
+  click('#frontier-open'); click('[data-op="surge"]'); click('[data-op="launch"]');
+  check(state().frontier.active.surge && one('.field-title small').textContent.includes('VIVES-EAUX'), 'Départ volontaire en vives-eaux');
+  click('[data-op="recall"]'); click('[data-op="rescue"]');
+  check(!state().frontier.active && state().frontier.last.recalled && state().frontier.signals===1, 'Retour en sécurité après le défi');
   output.dataset.status = 'passed'; output.textContent = 'Parcours terminé.';
 } catch (error) {
   output.dataset.status = 'failed'; output.textContent = error.stack;

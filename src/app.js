@@ -1,9 +1,13 @@
-import { artUrl } from './art-url.js?v=5.0.0';
-import { BIOMES, randomSeed } from './world.js?v=5.0.0';
-import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, buildRequirement, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, RESEARCH, researchCost, research, productionMultiplier, startSurvey, finishSurvey } from './engine.js?v=5.0.0';
-import { renderMap, buildingPreview, depositArt, tilePosition, cameraViewBox, cameraBounds, overviewCamera, roverPosition } from './scenes.js?v=5.0.0';
-import { SURVEYS, surveySites, surveyRoute, surveyProgress } from './survey.js?v=5.0.0';
-import { surveyPanel, updateSurveyPanel } from './survey-panel.js?v=5.0.0';
+import { artUrl } from './art-url.js?v=6.0.0';
+import { BIOMES, randomSeed } from './world.js?v=6.0.0';
+import { RESOURCES, BUILDINGS, GOALS, worldOf, tileOf, CYCLE, fresh, restore, population, rates, affordable, unlocked, buildRequirement, harvest, build, upgrade, upgradeCost, advance, salvage, dismantle, relocate, goalSteps, importSave, RESEARCH, researchCost, research, productionMultiplier, startSurvey, finishSurvey, assignCrew, openTraverse, driveRover, dockRover, decideCouncil } from './engine.js?v=6.0.0';
+import { renderMap, buildingPreview, depositArt, tilePosition, cameraViewBox, cameraBounds, overviewCamera, roverPosition } from './scenes.js?v=6.0.0';
+import { SURVEYS, surveySites, surveyRoute, surveyProgress } from './survey.js?v=6.0.0';
+import { surveyPanel, updateSurveyPanel } from './survey-panel.js?v=6.0.0';
+
+import { RIGS } from './frontier.js?v=6.0.0';
+import { WORKSHOPS } from './crews.js?v=6.0.0';
+import { inspectorCrew, operationStatus, operationsPanel, suggestedTab, updateFunding } from './operations-panel.js?v=6.0.0';
 
 const $ = id => document.getElementById(id);
 const KEY = document.documentElement.dataset.saveKey || 'neon-colony-v2';
@@ -47,6 +51,9 @@ function costs(cost) {
 }
 function drawStats() {
   const production = rates(state);
+  $('frontier-status').textContent = operationStatus(state);
+  const operations = $('modal-content').querySelector('.operations');
+  if (operations) updateFunding(operations, state);
   $('resources').innerHTML = Object.entries(RESOURCES).map(([key, r]) => `<div class="resource" title="${r.name} : ${state.resources[key]} ; production ${production[key]} par cycle de 12 secondes"><span class="icon" aria-hidden="true" style="color:${r.color}">${key === 'energy' ? '<svg viewBox="0 0 32 32"><path d="m19 2-13 17h9l-3 11 15-19h-10Z" fill="#f8cf79" stroke="#ffe6ac" stroke-width="1.2"/></svg>' : `<img src="${artUrl(key)}" alt="">`}</span><div><strong class="value">${state.resources[key]}</strong>${production[key] ? `<span class="rate">+${production[key]}/cycle</span>` : ''}</div><span class="name">${r.name}</span></div>`).join('');
   $('population').textContent = population(state);
   $('mobile-population').textContent = ` · ${population(state)} pionniers`;
@@ -74,12 +81,12 @@ function drawMap() {
   $('planet-name').textContent = state.world ? theme.name : 'Première Aube';
   $('planet-description').textContent = state.world ? theme.subtitle : 'Votre colonie historique · terrain préservé';
   $('planet-code').textContent = state.world ? `MONDE ${state.world.seed} · ${state.world.generator === 2 ? '31 × 31' : '15 × 15'}` : 'MONDE HISTORIQUE';
-  $('scene').innerHTML = renderMap(state, { selection: selected, placing, zoom, center });
+  $('scene').innerHTML = renderMap(state, { selection: selected, placing, moving, zoom, center });
   roverElement = $('scene').querySelector('[data-rover]');
   drawCamera();
   $('placement').hidden = !placing;
   if (placing) $('placement').querySelector('span').textContent = `${moving ? 'Déplacer : ' : ''}${BUILDINGS[placing].name} · choisissez une case claire`;
-  $('map-tip').textContent = placing ? 'Les cases illuminées sont constructibles. Le coût est débité uniquement à la pose.' : 'Cliquez pour collecter · Glissez pour explorer · + / − pour zoomer';
+  $('map-tip').textContent = placing ? (WORKSHOPS[placing] ? 'Cases dorées : bonus de production avec une équipe. Le chiffre indique le gain par cycle.' : 'Les cases illuminées sont constructibles. Le coût est débité uniquement à la pose.') : 'Cliquez pour collecter · Glissez pour explorer · + / − pour zoomer';
 }
 let roverElement = null;
 function drawCamera() {
@@ -95,7 +102,7 @@ const shortDescription = {
   solar: 'Énergie renouvelable', habitat: '+6 pionniers / niveau', pump: 'Eau atmosphérique',
   greenhouse: 'Culture de biomasse', mine: 'Minerai & cristaux', beacon: 'Votre lien avec les étoiles',
   wind: '+6 énergies / niveau', residence: '+12 pionniers / niveau', hydroponics: '+8 biomasses · +2 eaux', quarry: '+8 minerais / niveau', synthesizer: '+3 cristaux / niveau', laboratory: 'Recherches : coût −25 %',
-  hangar: 'Départ des expéditions', observatory: '+4 cristaux · +4 énergies / cycle',
+  lighthouse: 'Monument du littoral', hangar: 'Départ des expéditions', observatory: '+4 cristaux · +4 énergies / cycle',
 };
 document.querySelector('.catalog-filters').onclick = e => {
   const button = e.target.closest('[data-category]'); if (!button) return;
@@ -106,7 +113,7 @@ document.querySelector('.catalog-filters').onclick = e => {
 function drawCatalog() {
   $('catalog').innerHTML = Object.entries(BUILDINGS).filter(([key]) => key !== 'pod').map(([key, d]) => {
     const reason = buildRequirement(state, key);
-    const group = d.housing ? 'housing' : d.output && !d.requiresSurveys ? 'production' : 'special';
+    const group = d.housing ? 'housing' : d.output && !d.requiresSurveys && !d.requiresCouncil ? 'production' : 'special';
     const alreadyBuilt = d.unique && state.buildings.some(b => b.type === key);
     return `<button ${category !== 'all' && category !== group ? 'hidden' : ''} class="build-card ${reason ? 'locked' : ''}" data-build="${key}" aria-pressed="${chosen === key}" aria-label="${d.name}"><span class="tag">${alreadyBuilt ? 'EN SERVICE' : reason ? 'À DÉBLOQUER' : 'CONSTRUIRE'}</span><span class="art">${buildingPreview(key)}</span><span class="name">${d.name}</span><span class="description">${shortDescription[key]}</span>${costs(d.cost)}${reason ? `<span class="lock-note">${reason}</span>` : ''}</button>`;
   }).join('');
@@ -125,6 +132,12 @@ function drawInspector() {
     const yieldText = d.output ? Object.entries(d.output).map(([k, n]) => `+${n * b.level * productionMultiplier(state, b.type)} ${RESOURCES[k].name.toLowerCase()}`).join(' · ') + ' / cycle' : d.housing ? `${d.housing * b.level} pionniers accueillis` : b.type === 'laboratory' ? 'Recherches non acquises : coût réduit de 25 %' : b.type === 'hangar' ? 'Un rover · une sortie à la fois' : b.type === 'beacon' ? 'Le réseau stellaire est ouvert.' : '4 pionniers · le cœur de la colonie';
     panel.innerHTML = `<div class="preview">${buildingPreview(b.type, b.level)}</div><span class="eyebrow">BÂTIMENT · NIVEAU ${b.level}</span><h2>${d.name}</h2><p>${d.description}</p><p class="detail">${yieldText}</p>${max ? '<p>Niveau maximal atteint.</p>' : `<span class="eyebrow">AMÉLIORATION NIVEAU ${b.level + 1}</span>${costs(upgradeCost(b))}<button class="action" id="inspect-action" ${affordable(state, upgradeCost(b)) ? '' : 'disabled'}>Améliorer au niveau ${b.level + 1}</button>`}`;
     if (b.type === 'hangar') addSurveyLink(panel);
+    if (b.type === 'hangar' || b.type === 'lighthouse') {
+      const link = document.createElement('button'); link.className = 'action';
+      link.textContent = b.type === 'hangar' ? 'Piloter le rover' : 'Lire le journal du phare';
+      link.onclick = () => openOperations(b.type === 'hangar' ? 'rover' : 'council'); panel.append(link);
+    }
+    panel.insertAdjacentHTML('beforeend',inspectorCrew(state,b));
     if (b.type !== 'pod') {
       const move = document.createElement('button'); move.className = 'move-building'; move.textContent = 'Déplacer gratuitement';
       move.onclick = () => { moving = b.id; placing = b.type; chosen = null; drawMap(); say('Choisissez une case illuminée. Échap ou Annuler conserve le bâtiment à sa place.'); focusMap(); };
@@ -266,6 +279,7 @@ $('modal-content').addEventListener('click', e => {
   const button = e.target.closest('button'), panel = button?.closest('.survey-panel');
   if (!panel) return;
   const site = panel.dataset.site;
+  if (button.hasAttribute('data-field-resume')) { openOperations('rover'); return; }
   if (button.dataset.surveySelect) openSurvey(button.dataset.surveySelect);
   if (button.id === 'survey-start' || button.id === 'survey-claim') {
     advance(state);
@@ -289,6 +303,82 @@ $('modal-content').addEventListener('click', e => {
     $('scene').querySelector(`[data-survey-site="${site}"]`).focus({ preventScroll: true });
     $('world').scrollIntoView({ block: 'nearest' });
   }
+});
+let opsView = null;
+$('frontier-cover').src = artUrl('tidal-station');
+$('frontier-open').onclick = () => openOperations(suggestedTab(state));
+function openOperations(tab, message = '') {
+  opsView = { tab, rig: 'scout', pending: null, recall: false, route: false, surge: false, message };
+  paintOperations();
+  $('modal-content').querySelector(`[data-op="tab"][data-tab="${tab}"]`).focus({ preventScroll: true });
+  $('modal').scrollTop = 0;
+}
+function paintOperations(focusSelector = '') {
+  const top = $('modal').scrollTop;
+  const openDetails = Array.from($('modal-content').querySelectorAll('.in-field details[open]'), el => el.className);
+  show(operationsPanel(state, opsView));
+  for (const className of openDetails) {
+    const detail = $('modal-content').querySelector('.in-field details.'+className);
+    if (detail) detail.open = true;
+  }
+  updateFunding($('modal-content'),state);
+  const focus = (focusSelector && $('modal-content').querySelector(focusSelector)) || $('modal-content').querySelector('[data-op="move"]') || $('modal-content').querySelector(`[data-op="tab"][data-tab="${opsView.tab}"]`);
+  focus?.focus({preventScroll:true}); $('modal').scrollTop = top;
+}
+function focusInstallation(id) {
+  close(); moving = chosen = placing = null; selected = id;
+  const p = tilePosition(worldOf(state), tileOf(state,id));
+  showingOverview = false; center = { x:p.x, y:p.y-30 }; zoom=1.2;
+  render(); $('scene').querySelector(`[data-tile="${id}"]`)?.focus({preventScroll:true});
+  $('world').scrollIntoView({block:'nearest'});
+}
+$('inspector').addEventListener('click', e => {
+  if (e.target.closest('[data-ops-crews]')) { openOperations('crews'); return; }
+  const btn = e.target.closest('[data-inspect-crew]');
+  if (!btn) return;
+  const id = btn.dataset.inspectCrew; advance(state);
+  handle(assignCrew(state, id, !state.crews.includes(id)));
+  $('inspector').querySelector('[data-inspect-crew]')?.focus({preventScroll:true});
+});
+function runOperation(button) {
+  const {op, tab, rig, cell, choice, siteId, type} = button.dataset;
+  let focus = '', result;
+  advance(state);
+  switch (op) {
+    case 'tab': openOperations(tab); return;
+    case 'project': close(); selectProject(type); if (!placing) $('inspector').scrollIntoView({block:'nearest'}); return;
+    case 'survey': openSurvey(); return;
+    case 'locate': focusInstallation(siteId); return;
+    case 'rig': if (!Object.hasOwn(RIGS,rig)) return; opsView.rig = rig; focus = `[data-rig="${rig}"]`; break;
+    case 'surge': opsView.surge = !opsView.surge; focus = '[data-op="surge"]'; break;
+    case 'launch': result = openTraverse(state, opsView.rig, opsView.surge); break;
+    case 'move': result = driveRover(state,Number(cell)); break;
+    case 'scan': result = driveRover(state,'scan'); break;
+    case 'wait': result = driveRover(state,'wait'); break;
+    case 'route': opsView.route = !opsView.route; focus = '[data-op="route"]'; break;
+    case 'recall': opsView.recall = true; focus = '[data-op="cancel-recall"]'; break;
+    case 'cancel-recall': opsView.recall = false; focus = '[data-op="recall"]'; break;
+    case 'rescue': result = dockRover(state,true); opsView.recall = false; break;
+    case 'dock': result = dockRover(state); if (result.ok && suggestedTab(state) === 'council') opsView.tab = 'council'; break;
+    case 'proposal': opsView.pending = choice; focus = '[data-op="ratify"]'; break;
+    case 'ratify': result = decideCouncil(state,choice); if (result.ok) opsView.pending = null; break;
+    case 'crew': result = assignCrew(state,siteId,!state.crews.includes(siteId)); focus = `[data-op="crew"][data-site-id="${siteId}"]`; break;
+    default: return;
+  }
+  opsView.message = result?.message || '';
+  if (result?.ok) {
+    save();
+    if (op === 'crew' || op === 'ratify') render();
+    else drawStats();
+    say(result.message);
+  }
+  paintOperations(focus);
+}
+$('modal-content').addEventListener('click', e => {
+  const button = e.target.closest('[data-op]'); if (button && !button.disabled) runOperation(button);
+});
+$('modal-content').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.field-move')) { e.preventDefault(); runOperation(e.target); }
 });
 let pointer = null, dragged = false, panFrame = null;
 $('world').addEventListener('pointerdown', e => {
@@ -342,11 +432,11 @@ $('center').onclick = () => { showingOverview = false; ({zoom, center} = homeCam
 new ResizeObserver(() => { if ($('scene').firstElementChild) drawCamera(); }).observe($('world'));
 function guide(intro = false) {
   if (intro) {
-    show(`<div class="arrival"><div class="arrival-copy"><span class="arrival-series">NÉON</span><h2>Les pionniers<br>de l’aube</h2><p>Quatre pionniers viennent d’atterrir sur Kepler. Récoltez du minerai et des cristaux pour poser les fondations de leur colonie.</p><button class="primary" id="begin">Rejoindre la colonie <span aria-hidden="true">→</span></button></div></div>`);
+    show(`<div class="arrival"><div class="arrival-copy"><span class="arrival-series">NÉON</span><h2>Les pionniers<br>de l’aube</h2><p>Quatre pionniers viennent d’atterrir sur Kepler. Récoltez du minerai et des cristaux. Assemblez un hangar, puis prenez les commandes du rover pour retrouver le signal du littoral.</p><button class="primary" id="begin">Rejoindre la colonie <span aria-hidden="true">→</span></button></div></div>`);
     $('begin').onclick = () => { close(); save(); };
     return;
   }
-  show(`<span class="section-label">GUIDE DE BORD</span><h2>Le guide des pionniers</h2><p>Votre planète est générée à partir d’un numéro unique. Le bouton « Nouvelle planète » permet de choisir un autre terrain et un biome. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li><li><strong>Explorez</strong> avec le rover. Le bouton Expéditions donne accès à trois sites et aux plans de l’observatoire des aurores.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">Revenir sur Kepler →</button>`);
+  show(`<span class="section-label">GUIDE DE BORD</span><h2>Le guide des pionniers</h2><p>Votre planète est générée à partir d’un numéro unique. Le bouton « Nouvelle planète » permet de choisir un autre terrain et un biome. Écho vous accompagne pour transformer un module isolé en une colonie vivante.</p><ul><li><strong>Collectez</strong> en cliquant sur les roches, cristaux, arbres et sources. Ils se renouvellent en 2,5 secondes.</li><li><strong>Construisez</strong> : choisissez un bâtiment dans le catalogue, puis une case illuminée. Son coût est prélevé à la pose.</li><li><strong>Améliorez</strong> : cliquez sur un bâtiment posé pour consulter sa production et atteindre les niveaux II et III.</li><li><strong>Accueillez</strong> : chaque niveau d’habitat ajoute 6 pionniers. Atteignez 16 habitants, construisez une serre et un port stellaire.</li><li><strong>Pilotez</strong> le rover dans « Le Signal des marées ». Sur la grille, choisissez une case voisine, surveillez la batterie et ramenez le signal au camp. Chaque fragment ouvre une décision au conseil.</li><li><strong>Affectez</strong> vos équipes aux bâtiments productifs. Les gisements et les ateliers voisins renforcent leur rendement.</li><li><strong>Explorez</strong> avec le rover. Le bouton Expéditions donne accès à trois sites et aux plans de l’observatoire des aurores.</li></ul><p>Les installations produisent toutes les 12 secondes. La production pendant votre absence est récupérée jusqu’à 30 minutes. Pas de famine, de combat, ni d’entretien à payer. Vos réserves sont limitées à 9 999 par ressource.</p><p>Glissez la carte pour vous déplacer, utilisez + / − pour zoomer. Au clavier : Tab, Entrée ; Échap pour annuler une construction. Sur mobile, vous pouvez aussi collecter depuis la fiche de la ressource sélectionnée.</p><button class="primary" id="begin">Revenir sur Kepler →</button>`);
   $('begin').onclick = () => { close(); save(); };
 }
 $('guide').onclick = () => guide();

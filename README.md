@@ -4,6 +4,29 @@ Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub
 
 **https://jdrye.github.io/neon/**
 
+## Version 6.0 — Le Signal des marées
+
+Ouvrez **Le Signal des marées** au-dessus de la carte. Une nouvelle colonie peut bâtir son hangar après une collecte de minerai et une de cristaux. Une colonie déjà installée peut partir aussitôt avec son hangar et les provisions affichées. Le jeu enregistre chaque manœuvre. Quitter le navigateur suspend la reconnaissance à la case actuelle.
+
+**Piloter.** Le rover part du camp A3. Rejoignez la coordonnée du signal puis revenez en A3 et choisissez **Décharger au camp**. Chaque nouvelle sortie propose un secteur de 35 hexagones, avec des filons, des bornes à usage unique et un mandat facultatif. L’Éclaireur voit plus loin, les Chenilles franchissent les éboulis à moindre coût et le Cargo double les prélèvements. Le même rover assure aussi les expéditions de spécimens du carnet.
+
+| Élément de terrain | Effet sur le trajet |
+| --- | --- |
+| Piste | 1 charge |
+| Éboulis | 2 charges, ou 1 avec les Chenilles |
+| Estran | 1 charge à marée basse, 3 à marée haute |
+| Faille | Passage impossible |
+| Borne | Recharge de 5, dans la limite de la batterie |
+| Radar | Révèle trois cases de rayon, pour 1 charge |
+
+La marée reste basse trois tours et haute deux tours. Déplacer le rover, balayer ou attendre fait avancer la marée d’un tour. **Tracer le retour** calcule une route sur le terrain connu avec les marées prévues. Son estimation ignore les bornes encore disponibles. Un **rappel à vide** récupère le véhicule et abandonne sa cargaison. Un premier fragment ouvre le défi facultatif **Vives-eaux**. La visibilité tombe à une case, le rover perd une charge au départ et la pleine mer dure trois tours. Un estran submergé coûte alors 4 charges. Rapporter le signal crédite 6 cristaux et 8 énergies de prime. Un mandat rempli crédite aussi une prime à la décharge. Certaines missions de ravitaillement peuvent se faire avant de chercher le signal.
+
+**Organiser la colonie.** Les quatre pionniers de départ forment une équipe. Six habitants supplémentaires débloquent chaque poste suivant, jusqu’à six équipes. Affectez-les dans l’onglet **Équipes** ou directement sur un atelier. Le supplément de base est de 1 unité par cycle. Un terrain propice apporte 2 unités et un atelier partenaire en apporte 2 autres. Les quatre cases voisines comptent. Pendant le placement ou le déplacement, les cases dorées affichent le supplément total avec une équipe. Déplacer un atelier conserve son équipe et recalcule ses avantages sur place.
+
+**Décider.** Chacun des trois premiers fragments permet au conseil de financer un projet parmi deux. Les effets sont permanents. Une batterie renforcée ou une équipe supplémentaire changent les priorités dès le premier vote. Le port stellaire et les trois décisions donnent accès au **phare des marées**, à construire sur la carte. L’épilogue dépend du dernier vote. Les reconnaissances et leurs mandats restent disponibles après l’allumage du phare.
+
+Les sauvegardes des versions précédentes ouvrent directement cette campagne sur leur carte actuelle. `npm run build:preview` produit toujours le jeu autonome `dist/NEON-Kepler.html` avec une colonie de démonstration et son propre espace de sauvegarde. GitHub Actions joint le jeu et les captures du pilotage sur ordinateur et téléphone à la pull request.
+
 ## Version 5.0 — Kepler illustrée
 
 Les quinze bâtiments, les pionniers, le rover et les gisements sont illustrés en vue isométrique. Les installations de niveau II et III reçoivent des équipements visibles tels que des batteries, des réservoirs ou des modules d’habitation. Des chemins relient les bâtiments voisins.

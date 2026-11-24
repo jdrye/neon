@@ -1,6 +1,6 @@
-import { RESOURCES, affordable, has } from './engine.js?v=5.0.0';
-import { SURVEYS, surveyProgress } from './survey.js?v=5.0.0';
-import { specimenMark, surveyLandscape } from './survey-art.js?v=5.0.0';
+import { RESOURCES, affordable, has } from './engine.js?v=6.0.0';
+import { SURVEYS, surveyProgress } from './survey.js?v=6.0.0';
+import { specimenMark, surveyLandscape } from './survey-art.js?v=6.0.0';
 
 function manifest(resources) {
   return Object.entries(resources).map(([key, amount]) => {
@@ -23,6 +23,7 @@ function expeditionControls(state, key) {
   if (active) {
     return `<p>Le rover est en mission sur le site « ${SURVEYS[active.site].name} ».</p><button data-survey-select="${active.site}">Suivre la mission en cours</button>`;
   }
+  if (state.frontier.active) return '<p>Le rover est en reconnaissance sur le littoral.</p><button data-field-resume>Reprendre le pilotage</button>';
   if (!has(state, 'hangar')) {
     return '<p>Construisez le hangar pour préparer le premier départ.</p><button class="primary" data-survey-project="hangar">Construire le hangar</button>';
   }
