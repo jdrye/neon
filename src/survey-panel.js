@@ -1,6 +1,6 @@
-import { RESOURCES, affordable, has } from './engine.js?v=4.2.0';
-import { SURVEYS, surveyProgress } from './survey.js?v=4.2.0';
-import { specimenMark, surveyLandscape } from './survey-art.js?v=4.2.0';
+import { RESOURCES, affordable, has } from './engine.js?v=5.0.0';
+import { SURVEYS, surveyProgress } from './survey.js?v=5.0.0';
+import { specimenMark, surveyLandscape } from './survey-art.js?v=5.0.0';
 
 function manifest(resources) {
   return Object.entries(resources).map(([key, amount]) => {

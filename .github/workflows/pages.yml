@@ -27,6 +27,10 @@ jobs:
           server=$!
           trap 'kill "$server"' EXIT
           curl --fail --silent --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:4173/dist/ >/dev/null
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            mkdir -p "$RUNNER_TEMP/neon-captures"
+            npm run build:preview -- "$RUNNER_TEMP/neon-captures/NEON-Kepler.html"
+          fi
           for layout in desktop mobile; do
             result="$RUNNER_TEMP/neon-$layout.html"
             google-chrome --headless --disable-gpu --no-sandbox --no-first-run \
@@ -36,7 +40,27 @@ jobs:
               sed -n '/<output id="result"/,/<iframe/p' "$result" | head -c 3000
               exit 1
             fi
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              size=1440,1000
+              if [ "$layout" = mobile ]; then size=390,844; fi
+              google-chrome --headless --disable-gpu --no-sandbox --hide-scrollbars \
+                --user-data-dir="$RUNNER_TEMP/neon-visual-$layout" --window-size="$size" \
+                --force-device-scale-factor=1 --virtual-time-budget=4000 \
+                --screenshot="$RUNNER_TEMP/neon-captures/kepler-$layout.png" \
+                "file://$RUNNER_TEMP/neon-captures/NEON-Kepler.html"
+              google-chrome --headless --disable-gpu --no-sandbox --virtual-time-budget=3000 \
+                --user-data-dir="$RUNNER_TEMP/neon-visual-$layout" --dump-dom \
+                "file://$RUNNER_TEMP/neon-captures/NEON-Kepler.html" >"$RUNNER_TEMP/neon-offline.html"
+              grep -q 'data-build="observatory"' "$RUNNER_TEMP/neon-offline.html"
+            fi
           done
+      - name: Save playable preview and in-game screenshots
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kepler-en-jeu
+          path: ${{ runner.temp }}/neon-captures/
+          retention-days: 14
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
