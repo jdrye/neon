@@ -19,6 +19,8 @@ for (const name of await readdir(new URL('src/art/',root))) {
 }
 const colony = JSON.parse(await read('examples/colonie-kepler.json','utf8'));
 const css = (await read('src/style.css','utf8')).replace("url('./art/landing.webp')",'var(--arrival-art)');
+const strategyCss = await read('src/strategy.css','utf8');
+const directStrategy = process.argv.includes('--strategy');
 const bootstrap = `<script type="application/json" id="preview-colony"></script>
 <script>
 (() => {
@@ -37,8 +39,8 @@ const bootstrap = `<script type="application/json" id="preview-colony"></script>
 <script type="importmap">${JSON.stringify({imports})}</script>
 <script type="module">import 'neon/app.js';</script>`;
 const html = (await read('index.html','utf8'))
-  .replace('<html lang="fr">','<html lang="fr" data-save-key="neon-preview-v5">')
-  .replace(/<link rel="stylesheet"[^>]+>/, () => '<style>'+css+'</style>')
+  .replace('<html lang="fr">',`<html lang="fr" data-save-key="neon-preview-v5"${directStrategy?' data-mode="strategy"':''}>`)
+  .replace(/<link rel="stylesheet"[^>]+>/g, link => '<style>'+(link.includes('strategy.css')?strategyCss:css)+'</style>')
   .replace(/<script type="module" src="[^"]+"><\/script>/, () => bootstrap)
   .replace('class="brand" href="./"', 'class="brand" href="#"');
 await mkdir(dirname(out),{recursive:true});

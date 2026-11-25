@@ -21,13 +21,14 @@ jobs:
         run: npm test
       - name: Build static game
         run: npm run build
-      - name: Play the rover expedition and tidal campaign on desktop and mobile
+      - name: Play the rover, tidal campaign and real-time skirmish on desktop and mobile
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 >"$RUNNER_TEMP/neon-http.log" 2>&1 &
           server=$!
           trap 'kill "$server"' EXIT
           curl --fail --silent --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:4173/dist/ >/dev/null
           npm run build:preview -- "$RUNNER_TEMP/neon-captures/NEON-Kepler.html"
+          npm run build:preview -- "$RUNNER_TEMP/neon-captures/NEON-Deux-Rives.html" --strategy
           node scripts/test-browser.mjs http://127.0.0.1:4173 "$RUNNER_TEMP/neon-captures"
       - name: Save playable preview and in-game screenshots
         if: github.event_name == 'pull_request'

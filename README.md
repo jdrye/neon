@@ -1,8 +1,29 @@
 # NÉON — Les pionniers de l’aube
 
-Jeu de colonie **2D isométrique**, en français, jouable directement sur GitHub Pages :
+Jeu de stratégie **2D isométrique** en français. Commandez une cité face à une rivale ou explorez Kepler en colonie libre.
 
 **https://jdrye.github.io/neon/**
+
+## Version 7.0 — Les Deux Rives
+
+Sur l’accueil, choisissez **Jouer en stratégie**, ou ouvrez [l’escarmouche](https://jdrye.github.io/neon/#strategie). Choisissez un champ de bataille, un numéro de carte et la difficulté de Cendre. Les deux cités commencent avec un forum, cinq pionniers, un Voltigeur de reconnaissance et des réserves identiques. Le numéro reproduit la même carte et les mêmes gisements.
+
+**Votre première minute.** Sélectionnez le pionnier libre et affectez-le aux cristaux. Au forum, lancez la formation d’un pionnier. Avec deux pionniers, posez un dépôt près du bois ou du minerai. La livraison s’effectue au dépôt le plus proche. Envoyez le Voltigeur reconnaître le gué pendant que les autres récoltent. Une caserne permet de défendre les récolteurs. Un habitat ajoute six places et une ferme fournit des vivres quand les gisements s’épuisent.
+
+**Changer d’âge.** Achevez deux types de bâtiments en plus du forum pour ouvrir l’âge II. Prévoyez 112 vivres, 38 minerais et 12 cristaux. Pendant la transition, le forum suspend la formation de nouveaux pionniers placés après elle. L’âge II ouvre les Veilleurs, l’atelier et la vigie. Un atelier et une recherche achevée ouvrent l’âge III, pour 190 vivres, 85 minerais et 50 cristaux. Les recherches augmentent la charge des pionniers, la portée des Veilleurs et des Vigies, ou la résistance des troupes.
+
+**Contrôler le terrain.** Les Sentinelles ont l’avantage contre les Voltigeurs, les Voltigeurs contre les Veilleurs et les Veilleurs contre les Sentinelles. Gardez une unité militaire au relais central pendant douze secondes pour en prendre le contrôle. Il rapporte ensuite deux cristaux toutes les huit secondes et révèle ses abords. Pour gagner, faites tomber le forum adverse ou protégez une Flèche orbitale en service pendant 90 secondes. Son signal révèle sa position aux deux camps.
+
+| Commande | Action |
+| --- | --- |
+| Clic, toucher ou clic droit | Sélectionner puis désigner un gisement, une destination ou une cible. Le clic droit donne directement l’ordre à la sélection. |
+| Glisser, Maj + clic, double-clic | Cadrer un groupe sur ordinateur, modifier sa composition ou sélectionner les unités du même type à l’écran. |
+| Ctrl + 1 à 5, puis 1 à 5 | Mémoriser et rappeler des groupes de commandement. |
+| H, V, M, Q | Sélectionner le forum, les pionniers, l’armée ou le prochain pionnier libre. |
+| B, A, P | Bâtir, avancer en combattant, activer ou quitter la pause tactique. |
+| Téléphone | Glisser pour déplacer la carte, toucher le bouton **Caméra** pour passer à la sélection au cadre. La minicarte sert à rejoindre un autre secteur. |
+
+La pause tactique permet de préparer des ordres. La partie se sauvegarde sur l’appareil et reprend en pause, avec les files, les cargaisons et les groupes en cours. La colonie libre possède sa propre sauvegarde. Pour créer le jeu autonome à ouvrir hors ligne, lancez `npm run build:preview -- dist/NEON-Deux-Rives.html --strategy`.
 
 ## Version 6.0 — Le Signal des marées
 
@@ -100,7 +121,7 @@ La version 4 utilisait sept modèles de bâtiments dessinés en SVG, des colons 
 
 La production suit un cycle global de 12 secondes, sans coût d’entretien. Les améliorations multiplient la production par le niveau. Les sept étapes de l’expédition accordent des récompenses une seule fois. Atteignez 16 habitants avec une serre et un port stellaire pour achever l’objectif principal ; la construction reste ensuite libre.
 
-Pas de combat, de famine, de mort de colons ou de pénalité d’absence. Les réserves sont plafonnées à 9 999 par ressource.
+En colonie libre, la progression est pacifique et les réserves sont plafonnées à 9 999 par ressource.
 
 ## Sauvegarde et accessibilité
 

@@ -9,8 +9,12 @@ import { RIGS } from './frontier.js?v=6.0.0';
 import { WORKSHOPS } from './crews.js?v=6.0.0';
 import { inspectorCrew, operationStatus, operationsPanel, suggestedTab, updateFunding } from './operations-panel.js?v=6.0.0';
 
+import { createCommandRoom } from './strategy-app.js?v=7.0.0';
+
 const $ = id => document.getElementById(id);
 const KEY = document.documentElement.dataset.saveKey || 'neon-colony-v2';
+const commandRoom = createCommandRoom($('rts-screen'), KEY+'-strategie-v1');
+$('strategy-open').onclick = commandRoom.open;
 let state = fresh(), stored = false, selected = '5,5', chosen = null, placing = null;
 const frameUnits = 1.15;
 function cameraFrame() {
@@ -207,7 +211,7 @@ function render(redrawMap = true) {
 function focusMap() { if (window.innerWidth <= 760) $('world').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' }); }
 function cancelPlacement() { moving = null; placing = null; chosen = null; render(); }
 $('cancel').onclick = cancelPlacement;
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').open) cancelPlacement(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').open && !$('rts-screen').open) cancelPlacement(); });
 function selectProject(type) {
   advance(state); moving = null; chosen = type; selected = null;
   placing = unlocked(state, chosen) && affordable(state, BUILDINGS[chosen].cost) ? chosen : null;
@@ -432,7 +436,8 @@ $('center').onclick = () => { showingOverview = false; ({zoom, center} = homeCam
 new ResizeObserver(() => { if ($('scene').firstElementChild) drawCamera(); }).observe($('world'));
 function guide(intro = false) {
   if (intro) {
-    show(`<div class="arrival"><div class="arrival-copy"><span class="arrival-series">NÉON</span><h2>Les pionniers<br>de l’aube</h2><p>Quatre pionniers viennent d’atterrir sur Kepler. Récoltez du minerai et des cristaux. Assemblez un hangar, puis prenez les commandes du rover pour retrouver le signal du littoral.</p><button class="primary" id="begin">Rejoindre la colonie <span aria-hidden="true">→</span></button></div></div>`);
+    show(`<div class="arrival"><div class="arrival-copy"><span class="arrival-series">NÉON</span><h2>Les pionniers<br>de l’aube</h2><p>Prenez la tête d’Aurore dans une escarmouche en temps réel, ou fondez une colonie libre et partez explorer le littoral en rover.</p><button class="primary" id="begin-strategy">Jouer en stratégie →</button> <button id="begin">Rejoindre la colonie libre</button></div></div>`);
+    $('begin-strategy').onclick = () => { close(); commandRoom.open(); };
     $('begin').onclick = () => { close(); save(); };
     return;
   }
@@ -512,8 +517,10 @@ $('sound').onclick = async () => {
 document.addEventListener('visibilitychange', () => { if (audio) { if (document.hidden) audio.suspend(); else if (sound) audio.resume(); } if (document.hidden) save(); });
 window.addEventListener('pagehide', save);
 setInterval(() => { const cycles = advance(state); if (cycles) { save(); drawStats(); drawResearch(); } updateSurveyHud(); }, 1000);
-setInterval(updateTimers, 100);
+setInterval(() => { if (!$('rts-screen').open) updateTimers(); }, 100);
 render();
-if (!stored) guide(true);
+window.addEventListener('hashchange', () => { if (location.hash === '#strategie') { if ($('modal').open) close(); commandRoom.deepLink(); } });
+if (location.hash === '#strategie' || document.documentElement.dataset.mode === 'strategy') commandRoom.deepLink();
+else if (!stored) guide(true);
 else if (offlineCycles && Object.values(rates(state)).some(n => n > 0)) { save(); say(`Heureux de vous retrouver. Vos installations ont produit pendant votre absence (${offlineCycles} cycles, maximum 30 minutes).`); }
 else say('Votre colonie vous attend. Choisissez une ressource à récolter ou un nouveau projet à bâtir.');
