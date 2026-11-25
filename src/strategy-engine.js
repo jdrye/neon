@@ -22,7 +22,7 @@ function makeBuilding(s,side,type,cell,complete=false) {
 }
 export function createMatch(seed=1,region='delta',level='even') {
   if(!Object.hasOwn(MAPS,region))region='delta';if(!Object.hasOwn(LEVELS,level))level='even';
-  const s={version:1,seed:seed>>>0,region,level,tick:0,nextId:1,rev:0,teams:[],buildings:[],units:[],nodes:[],relay:{owner:-1,contender:-1,progress:0},result:null,log:[],effects:[],ai:{lastRaid:0}};
+  const s={version:1,seed:seed>>>0,region,level,tick:0,nextId:1,rev:0,teams:[],buildings:[],units:[],nodes:[],relay:{owner:-1,contender:-1,progress:0},result:null,alarm:null,log:[],effects:[],ai:{lastRaid:0}};
   s.nodes=atlas(s).deposits.map(d=>({cell:d.cell,kind:d.kind,left:d.amount}));
   for(const [side,home] of [HOME,RIVAL].entries()) {
     s.teams.push({bank:{food:100,wood:105,ore:45,crystal:18},age:1,tech:[],explored:Array(SIDE*SIDE).fill(0),enemyForum:null,trained:0,lost:0});
@@ -140,6 +140,7 @@ export function buildReason(s,side,type,cell) {
   if(type==='spire'&&s.buildings.some(b=>same(b,side)&&b.type==='spire'))return 'Une Flèche existe déjà.';
   if(!canPay(s.teams[side].bank,def.cost))return 'Ressources insuffisantes.';
   if(cell!==undefined){if(!walkable(s,cell)||atlas(s).cells[cell].ford||atlas(s).relay===cell||!vision(s,side)[cell])return 'Choisissez une case visible et libre, hors des gués et du relais.';
+    if(s.buildings.some(b=>b.hp>0&&tileDistance(cell,b.cell)<def.clearance+STRUCTURES[b.type].clearance))return 'Laissez de la place entre les bâtiments pour les accès.';
     if(s.units.some(u=>u.hp>0&&apart(u,pointOf(cell))<.78))return 'Cette case est occupée.';}
   return '';
 }
@@ -275,6 +276,13 @@ export function tickSimulation(s) {
     doProduction(s,b);if(def.damage){b.cool=Math.max(0,b.cool-DT);const range=def.range+(b.type==='tower'&&s.teams[b.side].tech.includes('optics')?1:0);
       const enemy=nearestEnemy(s,b.side,pointOf(b.cell),range);if(enemy)fire(s,b,enemy,def,hits);}
     if(b.type==='spire')b.hold+=DT;
+  }
+  const attacked=[...s.buildings,...s.units].find(e=>!e.side&&hits.has(e.id));
+  if(attacked && (!s.alarm||s.tick-s.alarm.tick>=100||attacked.type==='forum'&&attacked.cell!==s.alarm.cell)) {
+    const cell=attacked.cell??unitCell(attacked);
+    s.alarm={cell,tick:s.tick};
+    const name=attacked.cell===undefined?UNITS[attacked.type].name:STRUCTURES[attacked.type].name;
+    notify(s,`Contact ennemi · ${name} sous le feu.`);
   }
   for(const e of [...s.units,...s.buildings])if(hits.has(e.id))e.hp-=hits.get(e.id);
   for(const u of s.units)if(u.hp<=0)s.teams[u.side].lost++;
