@@ -8,7 +8,7 @@ function commission(s,side,type,workers,home) {
   const focus=pointOf(home), sign=side?-1:1;
   const offset={barracks:[2,-1],farm:[-2,2],house:[-2,-1],workshop:[2,1],depot:[0,-3],tower:[3,-2],spire:[-2,1]}[type];
   const wanted=keyOf(focus.x+offset[0]*sign,focus.y+offset[1]*sign);
-  const candidates=atlas(s).cells.filter(c=>tileDistance(c.cell,home)<=5.8&&!buildReason(s,side,type,c.cell)).sort((a,b)=>tileDistance(a.cell,wanted)-tileDistance(b.cell,wanted)||a.cell-b.cell);
+  const candidates=atlas(s).cells.filter(c=>tileDistance(c.cell,home)<=7.4&&!buildReason(s,side,type,c.cell)).sort((a,b)=>tileDistance(a.cell,wanted)-tileDistance(b.cell,wanted)||a.cell-b.cell);
   for(const c of candidates.slice(0,12)){
     const builders=workers.filter(u=>u.order.kind!=='assist'&&routeDistance(s,unitCell(u),c.cell)>=0).sort((a,b)=>Number(!!a.cargo)-Number(!!b.cargo)||apart(a,c)-apart(b,c));
     if(construct(s,side,builders.slice(0,workers.length>=7?2:1).map(u=>u.id),type,c.cell).ok)return true;

@@ -7,6 +7,7 @@ import {
 } from '../src/strategy-engine.js';
 import {planSide, tickMatch} from '../src/strategy-ai.js';
 import {readMatch} from '../src/strategy-save.js';
+import {siegeOfAurore} from '../src/strategy-scenario.js';
 
 const teamWorkers = s => unitsOf(s, 0, 'worker');
 const keys = units => units.map(u => u.id);
@@ -180,7 +181,14 @@ for (const [seed, region, level, pilot, expected] of [
   test(`partie complète par les commandes normales · ${region} ${seed} · ${expected.winner ? 'défaite' : 'victoire'} ${expected.reason}`, () => {
     const s = createMatch(seed, region, level), brain = {lastRaid:0};
     until(s, () => s.result, 3200, game => {
-      if (pilot && game.tick % 12 === 0) planSide(game, 0, 'fierce', brain);
+      if (pilot && game.tick % 12 === 0) {
+        planSide(game, 0, 'fierce', brain);
+        if (expected.reason === 'spire') {
+          // This commander holds the approaches to its forum instead of raiding.
+          const raiders = unitsOf(game, 0).filter(u => u.order.kind === 'advance' && tileDistance(u.order.cell, RIVAL) < 7);
+          if (raiders.length) orderUnits(game, 0, keys(raiders), 'move', HOME + 2 - SIDE);
+        }
+      }
       tickMatch(game);
     });
     assert.deepEqual(s.result, expected);
@@ -196,3 +204,46 @@ for (const [seed, region, level, pilot, expected] of [
     assert.equal(s.tick, finishedAt);
   });
 }
+
+test('les trois contres militaires, les coques et la portée des Veilleurs modifient les échanges', () => {
+  function openingDamage(attacker, target, distance, attackerTech = [], targetTech = []) {
+    const s = createMatch(8);
+    const a = unitsOf(s, 0, 'skimmer')[0], b = unitsOf(s, 1, 'skimmer')[0];
+    Object.assign(a, {type:attacker, hp:UNITS[attacker].hp, x:13, y:13, anchor:MID});
+    Object.assign(b, {type:target, hp:UNITS[target].hp, x:13 + distance, y:13});
+    b.anchor = unitCell(b);
+    s.teams[0].tech = attackerTech;
+    s.teams[1].tech = targetTech;
+    tickSimulation(s);
+    return UNITS[target].hp - b.hp;
+  }
+  for (const type of ['guard','watcher','skimmer']) {
+    const d = UNITS[type];
+    assert.equal(openingDamage(type, type, 1), d.damage);
+    assert.ok(Math.abs(openingDamage(type, d.counter, 1) - d.damage * 1.65) < 1e-6);
+    assert.ok(Math.abs(openingDamage(type, d.counter, 1, [], ['plating']) - d.damage * 1.65 * .75) < 1e-6);
+  }
+  assert.equal(openingDamage('watcher', 'guard', 4.1), 0);
+  assert.ok(openingDamage('watcher', 'guard', 4.1, ['optics']) > 0);
+});
+
+test('le siège remet une cité jouée au commandant et la reconstruction change effectivement son issue', () => {
+  const siege = siegeOfAurore();
+  assert.equal(siege.tick, 936);
+  assert.equal(siege.scenario, 'siege');
+  assert.equal(siege.teams[0].age, 3);
+  assert.equal(teamWorkers(siege).length, 14);
+  assert.equal(unitsOf(siege, 0, 'guard').length, 3);
+  assert.equal(unitsOf(siege, 0, 'watcher').length, 3);
+  assert.ok(unitsOf(siege, 1).some(u => vision(siege, 0)[unitCell(u)]));
+  assert.ok(!siege.result && siege.buildings.every(b => b.type !== 'spire' || b.side === 1));
+  const passive = readMatch(JSON.stringify(siege));
+  assert.equal(passive.scenario, 'siege');
+  until(passive, () => passive.result, 800, tickMatch);
+  assert.equal(passive.result.winner, 1);
+  const oldWorks = 19 * SIDE + 1;
+  const builders = teamWorkers(siege).sort((a,b) => tileDistance(unitCell(a), oldWorks) - tileDistance(unitCell(b), oldWorks));
+  assert.ok(construct(siege, 0, keys(builders.slice(0,6)), 'spire', oldWorks).ok);
+  until(siege, () => siege.result, 800, tickMatch);
+  assert.deepEqual(siege.result, {winner:0, reason:'spire'});
+});

@@ -89,8 +89,8 @@ export async function playStrategy({name, server, output, width, call, evaluate,
   await use('harvest','food');
   await use('army');
   if (!mobile) {
-    await call('Input.dispatchKeyEvent', {type:'keyDown', key:'1', code:'Digit1', windowsVirtualKeyCode:49, modifiers:2});
-    await call('Input.dispatchKeyEvent', {type:'keyUp', key:'1', code:'Digit1', windowsVirtualKeyCode:49, modifiers:2});
+    await call('Input.dispatchKeyEvent', {type:'keyDown', key:'&', code:'Digit1', windowsVirtualKeyCode:49, modifiers:2});
+    await call('Input.dispatchKeyEvent', {type:'keyUp', key:'&', code:'Digit1', windowsVirtualKeyCode:49, modifiers:2});
     await stateIs('s.command.groups[1]?.length === 2', 'groupe de commandement');
     await pointInput(site.point, 'right');
     await stateIs("s.units.some(u => !u.side && u.type === 'guard' && u.order.kind === 'move')", 'ordre par clic droit');
@@ -127,5 +127,23 @@ export async function playStrategy({name, server, output, width, call, evaluate,
   await use('idle');
   await use('harvest','crystal');
   await stateIs("s.region === 'passes' && s.units.some(u => !u.side && u.order.resource === 'crystal')", 'ordre autonome sans serveur');
+  await use('menu');
+  await use('setup');
+  await use('scenario');
+  await appears(action('confirm-start'), 'confirmation de changement de partie');
+  await use('confirm-start');
+  await appears('#rts-map[data-paused="true"]', 'transfert du commandement en pause');
+  await stateIs("s.scenario === 'siege' && s.tick === 936 && s.teams[0].age === 3 && s.units.filter(u => !u.side && u.type === 'worker').length === 14", 'siège avancé issu du jeu normal');
+  await use('pause');
+  await waitFor(() => evaluate("Number(document.querySelector('#rts-map').dataset.tick) >= 942"), name + ' · bataille en cours');
+  await evaluate(`(async () => {
+    const urls = new Set([...document.querySelectorAll('#rts-screen img[src], #rts-screen image[href]')].map(e => e.getAttribute('src') || e.getAttribute('href')));
+    await Promise.all([...urls].map(url => { const img = new Image(); img.src = url; return img.decode(); }));
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  })()`);
+  const siegeShot = await call('Page.captureScreenshot', {format:'png', captureBeyondViewport:false});
+  await writeFile(join(output, 'siege-aurore-' + name + '.png'), Buffer.from(siegeShot.data, 'base64'));
+  await use('cohort','watcher');
+  await waitFor(() => evaluate("Number(document.querySelector('[data-roster=watcher]').textContent) === document.querySelectorAll('.rts-piece.unit.selected').length"), name + ' · sélection des Veilleurs par les effectifs');
   console.log(name + ' · formation, annulation, construction au pointeur, récolte, armée, sauvegarde, reprise et jeu autonome validés.');
 }

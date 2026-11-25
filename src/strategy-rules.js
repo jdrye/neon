@@ -23,14 +23,14 @@ export const UNITS = {
   skimmer: {name:'Voltigeur', art:'rts-skimmer', hp:82, speed:2.65, sight:6, damage:11, range:1.6, interval:1, counter:'watcher', cost:{food:35,crystal:19}, time:15, age:2, at:'workshop', note:'Unité rapide de reconnaissance. Avantage contre les Veilleurs.'},
 };
 export const STRUCTURES = {
-  forum: {name:'Forum', art:'rts-forum', hp:620, age:1, cap:10, sight:6, damage:9, range:4.3, note:'Reçoit les cargaisons, forme les pionniers et prépare les passages d’âge.'},
-  house: {name:'Habitat', art:'habitat', hp:160, age:1, cap:6, cost:{wood:32}, time:14, note:'Ouvre six places de population.'},
-  depot: {name:'Dépôt', art:'hangar', hp:185, age:1, cost:{wood:36}, time:13, note:'Point de livraison pour toutes les ressources. Permet de rechercher les harnais.'},
-  farm: {name:'Ferme', art:'hydroponics', hp:155, age:1, cost:{wood:42}, time:16, note:'Source permanente de vivres à exploiter par les pionniers.'},
-  barracks: {name:'Caserne', art:'rts-barracks', hp:280, age:1, cost:{wood:55,ore:20}, time:22, note:'Forme les Sentinelles, puis les Veilleurs à l’âge II.'},
-  tower: {name:'Vigie', art:'rts-tower', hp:310, age:2, sight:7, damage:18, range:5.1, cost:{wood:40,ore:44}, time:27, note:'Protège les abords avec un émetteur automatique.'},
-  workshop: {name:'Atelier', art:'laboratory', hp:240, age:2, cost:{wood:62,ore:32}, time:25, note:'Assemble les Voltigeurs et recherche des améliorations.'},
-  spire: {name:'Flèche orbitale', art:'rts-spire', hp:460, age:3, sight:7, cost:{wood:145,ore:125,crystal:95}, time:55, note:'Maintenez la Flèche en service 90 secondes pour remporter la partie.'},
+  forum: {clearance:1.45, name:'Forum', art:'rts-forum', hp:620, age:1, cap:10, sight:6, damage:9, range:4.3, note:'Reçoit les cargaisons, forme les pionniers et prépare les passages d’âge.'},
+  house: {clearance:0.88, name:'Habitat', art:'habitat', hp:160, age:1, cap:6, cost:{wood:32}, time:14, note:'Ouvre six places de population.'},
+  depot: {clearance:0.95, name:'Dépôt', art:'hangar', hp:185, age:1, cost:{wood:36}, time:13, note:'Point de livraison pour toutes les ressources. Permet de rechercher les harnais.'},
+  farm: {clearance:1.03, name:'Ferme', art:'hydroponics', hp:155, age:1, cost:{wood:42}, time:16, note:'Source permanente de vivres à exploiter par les pionniers.'},
+  barracks: {clearance:1.12, name:'Caserne', art:'rts-barracks', hp:280, age:1, cost:{wood:55,ore:20}, time:22, note:'Forme les Sentinelles, puis les Veilleurs à l’âge II.'},
+  tower: {clearance:0.84, name:'Vigie', art:'rts-tower', hp:310, age:2, sight:7, damage:18, range:5.1, cost:{wood:40,ore:44}, time:27, note:'Protège les abords avec un émetteur automatique.'},
+  workshop: {clearance:1.12, name:'Atelier', art:'laboratory', hp:240, age:2, cost:{wood:62,ore:32}, time:25, note:'Assemble les Voltigeurs et recherche des améliorations.'},
+  spire: {clearance:1.27, name:'Flèche orbitale', art:'rts-spire', hp:460, age:3, sight:7, cost:{wood:145,ore:125,crystal:95}, time:55, note:'Maintenez la Flèche en service 90 secondes pour remporter la partie.'},
 };
 export const STUDIES = {
   harness:{name:'Harnais de portage',at:'depot',age:1,cost:{food:32,wood:22},time:20,note:'Charge de chaque pionnier portée de 8 à 14 unités.'},

@@ -26,6 +26,8 @@ export function readMatch(raw) {
     if(!s.result&&![0,1].every(n=>s.buildings.filter(b=>b.side===n&&b.type==='forum'&&b.ready).length===1))return null;
     // Imported text is never inserted into game markup. The log is shown as text.
     s.log=Array.isArray(s.log)?s.log.filter(l=>Number.isInteger(l?.tick)&&typeof l.text==='string').slice(-12).map(l=>({tick:l.tick,text:l.text.slice(0,180)})):[];
+    if(s.scenario!=='siege')delete s.scenario;
+    if(!s.alarm||!cell(s.alarm.cell)||!Number.isSafeInteger(s.alarm.tick)||!finite(s.alarm.tick,0,s.tick))s.alarm=null;
     const c=s.command;
     const list=v=>Array.isArray(v)&&v.length<=116&&v.every(k=>typeof k==='string'&&/^(?:e[0-9]{1,12}|n[0-9]{1,3}|relay)$/.test(k));
     if(c && !(finite(c.center?.x,-3000,4500)&&finite(c.center?.y,-1000,4500)&&finite(c.zoom,.36,1.8)&&[1,2,3].includes(c.speed)&&list(c.selection)&&c.groups&&Object.entries(c.groups).every(([k,v])=>/^[1-5]$/.test(k)&&list(v))))delete s.command;

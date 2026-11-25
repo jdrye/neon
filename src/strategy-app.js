@@ -3,6 +3,7 @@ import { AGES, DT, HOME, RES, SIDE, STRUCTURES, UNITS, fmtTime, keyOf, pointOf, 
 import { atlas, cancelJob, cancelSite, construct, createMatch, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=7.0.0';
 import { tickMatch } from './strategy-ai.js?v=7.0.0';
 import { readMatch } from './strategy-save.js?v=7.0.0';
+import { siegeOfAurore } from './strategy-scenario.js?v=7.0.0';
 import { BattleView } from './strategy-view.js?v=7.0.0';
 import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=7.0.0';
 
@@ -11,7 +12,7 @@ export function createCommandRoom(dialog,saveKey) {
   const options={seed:randomSeed(),region:'delta',level:'even'};
   let state=null,view=null,screen='setup',paused=true,speed=1,mode='',buildMenu=false,sheet='',beforeSheet=true;
   let selection=[],groups={},cursor=null,lastIdle=0,dragMode='select',pointer=null,focusBack=null,resizeObserver=null,frame=0,lastFrame=0,carry=0;
-  let storage=true,radio='',radioAt=0,dirty=false,openFromHash=false;
+  let storage=true,radio='',radioAt=0,dirty=false,openFromHash=false,pendingSiege=false;
   try{const raw=localStorage.getItem(saveKey);if(raw)state=readMatch(raw);}catch{storage=false;}
   function save(){if(!state||!dirty)return;if(view)state.command={groups,selection,center:{...view.center},zoom:view.zoom,speed};try{localStorage.setItem(saveKey,JSON.stringify(state));storage=true;dirty=false;}catch{storage=false;}}
   function speak(text){radio=text;radioAt=performance.now();if(byId('rts-radio'))byId('rts-radio').textContent=text;}
@@ -26,6 +27,35 @@ export function createCommandRoom(dialog,saveKey) {
   const ids=()=>group().map(u=>u.id);
   function setHtml(el,html){if(el.dataset.last!==html){el.dataset.last=html;el.innerHTML=html;}}
   function setText(el,value){if(el&&el.textContent!==String(value))el.textContent=value;}
+  function report(team) {
+    for(const type of Object.keys(UNITS)) {
+      const count=unitsOf(state,0,type).length;
+      const tag=one(`[data-roster="${type}"]`);
+      setText(tag,count);
+      tag.closest('button').disabled=count===0;
+    }
+    const ageJob=ready(state,0,'forum')[0]?.queue.find(j=>j.kind==='age');
+    const built=new Set(ready(state,0).map(b=>b.type));
+    const header=ageJob?'Transition engagée':team.age===3?'Objectif orbital':'Prochain âge · '+AGES[team.age];
+    let next;
+    if(ageJob)next=ageJob===ready(state,0,'forum')[0].queue[0]?`Passage dans ${Math.ceil(ageJob.left)} secondes.`:'Le passage attend son tour au forum.';
+    else if(team.age===1)next=`${Math.min(2,[...built].filter(type=>type!=='forum').length)} / 2 types de bâtiments achevés en plus du forum.`;
+    else if(team.age===2)next=`Atelier ${built.has('workshop')?'en service':'à construire'} · ${team.tech.length?'recherche acquise':'une recherche à achever'}.`;
+    else next=built.has('spire')?'Défendez la Flèche jusqu’à la synchronisation.':'Construisez une Flèche ou menez l’assaut sur le forum.';
+    setText(byId('rts-next-title'),header);
+    setText(byId('rts-next'),next);
+    const log=byId('rts-log'),events=state.log.slice(-4).reverse();
+    const signature=events.map(e=>e.tick+' '+e.text).join('\n');
+    if(log.dataset.last===signature)return;
+    log.dataset.last=signature;
+    const rows=events.map(e=>{
+      const row=document.createElement('li'),time=document.createElement('time');
+      time.textContent=fmtTime(e.tick*DT);
+      row.append(time,document.createTextNode(e.text));
+      return row;
+    });
+    log.replaceChildren(...rows);
+  }
   function hud(){if(screen!=='match')return;const entries=selected();selection=entries.map(o=>o.key);const t=state.teams[0],pop=populationInfo(state,0);
     for(const key of Object.keys(RES)){setText(one(`[data-stock="${key}"]`),t.bank[key]);const count=state.units.filter(u=>!u.side&&u.order.kind==='gather'&&u.order.resource===key).length;const label=one(`[data-gatherers="${key}"]`);setText(label,count);label.parentElement.parentElement.parentElement.title=`${RES[key].name} · ${count} pionnier(s) affecté(s)`;}
     setText(one('[data-rts-act="idle"]'),`Pionnier libre (${unitsOf(state,0,'worker').filter(u=>u.order.kind==='idle').length})`);
@@ -35,7 +65,8 @@ export function createCommandRoom(dialog,saveKey) {
     const ownSpire=ready(state,0,'spire')[0],enemySpire=ready(state,1,'spire')[0];
     const task=ownSpire?`Défendre la Flèche · ${Math.max(0,Math.ceil(90-ownSpire.hold))} s`:enemySpire?`Flèche adverse · ${Math.max(0,Math.ceil(90-enemySpire.hold))} s`:state.tick<200?'Développez votre forum et explorez les rives.':state.relay.owner===0?'Relais sous votre contrôle · +2 cristaux / 8 s':'Contrôlez le relais ou avancez vers Cendre.';
     setText(byId('rts-mission'),task);one('[data-rts-act="locate-spire"]').hidden=!enemySpire;
-    const alert=byId('rts-alert');const danger=ready(state,0,'forum')[0]?.hp<STRUCTURES.forum.hp*.7;const alertText=paused?'Pause tactique · ordres disponibles':danger?'Votre forum est endommagé':enemySpire?'Flèche adverse en service':'';
+    one('[data-rts-act="locate-contact"]').hidden=!state.alarm||state.tick-state.alarm.tick>88;report(t);
+    const alert=byId('rts-alert');const danger=ready(state,0,'forum')[0]?.hp<STRUCTURES.forum.hp*.7;const alertText=paused?'Pause tactique · ▶ pour reprendre':danger?'Votre forum est endommagé':enemySpire?'Flèche adverse en service':'';
     alert.hidden=!alertText;setText(alert,alertText);
     setHtml(byId('rts-info'),describe(state,entries));setHtml(byId('rts-commands'),commands(state,entries,buildMenu));setHtml(byId('rts-queue'),queueMarkup(entries[0]?.kind==='building'&&!entries[0].e.side?entries[0].e:null));
     const band=byId('rts-mode');band.hidden=!mode;setText(band.querySelector('span'),mode.startsWith('build:')?`Placer · ${STRUCTURES[mode.slice(6)].name}`:mode==='rally'?'Choisir le point de ralliement':mode==='advance'?'Choisir une destination pour progresser':'Choisir la cible de l’ordre');
@@ -49,9 +80,9 @@ export function createCommandRoom(dialog,saveKey) {
   function open(){if(dialog.open)return;focusBack=document.activeElement;dialog.showModal();document.body.classList.add('rts-open');openSetup();one(state?'[data-rts-act="resume"]':'[data-rts-act="start"]').focus({preventScroll:true});}
   function leave(){if(view)dirty=true;save();closeRenderer();dialog.close();document.body.classList.remove('rts-open');if(openFromHash&&location.hash==='#strategie')history.replaceState(null,'',location.href.split('#')[0]);openFromHash=false;focusBack?.focus?.({preventScroll:true});}
   function closeRenderer(){cancelAnimationFrame(frame);resizeObserver?.disconnect();resizeObserver=null;view=null;pointer=null;carry=0;}
-  function play(fresh=false){closeRenderer();if(fresh||!state){state=createMatch(options.seed,options.region,options.level);dirty=true;}const kept=!fresh&&state.command;screen='match';mode='';sheet='';buildMenu=false;cursor=null;speed=kept?.speed||1;groups=kept?.groups||{};paused=!fresh;selection=kept?.selection||['e'+(ready(state,0,'forum')[0]?.id||0)];radio='';
+  function play(fresh=false,siege=false){closeRenderer();if(fresh||!state){state=siege?siegeOfAurore():createMatch(options.seed,options.region,options.level);dirty=true;}const kept=!fresh&&state.command;screen='match';mode='';sheet='';buildMenu=false;cursor=null;speed=kept?.speed||1;groups=kept?.groups||{};paused=!fresh||siege;selection=kept?.selection||(siege?unitsOf(state,0).filter(u=>u.type!=='worker').map(u=>'e'+u.id):['e'+(ready(state,0,'forum')[0]?.id||0)]);radio='';
     dialog.innerHTML=arenaMarkup(state);dialog.setAttribute('aria-label','Les Deux Rives · commandement en temps réel');dragMode=matchMedia('(pointer:coarse)').matches||innerWidth<720?'pan':'select';
-    view=new BattleView(byId('rts-map'),byId('rts-mini'),state);if(kept?.center){view.center={...kept.center};view.zoom=kept.zoom;view.camera();}resizeObserver=new ResizeObserver(()=>{if(view)view.resize();});resizeObserver.observe(view.svg);bindMap();paint();save();lastFrame=performance.now();frame=requestAnimationFrame(loop);if(state.result)displaySheet('result');else view.svg.focus({preventScroll:true});}
+    view=new BattleView(byId('rts-map'),byId('rts-mini'),state);if(siege){view.zoom=view.svg.clientWidth<600?.65:1.02;view.focus(HOME+2-SIDE);}if(kept?.center){view.center={...kept.center};view.zoom=kept.zoom;view.camera();}resizeObserver=new ResizeObserver(()=>{if(view)view.resize();});resizeObserver.observe(view.svg);bindMap();paint();save();lastFrame=performance.now();frame=requestAnimationFrame(loop);if(state.result)displaySheet('result');else view.svg.focus({preventScroll:true});}
   function loop(now){if(!view||!dialog.open)return;const elapsed=Math.min(.5,Math.max(0,(now-lastFrame)/1000));lastFrame=now;
     if(!paused&&!sheet&&!document.hidden&&!state.result){carry+=elapsed*speed;let advanced=false;while(carry>=DT&&!state.result){tickMatch(state);carry-=DT;advanced=true;dirty=true;}
       if(advanced){paint();if(state.tick%16<speed)save();if(state.result){save();displaySheet('result');}}}
@@ -63,8 +94,10 @@ export function createCommandRoom(dialog,saveKey) {
     if(kind==='result'){const r=state.result,win=r.winner===0,t=state.teams[0];content=`<div class="rts-brow">FIN DE L’ESCARMOUCHE</div><h2>${r.winner===-1?'Égalité':win?'Victoire d’Aurore':'Victoire de Cendre'}</h2><p>${r.winner===-1?'Les deux cités ont atteint leur condition de victoire au même instant.':r.reason==='spire'?'La Flèche orbitale a terminé ses 90 secondes de synchronisation.':win?'Le forum des Maisons de Cendre est tombé.':'Le forum de la Ligue d’Aurore est tombé.'}</p><div class="rts-results"><span><b>${fmtTime(state.tick*DT)}</b>Durée</span><span><b>${t.age}</b>Âge atteint</span><span><b>${t.trained}</b>Unités formées</span></div>${button('setup','Préparer une autre escarmouche')}${button('exit','Retour à la colonie')}`;}
     const el=byId('rts-sheet');el.hidden=false;el.innerHTML=`<div class="rts-sheet-card">${content}</div>`;el.querySelector('button')?.focus();}
   function closeSheet(){sheet='';const el=byId('rts-sheet');if(el)el.hidden=true;paused=beforeSheet;lastFrame=performance.now();paint();view?.svg.focus({preventScroll:true});}
-  function startNew(){const input=byId('rts-seed');if(!input?.reportValidity()||input.value==='')return;options.seed=Number(input.value)>>>0;
-    if(!state){play(true);return;}if(one('.rts-confirm'))return;
+  function startNew(siege=false){const input=byId('rts-seed');
+    if(!siege){if(!input?.reportValidity()||input.value==='')return;options.seed=Number(input.value)>>>0;}
+    pendingSiege=siege;
+    if(!state){play(true,siege);return;}if(one('.rts-confirm'))return;
     const el=document.createElement('div');el.className='rts-confirm';el.innerHTML=`<div><h2>Remplacer l’escarmouche ?</h2><p>La nouvelle partie remplacera le commandement sauvegardé sur cet appareil.</p>${button('confirm-start','Remplacer et jouer')}${button('keep','Conserver ma partie')}</div>`;dialog.append(el);el.querySelector('[data-rts-act="keep"]').focus();}
   function idle(){const free=unitsOf(state,0,'worker').filter(u=>u.order.kind==='idle');if(!free.length){speak('Tous les pionniers sont occupés.');return;}const i=free.findIndex(u=>u.id===lastIdle),u=free[(i+1)%free.length];lastIdle=u.id;select(['e'+u.id],true);}
   function rapid(kind){if(kind==='forum'){const b=ready(state,0,'forum')[0];if(b)select(['e'+b.id],true);return;}
@@ -75,13 +108,15 @@ export function createCommandRoom(dialog,saveKey) {
     if(action==='exit'){leave();return;}if(action==='keep'){one('.rts-confirm')?.remove();one('[data-rts-act="start"]')?.focus();return;}
     if(screen==='setup'){
       if(one('.rts-confirm')&&action!=='confirm-start')return;
-      if(action==='start')startNew();else if(action==='confirm-start')play(true);else if(action==='resume')play();
+      if(action==='start'||action==='scenario')startNew(action==='scenario');else if(action==='confirm-start')play(true,pendingSiege);else if(action==='resume')play();
       else if(['map','level','reroll'].includes(action)){const el=byId('rts-seed');if(el.value&&el.checkValidity())options.seed=Number(el.value);if(action==='map')options.region=key;if(action==='level')options.level=key;if(action==='reroll')options.seed=randomSeed();openSetup();one(`[data-rts-act="${action}"]${key?`[data-key="${key}"]`:''}`)?.focus();}return;
     }
     if(action==='back'){closeSheet();return;}if(action==='help'||action==='menu'){displaySheet(action);return;}if(action==='setup'){save();openSetup();return;}if(sheet||state.result)return;
     const item=selected()[0],b=item?.kind==='building'?item.e:null;
     if(action==='pause'){paused=!paused;carry=0;lastFrame=performance.now();save();paint();return;}
     if(action==='speed'){dirty=true;speed=speed===3?1:speed+1;hud();return;}
+    if(action==='cohort'&&Object.hasOwn(UNITS,key)){select(unitsOf(state,0,key).map(u=>'e'+u.id),true);return;}
+    if(action==='locate-contact'){if(state.alarm)view.focus(state.alarm.cell);return;}
     if(action==='locate-spire'){const spire=ready(state,1,'spire')[0];if(spire)select(['e'+spire.id],true);return;}
     if(action==='idle'){idle();return;}if(['workers','army','forum'].includes(action)){rapid(action);return;}
     if(action==='drag'){dragMode=dragMode==='pan'?'select':'pan';hud();return;}if(action==='home'){view.focus(HOME);return;}
@@ -136,7 +171,9 @@ export function createCommandRoom(dialog,saveKey) {
   dialog.addEventListener('click',e=>{const btn=e.target.closest('[data-rts-act]');if(btn&&!btn.disabled)act(btn.dataset.rtsAct,btn.dataset.key);});
   dialog.addEventListener('cancel',e=>{e.preventDefault();if(screen==='setup'){if(one('.rts-confirm'))act('keep');else leave();}else if(sheet==='result')act('setup');else if(sheet)closeSheet();else if(mode||buildMenu)act('cancel');else displaySheet('menu');});
   dialog.addEventListener('keydown',e=>{if(screen!=='match'||sheet||e.target.matches('input,select,textarea')||e.key==='Escape')return;
-    const k=e.key.toLowerCase();if(/^[1-5]$/.test(k)){e.preventDefault();if(e.ctrlKey||e.metaKey){groups[k]=group().map(u=>'e'+u.id);dirty=true;save();speak(`Groupe ${k} mémorisé.`);}else if(groups[k]?.length)select(groups[k],true);return;}
+    const k=e.key.toLowerCase();
+    const number=e.code.match(/^(?:Digit|Numpad)([1-5])$/)?.[1]||(/^[1-5]$/.test(k)?k:null);
+    if(number){e.preventDefault();if(e.ctrlKey||e.metaKey){groups[number]=group().map(u=>'e'+u.id);dirty=true;save();speak(`Groupe ${number} mémorisé.`);}else if(groups[number]?.length)select(groups[number],true);return;}
     if(e.ctrlKey||e.metaKey||e.altKey)return;const shortcuts={p:'pause',h:'forum',v:'workers',m:'army',q:'idle',a:'advance',b:'build-menu','+':'zoom-in','-':'zoom-out'};
     if(shortcuts[k]){e.preventDefault();act(shortcuts[k]);return;}
     const arrow={ArrowLeft:[-1,1],ArrowRight:[1,-1],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(arrow){e.preventDefault();const p=pointOf(cursor??selected()[0]?.cell??HOME);
