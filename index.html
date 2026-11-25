@@ -2,15 +2,15 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#091522">
-<meta name="description" content="Bâtissez une colonie paisible sur une planète inconnue. Pilotez le rover, affectez vos équipes et rallumez le phare des marées.">
-<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=6.0.0">
+<meta name="description" content="Commandez votre cité en temps réel, explorez le bassin, franchissez trois âges et affrontez une colonie rivale sur Kepler.">
+<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=6.0.0"><link rel="stylesheet" href="./src/strategy.css?v=7.0.0">
 </head>
 <body>
 <header>
 <a class="brand" href="./" aria-label="NÉON, les pionniers de l’aube">
 <svg class="brand-seal" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="19"/><ellipse cx="26" cy="26" rx="24" ry="8" transform="rotate(-33 26 26)"/><path d="m16 33 9-18 10 14-7-5-6 10"/><circle class="brand-star" cx="43" cy="10" r="2.5"/></svg>
 <span class="brand-type">NÉON<small>LES PIONNIERS DE L’AUBE</small></span></a>
-<div class="tools"><button id="new-world">Nouvelle planète</button><button id="sound" aria-pressed="false" title="Ambiance sonore">♪</button><button id="guide">Guide de bord</button><button id="settings" aria-label="Options">⚙</button></div>
+<div class="tools"><button id="strategy-open" aria-haspopup="dialog">Jouer en stratégie</button><button id="new-world">Nouvelle planète</button><button id="sound" aria-pressed="false" title="Ambiance sonore">♪</button><button id="guide">Guide de bord</button><button id="settings" aria-label="Options">⚙</button></div>
 </header>
 <main>
 <section class="resource-bar" aria-label="Réserves de la colonie"><div class="resource-label">VOS RÉSERVES<span id="save-state">Sauvegarde automatique</span></div><div id="resources"></div><div class="population"><span>♙</span><strong id="population">4</strong><small>PIONNIERS</small></div></section>
@@ -35,5 +35,6 @@
 <footer><span class="production-clock"><progress id="cycle-progress" max="1" value="0" aria-label="Progression du cycle de production"></progress><span id="cycle-label">Production douce · un cycle toutes les 12 s</span></span><span>Votre progression reste sur cet appareil.</span></footer>
 </main>
 <dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="./src/app.js?v=6.0.0"></script>
+<dialog id="rts-screen" aria-label="Commandement d’Aurore"></dialog>
+<script type="module" src="./src/app.js?v=7.0.0"></script>
 </body></html>

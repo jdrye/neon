@@ -1,6 +1,7 @@
 // Exercise the built game in a disposable Chrome profile. Wait for actual image
 // decoding and test completion before capturing the viewport.
 import {spawn} from 'node:child_process';
+import {playStrategy} from './play-strategy.mjs';
 import {once} from 'node:events';
 import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -77,7 +78,7 @@ async function checkLayout(name,width,height) {
     async function press(selector) {
       const point = await evaluate(`(() => {
         const el=document.querySelector(${JSON.stringify(selector)});
-        if (!el || el.disabled) throw Error('Commande indisponible');
+        if (!el || el.disabled) throw Error('Commande indisponible ' + ${JSON.stringify(selector)});
         el.scrollIntoView({block:'nearest',behavior:'instant'});
         const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
       })()`);
@@ -120,6 +121,7 @@ async function checkLayout(name,width,height) {
     })()`);
     const field=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
     await writeFile(join(output,'marees-'+name+'.png'),Buffer.from(field.data,'base64'));
+    await playStrategy({name, server, output, width, call, evaluate, press, waitFor});
     console.log(name+' '+width+' × '+height+' · partie jouée, aperçu hors ligne et '+pictures+' illustrations décodées.');
   } finally {
     socket?.close();
