@@ -1,12 +1,12 @@
-import { DT, HOME, LEVELS, RIVAL, UNITS, apart, keyOf, pointOf, tileDistance } from './strategy-rules.js?v=7.0.0';
-import { atlas, buildReason, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, routeDistance, tickSimulation, unitCell, unitsOf, vision } from './strategy-engine.js?v=7.0.0';
+import { DT, HOME, LEVELS, RIVAL, UNITS, apart, keyOf, pointOf, tileDistance } from './strategy-rules.js?v=8.0.0';
+import { atlas, buildReason, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, routeDistance, tickSimulation, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.0.0';
 
 // The rival pays through the same public orders as the player. Difficulty changes
 // how often it plans, which investments it prioritises and when it sends a group.
 function commission(s,side,type,workers,home) {
   if(buildReason(s,side,type)||!workers.length)return false;
   const focus=pointOf(home), sign=side?-1:1;
-  const offset={barracks:[2,-1],farm:[-2,2],house:[-2,-1],workshop:[2,1],depot:[0,-3],tower:[3,-2],spire:[-2,1]}[type];
+  const offset={barracks:[2,-1],farm:[-2,2],house:[-2,-1],workshop:[2,1],depot:[0,-3],tower:[3,-2],spire:[-2,1],solar:[-3,-2],pump:[-2,3],mine:[2,-3],greenhouse:[0,3]}[type];
   const wanted=keyOf(focus.x+offset[0]*sign,focus.y+offset[1]*sign);
   const candidates=atlas(s).cells.filter(c=>tileDistance(c.cell,home)<=7.4&&!buildReason(s,side,type,c.cell)).sort((a,b)=>tileDistance(a.cell,wanted)-tileDistance(b.cell,wanted)||a.cell-b.cell);
   for(const c of candidates.slice(0,12)){
@@ -46,6 +46,12 @@ export function planSide(s,side,difficulty,brain) {
     if(team.age>=2&&!has('tower')&&army.length>=3)buildList.push('tower');
     if(team.age===3&&!has('spire')&&army.length>=6)buildList.push('spire');
     if(team.age>=2&&ready(s,side,'barracks').length<2&&army.length>5)buildList.push('barracks');
+    if(s.campaign&&workers.length>=7){
+      if(!has('solar'))buildList.push('solar');
+      if(has('solar')&&!has('mine'))buildList.push('mine');
+      if(team.age>=2&&!has('pump'))buildList.push('pump');
+      if(has('pump')&&!has('greenhouse'))buildList.push('greenhouse');
+    }
     for(const type of buildList)if(commission(s,side,type,workers,home))break;
   }
   assignGatherers(s,side,workers);

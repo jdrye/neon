@@ -1,40 +1,15 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#091522">
-<meta name="description" content="Commandez votre cité en temps réel, explorez le bassin, franchissez trois âges et affrontez une colonie rivale sur Kepler.">
-<title>NÉON · Les pionniers de l’aube</title><link rel="stylesheet" href="./src/style.css?v=6.0.0"><link rel="stylesheet" href="./src/strategy.css?v=7.0.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#132e30">
+<meta name="description" content="Sur Kepler, bâtissez la cité d’Aurore, commandez les pionniers et les troupes, explorez en rover et défendez les deux rives.">
+<title>NÉON · Aurore sur Kepler</title>
+<link rel="stylesheet" href="./src/strategy.css?v=8.0.0">
 </head>
 <body>
-<header>
-<a class="brand" href="./" aria-label="NÉON, les pionniers de l’aube">
-<svg class="brand-seal" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="19"/><ellipse cx="26" cy="26" rx="24" ry="8" transform="rotate(-33 26 26)"/><path d="m16 33 9-18 10 14-7-5-6 10"/><circle class="brand-star" cx="43" cy="10" r="2.5"/></svg>
-<span class="brand-type">NÉON<small>LES PIONNIERS DE L’AUBE</small></span></a>
-<div class="tools"><button id="strategy-open" aria-haspopup="dialog">Jouer en stratégie</button><button id="new-world">Nouvelle planète</button><button id="sound" aria-pressed="false" title="Ambiance sonore">♪</button><button id="guide">Guide de bord</button><button id="settings" aria-label="Options">⚙</button></div>
-</header>
-<main>
-<section class="resource-bar" aria-label="Réserves de la colonie"><div class="resource-label">VOS RÉSERVES<span id="save-state">Sauvegarde automatique</span></div><div id="resources"></div><div class="population"><span>♙</span><strong id="population">4</strong><small>PIONNIERS</small></div></section>
-<button id="frontier-open" class="frontier-ribbon" aria-haspopup="dialog"><img id="frontier-cover" alt=""><span class="ribbon-name"><small>OPÉRATIONS DE KEPLER</small><strong>Le Signal des marées</strong></span><span class="ribbon-action"><span id="frontier-status">Ouvrir les opérations</span> <b aria-hidden="true">↗</b></span></button>
-<div class="layout">
-<section class="map-panel" aria-label="Carte isométrique de la colonie">
-<div class="map-heading"><p>VOTRE COLONIE · <span id="colony-stage">CAMP PIONNIER</span> <span id="mobile-population"></span></p><h1 id="planet-name">Archipel d’émeraude</h1><p class="subtitle" id="planet-description">Forêts lumineuses · lagons turquoise</p></div>
-<button id="survey-open" class="survey-launcher" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m16.5 7.5-3 6-6 3 3-6Z"/></svg><span>Expéditions</span><small id="survey-status">0 / 3</small></button>
-<div class="world" id="world"><div id="scene"></div><div id="float-layer" aria-hidden="true"></div></div>
-<div class="map-toolbar"><span class="weather">☀ <span id="planet-code">MONDE INCONNU</span></span><div><button id="zoom-out" aria-label="Dézoomer">−</button><span id="zoom-label">100 %</span><button id="zoom-in" aria-label="Zoomer">+</button><button id="overview" title="Vue d’ensemble" aria-label="Voir toute la carte">▦</button><button id="center" title="Recentrer la carte" aria-label="Recentrer la carte">⌾</button></div></div>
-<div id="placement" hidden><span></span><button id="cancel">Annuler ×</button></div>
-<div class="map-tip" id="map-tip">Cliquez sur les cristaux, les roches, les plantes et les sources pour collecter.</div>
-</section>
-<aside>
-<section class="mission"><div class="section-label"><span>LE PROCHAIN HORIZON</span><span id="goal-count">01 / 07</span></div><h2 id="goal-title"></h2><p id="goal-text"></p><ul id="goal-checklist" class="goal-checklist"></ul><div class="goal-track" id="goal-track"></div><div class="reward" id="goal-reward"></div><button id="objectives">Voir les étapes ↗</button></section>
-<section class="inspector" id="inspector"></section>
-<section class="echo"><div class="echo-mark">◈</div><div><span>ÉCHO · COMPAGNON DE MISSION</span><p id="message" role="status" aria-live="polite">Bienvenue sur Kepler. Observez le terrain : chaque ressource est un premier pas vers notre futur foyer.</p></div></section>
-</aside>
-</div>
-<section class="build-section"><div class="build-title"><h2>Chantier de la colonie</h2><p>Sélectionnez un bâtiment, puis une case libre sur la carte.</p></div><nav class="catalog-filters" aria-label="Filtrer les bâtiments"><button data-category="all" aria-pressed="true">Tout</button><button data-category="production" aria-pressed="false">Production</button><button data-category="housing" aria-pressed="false">Logements</button><button data-category="special" aria-pressed="false">Science et exploration</button></nav><div class="catalog" id="catalog"></div></section>
-<section class="research-section"><div class="build-title"><h2>Laboratoire de Kepler</h2><p>Choisissez quelle production développer. Chaque recherche apporte un bonus permanent.</p></div><div id="research-cards"></div></section>
-<footer><span class="production-clock"><progress id="cycle-progress" max="1" value="0" aria-label="Progression du cycle de production"></progress><span id="cycle-label">Production douce · un cycle toutes les 12 s</span></span><span>Votre progression reste sur cet appareil.</span></footer>
-</main>
-<dialog id="modal"><button class="close" aria-label="Fermer">×</button><div id="modal-content"></div></dialog>
-<dialog id="rts-screen" aria-label="Commandement d’Aurore"></dialog>
-<script type="module" src="./src/app.js?v=7.0.0"></script>
-</body></html>
+<main id="rts-screen" aria-label="Colonie d’Aurore"><noscript>Activez JavaScript pour jouer à NÉON.</noscript></main>
+<script type="module" src="./src/app.js?v=8.0.0"></script>
+</body>
+</html>

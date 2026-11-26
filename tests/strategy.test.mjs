@@ -7,7 +7,7 @@ import {
 } from '../src/strategy-engine.js';
 import {planSide, tickMatch} from '../src/strategy-ai.js';
 import {readMatch} from '../src/strategy-save.js';
-import {siegeOfAurore} from '../src/strategy-scenario.js';
+import {siegeOfAurore} from './fixtures/siege-v7.mjs';
 
 const teamWorkers = s => unitsOf(s, 0, 'worker');
 const keys = units => units.map(u => u.id);

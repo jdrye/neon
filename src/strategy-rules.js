@@ -1,9 +1,13 @@
+import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.0.0';
+
 export const SIDE = 27, HOME = 17 * SIDE + 6, RIVAL = SIDE * SIDE - 1 - HOME, MID = 13 * SIDE + 13;
 export const DT = .25;
 export const RES = {
   food: { name: 'Vivres', art: 'planter' }, wood: { name: 'Bois', art: 'bio' },
   ore: { name: 'Minerai', art: 'ore' }, crystal: { name: 'Cristaux', art: 'crystal' },
+  water: { name:'Eau', art:'water' }, energy: { name:'Énergie', art:'battery' },
 };
+export const GATHERED = ['food','wood','ore','crystal'];
 export const AGES = ['Atterrissage','Expansion','Rayonnement'];
 export const TEAMS = ['Ligue d’Aurore','Maisons de Cendre'];
 export const MAPS = {
@@ -23,8 +27,9 @@ export const UNITS = {
   skimmer: {name:'Voltigeur', art:'rts-skimmer', hp:82, speed:2.65, sight:6, damage:11, range:1.6, interval:1, counter:'watcher', cost:{food:35,crystal:19}, time:15, age:2, at:'workshop', note:'Unité rapide de reconnaissance. Avantage contre les Veilleurs.'},
 };
 export const STRUCTURES = {
+  ...DISTRICTS,
   forum: {clearance:1.45, name:'Forum', art:'rts-forum', hp:620, age:1, cap:10, sight:6, damage:9, range:4.3, note:'Reçoit les cargaisons, forme les pionniers et prépare les passages d’âge.'},
-  house: {clearance:0.88, name:'Habitat', art:'habitat', hp:160, age:1, cap:6, cost:{wood:32}, time:14, note:'Ouvre six places de population.'},
+  house: {max:3, clearance:0.88, name:'Habitat', art:'habitat', hp:160, age:1, cap:6, cost:{wood:32}, time:14, note:'Ouvre six places de population.'},
   depot: {clearance:0.95, name:'Dépôt', art:'hangar', hp:185, age:1, cost:{wood:36}, time:13, note:'Point de livraison pour toutes les ressources. Permet de rechercher les harnais.'},
   farm: {clearance:1.03, name:'Ferme', art:'hydroponics', hp:155, age:1, cost:{wood:42}, time:16, note:'Source permanente de vivres à exploiter par les pionniers.'},
   barracks: {clearance:1.12, name:'Caserne', art:'rts-barracks', hp:280, age:1, cost:{wood:55,ore:20}, time:22, note:'Forme les Sentinelles, puis les Veilleurs à l’âge II.'},
@@ -33,6 +38,7 @@ export const STRUCTURES = {
   spire: {clearance:1.27, name:'Flèche orbitale', art:'rts-spire', hp:460, age:3, sight:7, cost:{wood:145,ore:125,crystal:95}, time:55, note:'Maintenez la Flèche en service 90 secondes pour remporter la partie.'},
 };
 export const STUDIES = {
+  ...SCIENCE,
   harness:{name:'Harnais de portage',at:'depot',age:1,cost:{food:32,wood:22},time:20,note:'Charge de chaque pionnier portée de 8 à 14 unités.'},
   optics:{name:'Lentilles accordées',at:'workshop',age:2,cost:{ore:34,crystal:28},time:27,note:'Les Veilleurs et les Vigies gagnent une case de portée.'},
   plating:{name:'Coques renforcées',at:'workshop',age:3,cost:{ore:65,crystal:34},time:32,note:'Les unités militaires reçoivent 25 % de dégâts en moins.'},

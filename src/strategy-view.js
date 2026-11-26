@@ -1,12 +1,14 @@
 import { artUrl } from './art-url.js?v=6.0.0';
 import { BIOMES } from './world.js?v=6.0.0';
 import { groundArt, terrainOf } from './terrain.js?v=6.0.0';
-import { HOME, MAPS, RES, SIDE, STRUCTURES, UNITS, eachNeighbor, keyOf, pointOf, tileDistance } from './strategy-rules.js?v=7.0.0';
-import { atlas, buildReason, routeDistance, unitCell, vision } from './strategy-engine.js?v=7.0.0';
+import { HOME, MAPS, RES, SIDE, STRUCTURES, UNITS, eachNeighbor, keyOf, pointOf, tileDistance } from './strategy-rules.js?v=8.0.0';
+import { atlas, buildReason, routeDistance, unitCell, vision } from './strategy-engine.js?v=8.0.0';
 
 const NS='http://www.w3.org/2000/svg';
 const TEAM=['#77f4cf','#ff926c'];
-const size={forum:[125,130],house:[81,82],barracks:[110,98],depot:[86,77],farm:[88,73],tower:[73,122],workshop:[91,88],spire:[104,138],worker:[36,47],guard:[44,49],watcher:[40,50],skimmer:[64,39]};
+const size={forum:[125,130],house:[81,82],barracks:[110,98],depot:[86,77],farm:[88,73],tower:[73,122],workshop:[91,88],spire:[104,138],worker:[36,47],guard:[44,49],watcher:[40,50],skimmer:[64,39],
+  solar:[85,73],pump:[79,80],greenhouse:[87,77],mine:[83,81],hangar:[91,80],wind:[86,112],residence:[89,100],
+  hydroponics:[91,80],quarry:[97,82],synthesizer:[88,91],laboratory:[89,88],beacon:[91,113],lighthouse:[76,128],observatory:[90,99]};
 const sprite=(key,w,h,foot=6)=>`<image href="${artUrl(key)}" x="${-w/2}" y="${foot-h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet"/>`;
 const round=n=>Math.round(n*10)/10;
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
@@ -15,6 +17,7 @@ function contact(radius){return `<ellipse cy="3" rx="${radius}" ry="${radius*.32
 function pennant(side,x,y){return `<g pointer-events="none" transform="translate(${x} ${y})"><path d="M0 0v-25" stroke="#453b2e" stroke-width="2.8"/><path d="M1-25 15-22 11-17 1-18Z" fill="${TEAM[side]}" stroke="#203a3c" stroke-width="1.1"/></g>`;}
 function glyph(item,selected,state) {
   const {kind,type,side}=item;
+  if(kind==='rover')return `<ellipse rx="22" ry="8" fill="#d9ab4a30" stroke="#ffe69d" stroke-width="1.5"/>${contact(23)}<g class="mobile-piece">${sprite('rover',62,43)}</g><circle cy="-43" r="3" fill="#ffe09a"/>`;
   if(kind==='node'){
     const c=state.chart.cells[item.cell],biome=MAPS[state.s.region].biome;
     const art=type==='wood'?(biome==='boreal'?'frost-pines':biome==='amber'?'amber-grove':c.variant%2?'bio':'fan-canopy'):type==='food'?'undergrowth':type==='ore'?(c.variant%2?'ore':'ore-slate'):'crystal-spire';
@@ -28,6 +31,7 @@ function glyph(item,selected,state) {
   return `<ellipse class="team-ring" rx="${ring}" ry="${ring*.42}" fill="${TEAM[side]}19" stroke="${TEAM[side]}" stroke-width="${selected?2.8:1.25}" opacity="${selected?.98:.67}"/>${contact(w*.33)}
     <g class="rts-sprite ${isUnit?'mobile-piece':''} ${side?'rival-piece':''}" opacity="${under?.58:1}">${sprite(d.art,w,h)}</g>
     ${isUnit?`<path d="m0 6 3 2.7L0 11l-3-2.3Z" fill="${TEAM[side]}" stroke="#24332e" stroke-width=".8"/><path d="m-3 -1 3 3 3-3-3-3Z" transform="translate(0 ${5-h})" stroke="#183432" stroke-width="1" fill="${TEAM[side]}"/>`:pennant(side,w*.30,3)}
+    ${kind==='building'&&item.e.level>1?`<g transform="translate(${-w*.28} 1)">${sprite('annex',32,28)}${item.e.level===3?`<g transform="translate(35 -7)">${sprite('battery',22,23)}</g>`:''}</g>`:''}
     ${under?'<path d="m-28 4 24-12 30 10m-44-9v-19m25 12v-14m9 29v-16" fill="none" stroke="#e9c187" stroke-width="3"/>':''}
     <g class="life-track" transform="translate(-16 ${9-h})"><rect width="32" height="3.6" rx="1.6" fill="#122326"/><rect class="life-fill" width="32" height="3.6" rx="1.6" fill="${under?'#ffcf7e':TEAM[side]}"/></g>
     ${isUnit&&item.e.cargo?`<g transform="translate(13 -17)"><circle r="6.5" fill="#233834" stroke="#edd7a2" stroke-width="1"/>${sprite(RES[item.e.cargo.kind].art,10,10,5)}</g>`:''}`;
@@ -89,6 +93,7 @@ export class BattleView {
     if(this.lastMini!==fogKey){this.lastMini=fogKey;const colors=new Map();for(const t of terrain){const p=this.miniPos(this.points[t.cell]);const color=!this.s.teams[0].explored[t.cell]?'#23383f':t.ridge?'#777875':t.terrain==='water'?'#37646e':mask[t.cell]?'#779577':'#52665b';colors.set(color,(colors.get(color)||'')+`M${round(p.x)} ${round(p.y-1.7)}l3.3 1.7-3.3 1.7-3.3-1.7Z`);}
       this.mini.innerHTML=`${[...colors].map(([c,d])=>`<path d="${d}" fill="${c}"/>`).join('')}<g data-dots></g><rect data-frame fill="none" stroke="#fff1c6" stroke-width="1"/>`;}
     const dots=[];const push=(p,color,r)=>{const q=this.miniPos(p);dots.push(`<circle cx="${round(q.x)}" cy="${round(q.y)}" r="${r}" fill="${color}"/>`);};
+    const trip=this.s.campaign?.rover;if(trip){push(this.point(trip.x,trip.y),'#ffe093',2.1);push(this.points[trip.target],'#efd184',1.5);}
     push(this.points[this.chart.relay],'#ffe6a0',2.3);
     for(const b of this.s.buildings)if(!b.side||mask[b.cell])push(this.points[b.cell],TEAM[b.side],b.type==='forum'?2.7:1.7);
     for(const u of this.s.units)if(!u.side||mask[unitCell(u)])push(this.point(u.x,u.y),TEAM[u.side],1.1);
@@ -145,13 +150,15 @@ export class BattleView {
     if(this.placementKey!==siteKey){this.placementKey=siteKey;this.layers.sites.setAttribute('d',siteKey?this.chart.cells.filter(c=>!buildReason(s,0,mode.slice(6),c.cell)).map(c=>this.paths[c.cell]).join(''):'');}
     const items=[];
     for(const n of s.nodes)if(n.left>0&&known[n.cell])items.push({key:'n'+n.cell,kind:'node',type:n.kind,cell:n.cell,e:n,label:RES[n.kind].name});
+    const trip=s.campaign?.rover;
+    if(trip)items.push({key:'rover',kind:'rover',type:'rover',side:0,cell:unitCell(trip),e:trip,label:'Rover de la cité'});
     items.push({key:'relay',kind:'relay',side:s.relay.owner,cell:this.chart.relay,e:s.relay,label:'Relais du bassin'});
     for(const b of s.buildings)if(!b.side||vis[b.cell])items.push({key:'e'+b.id,kind:'building',type:b.type,side:b.side,cell:b.cell,e:b,label:STRUCTURES[b.type].name});
     for(const u of s.units)if(!u.side||vis[unitCell(u)])items.push({key:'e'+u.id,kind:'unit',type:u.type,side:u.side,cell:unitCell(u),e:u,label:UNITS[u.type].name});
-    for(const it of items){it.p=it.kind==='unit'?this.point(it.e.x,it.e.y):this.points[it.cell];if(it.kind==='unit')it.p={x:it.p.x+((it.e.id*7)%9-4),y:it.p.y+((it.e.id*3)%5-2)};}
+    for(const it of items){it.p=it.kind==='unit'||it.kind==='rover'?this.point(it.e.x,it.e.y):this.points[it.cell];if(it.kind==='unit')it.p={x:it.p.x+((it.e.id*7)%9-4),y:it.p.y+((it.e.id*3)%5-2)};}
     items.sort((a,b)=>a.p.y-b.p.y||(a.kind==='unit'?1:-1));const alive=new Set();let previous=null;
     for(const it of items){alive.add(it.key);let g=this.pieces.get(it.key);if(!g){g=element('g',{role:'button',tabindex:'-1','data-rts-object':it.key});this.pieces.set(it.key,g);}
-      const selected=selection.includes(it.key),sig=[it.kind,it.type,it.side,selected,it.e.ready,it.e.cargo?.kind].join('/');
+      const selected=selection.includes(it.key),sig=[it.kind,it.type,it.side,selected,it.e.ready,it.e.level,it.e.cargo?.kind].join('/');
       if(g.dataset.sig!==sig){g.dataset.sig=sig;g.innerHTML=glyph(it,selected,this);g.setAttribute('aria-label',it.label+(it.side===1?' · Cendre':''));}
       const isUnit=it.kind==='unit';g.setAttribute('class',`rts-piece ${it.kind} ${selected?'selected':''}${it.kind==='node'&&!vis[it.cell]?' remembered':''}`);
       if(isUnit&&g.dataset.px){const dx=it.p.x-Number(g.dataset.px);if(Math.abs(dx)>.4)g.querySelector('.mobile-piece')?.setAttribute('transform',`scale(${dx<0?-1:1} 1)`);}
@@ -164,6 +171,11 @@ export class BattleView {
     for(const [k,g] of this.pieces)if(!alive.has(k)){g.remove();this.pieces.delete(k);}
     const orders=[];for(const u of s.units.filter(u=>!u.side&&selection.includes('e'+u.id)).slice(0,8)){const dest=u.order.cell;if(dest===undefined)continue;const a=this.point(u.x,u.y),b=this.points[dest];orders.push(`<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#ffe5a1" fill="none" opacity=".62" stroke-width="1.7" stroke-dasharray="4 6"/><circle cx="${b.x}" cy="${b.y}" r="4" fill="#ffe5a1"/>`);}
     for(const b of s.buildings.filter(b=>!b.side&&selection.includes('e'+b.id)&&b.rally!==null)){const a=this.points[b.cell],p=this.points[b.rally];orders.push(`<path d="M${a.x} ${a.y}L${p.x} ${p.y}" stroke="#eac981" stroke-dasharray="7 5"/><g transform="translate(${p.x} ${p.y})">${pennant(0,0,0)}</g>`);}
+    if(trip){
+      const p=this.points[trip.target];
+      if(trip.stage!=='home')orders.push(`<path transform="translate(${p.x} ${p.y-5})" d="M0-18 12-11 0-4-12-11Z M0-4v10" fill="#655934a1" stroke="#ffe39b" stroke-width="2"/>`);
+      if(trip.path.length){const points=[this.point(trip.x,trip.y),...trip.path.map(i=>this.points[i])];orders.push(`<path d="${smoothRoad(points)}" fill="none" stroke="#ffe09a" stroke-width="2" stroke-dasharray="3 7" opacity=".78"/>`);}
+    }
     this.layers.orders.innerHTML=orders.join('');
     const effects=s.effects.map(e=>{
       const a=this.point(e.a.x,e.a.y),b=this.point(e.b.x,e.b.y),age=s.tick-e.t;
