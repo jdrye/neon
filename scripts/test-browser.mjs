@@ -1,13 +1,12 @@
 // Exercise the built game in a disposable Chrome profile. Wait for actual image
 // decoding and test completion before capturing the viewport.
 import {spawn} from 'node:child_process';
-import {playStrategy} from './play-strategy.mjs';
+import {playCampaign} from './play-campaign.mjs';
 import {once} from 'node:events';
-import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
+import {mkdtemp, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
-import {pathToFileURL} from 'node:url';
 
 const [server, output] = process.argv.slice(2);
 async function waitFor(read, label) {
@@ -55,32 +54,16 @@ async function checkLayout(name,width,height) {
     await call('Page.enable');
     await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:name==='mobile'});
     await call('Emulation.setTouchEmulationEnabled',{enabled:name==='mobile'});
-    await call('Page.navigate',{url:server+'/tests/rover.browser.html?'+name});
-    const status = await waitFor(async()=>{
-      const s=await evaluate("document.querySelector('#result')?.dataset.status");
-      return s && s!=='running' ? s : null;
-    },'le parcours du rover ('+name+')');
-    if (status!=='passed') throw Error(await evaluate("document.querySelector('#result').textContent"));
-
-    await call('Page.navigate',{url:pathToFileURL(resolve(output,'NEON-Kepler.html')).href});
-    await waitFor(()=>evaluate("document.querySelectorAll('#scene .structure').length === 12"),'la colonie hors ligne');
-    const pictures=await evaluate(`(async()=>{
-      const urls=new Set([...document.querySelectorAll('image[href],img[src]')]
-        .map(el=>el.getAttribute('href') || el.getAttribute('src')).filter(url=>url.startsWith('blob:')));
-      await Promise.all([...urls].map(url=>{const img=new Image();img.src=url;return img.decode();}));
-      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-      return urls.size;
-    })()`);
-    if (pictures<20 || await evaluate('window.innerWidth')!==width) throw Error('Dimensions ou illustrations incorrectes.');
-    const capture=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
-    await writeFile(join(output,'kepler-'+name+'.png'),Buffer.from(capture.data,'base64'));
-    // Use the same pointer or touch sequence as a player in the standalone edition.
     async function press(selector) {
       const point = await evaluate(`(() => {
         const el=document.querySelector(${JSON.stringify(selector)});
         if (!el || el.disabled) throw Error('Commande indisponible ' + ${JSON.stringify(selector)});
         el.scrollIntoView({block:'nearest',behavior:'instant'});
-        const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+        const center=()=>{const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};};
+        let p=center();
+        if(!el.contains(document.elementFromPoint(p.x,p.y))){el.scrollIntoView({block:'center',behavior:'instant'});p=center();}
+        if(!el.contains(document.elementFromPoint(p.x,p.y)))throw Error('Commande masquée ' + ${JSON.stringify(selector)});
+        return p;
       })()`);
       if (name==='mobile') {
         await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
@@ -90,39 +73,7 @@ async function checkLayout(name,width,height) {
         await call('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...point});
       }
     }
-    await press('#frontier-open');
-    await waitFor(()=>evaluate(`!!document.querySelector('[data-op="launch"]')`),'le poste de pilotage');
-    await press('[data-op="launch"]');
-    await waitFor(()=>evaluate('!!document.querySelector(".field-map")'),'la carte tactique');
-    await press('[data-op="scan"]');
-    const itinerary=await evaluate(`(async () => {
-      const {HOME,neighbors,sector}=await import('neon/frontier.js');
-      const state=JSON.parse(localStorage.getItem(document.documentElement.dataset.saveKey));
-      const board=sector(state.world,state.frontier.sorties), queue=[HOME], via=new Map([[HOME,null]]);
-      for (const id of queue) {
-        if (id===board.target) break;
-        for (const next of neighbors[id]) if (!via.has(next) && board.tiles[next].terrain==='plain') { via.set(next,id); queue.push(next); }
-      }
-      const path=[]; for(let id=board.target;id!==HOME;id=via.get(id)) path.unshift(id);
-      return path;
-    })()`);
-    for (const cell of itinerary) {
-      await press(`[data-cell="${cell}"]`);
-      await waitFor(()=>evaluate(`JSON.parse(localStorage.getItem(document.documentElement.dataset.saveKey)).frontier.active.steps.at(-1)===${cell}`),'le déplacement en reconnaissance');
-    }
-    await press('[data-op="route"]');
-    await waitFor(()=>evaluate(`!!document.querySelector('.return-line')`),'la route de retour du signal');
-    await evaluate(`(async () => {
-      const dialog=document.querySelector('#modal'); dialog.scrollTop=0;
-      if(dialog.scrollWidth>dialog.clientWidth) throw Error('Console plus large que l’écran');
-      const imgs=[...dialog.querySelectorAll('img, image')].map(el=>el.getAttribute('src') || el.getAttribute('href'));
-      await Promise.all([...new Set(imgs)].map(url=>{const i=new Image();i.src=url;return i.decode();}));
-      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    })()`);
-    const field=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
-    await writeFile(join(output,'marees-'+name+'.png'),Buffer.from(field.data,'base64'));
-    await playStrategy({name, server, output, width, call, evaluate, press, waitFor});
-    console.log(name+' '+width+' × '+height+' · partie jouée, aperçu hors ligne et '+pictures+' illustrations décodées.');
+    await playCampaign({name,server,output,width,call,evaluate,press,waitFor});
   } finally {
     socket?.close();
     chrome.kill();

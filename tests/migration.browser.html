@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="fr"><meta charset="utf-8"><title>Archives de migration de Kepler</title>
+<output></output>
+<script type="module">
+import {siegeOfAurore} from './fixtures/siege-v7.mjs';
+const base='neon-colony-v2';
+const oldTown=await (await fetch('../examples/colonie-kepler.json')).json();
+const oldBattle=siegeOfAurore();
+for(const team of oldBattle.teams){delete team.bank.water;delete team.bank.energy;}
+for(const building of oldBattle.buildings)delete building.level;
+localStorage.removeItem(base+'-campagne-v8');
+localStorage.setItem(base,JSON.stringify(oldTown));
+localStorage.setItem(base+'-strategie-v1',JSON.stringify(oldBattle));
+document.querySelector('output').id='legacy-ready';
+</script>
+</html>
