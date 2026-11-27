@@ -1,8 +1,8 @@
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS} from './survey.js?v=6.0.0';
-import {sharedCost} from './colony-rules.js?v=8.0.0';
-import {DT,HOME,MID,SIDE,apart,canPay,pointOf,tileDistance} from './strategy-rules.js?v=8.0.0';
-import {atlas,gain,notify,pay,ready,refreshVision,routeDistance,travel,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.0.0';
+import {sharedCost} from './colony-rules.js?v=8.1.0';
+import {DT,SIDE,apart,canPay,grid,mapPoint,mapDistance} from './strategy-rules.js?v=8.1.0';
+import {atlas,distancesFrom,gain,notify,pay,ready,refreshVision,routeDistance,travel,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.1.0';
 
 export const MISSIONS = {
   flora:{name:'Forêt des brumes',art:'site-flora',kind:'wood',distance:6},
@@ -28,26 +28,29 @@ export function roverBerth(s) {
 }
 export function launchCell(s,building) {
   if(!building)return null;
-  return atlas(s).cells.find(t=>walkable(s,t.cell)&&tileDistance(t.cell,building.cell)<=1.45)?.cell??null;
+  return atlas(s).cells.find(t=>walkable(s,t.cell)&&mapDistance(s.size,t.cell,building.cell)<=1.45)?.cell??null;
 }
 export function missionSite(s,kind,from) {
   if(!Object.hasOwn(MISSIONS,kind)||from===null)return null;
-  const m=MISSIONS[kind], targetDistance=m.distance+(s.seed%3);
+  const board=grid(s.size), {home,relay,size}=board;
+  const m=MISSIONS[kind], targetDistance=m.distance+(s.seed%3)+Math.floor((size-SIDE)/8);
   // The signal moves between the river approaches as fragments are recovered.
-  const approaches=[MID,MID-4*SIDE-1,MID+4*SIDE+1], focus=approaches[s.campaign.signals%approaches.length];
-  const candidates=kind==='signal'?atlas(s).cells.filter(t=>walkable(s,t.cell)&&tileDistance(t.cell,focus)<=3).map(t=>t.cell)
+  const offset=Math.round(size*.148)*size+1;
+  const approaches=[relay,relay-offset,relay+offset], focus=approaches[s.campaign.signals%approaches.length];
+  const candidates=kind==='signal'?atlas(s).cells.filter(t=>walkable(s,t.cell)&&mapDistance(s.size,t.cell,focus)<=3).map(t=>t.cell)
     :s.nodes.filter(n=>n.kind===m.kind).map(n=>n.cell);
+  const distance=distancesFrom(s,from);
   let best=null,score=Infinity;
   for(const cell of candidates) {
-    const d=routeDistance(s,from,cell);
+    const d=distance(cell);
     if(d<0)continue;
-    const rank=kind==='signal'?tileDistance(cell,focus)+.01*d:Math.abs(d-targetDistance)+.03*tileDistance(HOME,cell);
+    const rank=kind==='signal'?mapDistance(s.size,cell,focus)+.01*d:Math.abs(d-targetDistance)+.03*mapDistance(s.size,home,cell);
     if(rank<score){score=rank;best=cell;}
   }
   return best;
 }
 export function newRover(s,kind,rig,origin,target,surge=false) {
-  const p=pointOf(origin);
+  const p=mapPoint(s.size,origin);
   return {id:0,x:p.x,y:p.y,goal:'',path:[],kind,rig,target,stage:'out',work:0,loaded:false,
     scanUntil:0,scans:0,surge,cargo:{},departed:s.tick};
 }
@@ -107,13 +110,13 @@ export function advanceRover(s) {
   const r=s.campaign.rover;if(!r)return;
   const speed={scout:2.55,crawler:2.1,hauler:1.75}[r.rig];
   if(r.stage==='home'){
-    const near=unitCell(r), options=[...ready(s,0,'hangar'),...ready(s,0,'forum')];
+    const near=unitCell(r,s.size), options=[...ready(s,0,'hangar'),...ready(s,0,'forum')];
     const base=options.find(b=>routeDistance(s,near,b.cell)>=0);
     if(base&&travel(s,r,base.cell,1.45,speed))unload(s,r);
     return;
   }
   if(r.stage==='out'){
-    const ford=atlas(s).cells[unitCell(r)].ford, highTide=Math.floor(s.tick*DT/6)%2===1;
+    const ford=atlas(s).cells[unitCell(r,s.size)].ford, highTide=Math.floor(s.tick*DT/6)%2===1;
     const multiplier=ford&&highTide&&r.rig!=='crawler'?(r.surge?.35:.60):1;
     if(travel(s,r,r.target,1.45,speed*multiplier))r.stage='field';
     return;

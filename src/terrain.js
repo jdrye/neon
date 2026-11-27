@@ -133,7 +133,7 @@ function pattern(id, material, width, height, base, strength) {
   </pattern>`;
 }
 
-export function groundArt(map, theme, prefix, biome) {
+export function groundArt(map, theme, prefix, biome, wide=false) {
   const key = prefix + ':' + biome;
   if (map.artwork.has(key)) return map.artwork.get(key);
   const id = name => `${prefix}-${name}`, url = name => `url(#${id(name)})`;
@@ -159,14 +159,15 @@ export function groundArt(map, theme, prefix, biome) {
       <use href="#${id('meadow')}" fill="white" filter="${url('grass-blur')}"/>
     </mask>`;
   const surf = (color, width, opacity) => `<use href="#${id('shore')}" fill="none" stroke="${color}" stroke-width="${width}" opacity="${opacity}" stroke-linejoin="round"/>`;
-  const sea = `<rect x="-4000" y="-4000" width="9000" height="9000" fill="${theme.deep}"/>
+  const b=map.bounds, ocean=wide?`x="${b.left-4500}" y="${b.top-4500}" width="${b.right-b.left+9000}" height="${b.bottom-b.top+9000}"`:'x="-4000" y="-4000" width="9000" height="9000"';
+  const sea = `<rect ${ocean} fill="${theme.deep}"/>
     <rect x="-1500" y="-1050" width="4200" height="3000" fill="${url('ocean-light')}"/>
-    <rect x="-4000" y="-4000" width="9000" height="9000" fill="${url('reef')}" opacity=".42"/>
-    <g filter="${url('tidal-blur')}">${surf(profile.shallow,64,.33)}${surf(profile.foam,17,.52)}</g>
+    <rect ${ocean} fill="${url('reef')}" opacity=".42"/>
+    <g${wide?'':` filter="${url('tidal-blur')}"`}>${surf(profile.shallow,64,.33)}${surf(profile.foam,17,.52)}</g>
     <use href="#${id('shore')}" fill="none" stroke="${profile.foam}" stroke-width="2.4" stroke-opacity=".8" stroke-dasharray="19 5 8 3 3 12" class="surf-crests"/>`;
   const material = `<path d="${map.faces.join('')}" fill="${url('rock')}"/><path d="${map.faces[1]}" fill="#132f40" opacity=".38"/>
     <use href="#${id('land')}" fill="${url('sand')}"/>
-    <g mask="${url('grass-fringe')}"><use href="#${id('land')}" fill="${theme.grass[0]}"/><use href="#${id('land')}" fill="${url('grass')}"/></g>
+    ${wide?`<use href="#${id('meadow')}" fill="${url('grass')}"/>`:`<g mask="${url('grass-fringe')}"><use href="#${id('land')}" fill="${theme.grass[0]}"/><use href="#${id('land')}" fill="${url('grass')}"/></g>`}
     <use href="#${id('land')}" fill="${url('sun')}" stroke="${theme.sand}" stroke-width="1.5" stroke-opacity=".45"/>
     <ellipse cx="345" cy="155" rx="450" ry="145" fill="${url('mist')}"/>`;
   const result = `<defs>${defs}</defs><g pointer-events="none">${sea}${material}</g>`;

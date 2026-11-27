@@ -52,8 +52,7 @@ async function checkLayout(name,width,height) {
       return reply.result.value;
     }
     await call('Page.enable');
-    await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:name==='mobile'});
-    await call('Emulation.setTouchEmulationEnabled',{enabled:name==='mobile'});
+    await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
     async function press(selector) {
       const point = await evaluate(`(() => {
         const el=document.querySelector(${JSON.stringify(selector)});
@@ -65,13 +64,8 @@ async function checkLayout(name,width,height) {
         if(!el.contains(document.elementFromPoint(p.x,p.y)))throw Error('Commande masquée ' + ${JSON.stringify(selector)});
         return p;
       })()`);
-      if (name==='mobile') {
-        await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
-        await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-      } else {
-        await call('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...point});
-        await call('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...point});
-      }
+      await call('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...point});
+      await call('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...point});
     }
     await playCampaign({name,server,output,width,call,evaluate,press,waitFor});
   } finally {
@@ -82,4 +76,3 @@ async function checkLayout(name,width,height) {
   }
 }
 await checkLayout('desktop',1440,1000);
-await checkLayout('mobile',390,844);

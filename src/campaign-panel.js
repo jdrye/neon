@@ -1,12 +1,12 @@
 import {GOALS} from './engine.js?v=6.0.0';
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS} from './survey.js?v=6.0.0';
-import {sharedCost} from './colony-rules.js?v=8.0.0';
-import {RES,STRUCTURES,canPay,costText} from './strategy-rules.js?v=8.0.0';
-import {buildReason,ready} from './strategy-engine.js?v=8.0.0';
-import {districtRates,goalTexts} from './campaign.js?v=8.0.0';
-import {MISSIONS,contested,councilEffects,departureCost} from './campaign-rover.js?v=8.0.0';
-import {button,picture} from './strategy-hud.js?v=8.0.0';
+import {sharedCost} from './colony-rules.js?v=8.1.0';
+import {RES,STRUCTURES,canPay,costText} from './strategy-rules.js?v=8.1.0';
+import {buildReason,ready} from './strategy-engine.js?v=8.1.0';
+import {districtRates,goalTexts} from './campaign.js?v=8.1.0';
+import {MISSIONS,contested,councilEffects,departureCost} from './campaign-rover.js?v=8.1.0';
+import {button,picture} from './strategy-hud.js?v=8.1.0';
 
 function decisions(s) {
   const c=s.campaign,chapter=CHAPTERS[c.decisions.length];

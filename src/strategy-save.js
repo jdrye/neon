@@ -1,17 +1,21 @@
-import { LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, UNITS } from './strategy-rules.js?v=8.0.0';
-import { atlas, jobDef, refreshVision } from './strategy-engine.js?v=8.0.0';
+import { LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, UNITS, populationLimit, validSize } from './strategy-rules.js?v=8.1.0';
+import { atlas, jobDef, refreshVision } from './strategy-engine.js?v=8.1.0';
 
-const cell = n => Number.isInteger(n)&&n>=0&&n<SIDE*SIDE;
+export const MAX_SAVE_LENGTH = 3_000_000;
 const finite = (n,lo,hi) => Number.isFinite(n)&&n>=lo&&n<=hi;
 const owns = (obj,key) => typeof key==='string'&&Object.hasOwn(obj,key);
 const side = n => n===0||n===1;
 export function readMatch(raw) {
   try {
-    if(typeof raw!=='string'||raw.length>1000000)return null;
+    if(typeof raw!=='string'||raw.length>MAX_SAVE_LENGTH)return null;
     const s=JSON.parse(raw);
     if(s?.version!==1||!Number.isSafeInteger(s.seed)||s.seed<0||s.seed>0xffffffff||!owns(MAPS,s.region)||!owns(LEVELS,s.level)||!Number.isSafeInteger(s.tick)||s.tick<0)return null;
-    if(s.teams?.length!==2||!Array.isArray(s.units)||s.units.length>116||!Array.isArray(s.buildings)||s.buildings.length>SIDE*SIDE||!Array.isArray(s.nodes))return null;
-    for(const t of s.teams){if(!s.campaign&&t.bank){t.bank.water??=14;t.bank.energy??=16;}if(![1,2,3].includes(t.age)||!Array.isArray(t.explored)||t.explored.length!==SIDE*SIDE||!Array.isArray(t.tech)||!t.tech.every(k=>owns(STUDIES,k))||!Object.keys(RES).every(k=>finite(t.bank?.[k],0,9999))||!(t.enemyForum===null||cell(t.enemyForum)))return null;
+    const size=Object.hasOwn(s,'size')?s.size:SIDE;
+    if(!validSize(size))return null;
+    const count=size*size, maxUnits=2*populationLimit(size);
+    const cell=n=>Number.isInteger(n)&&n>=0&&n<count;
+    if(s.teams?.length!==2||!Array.isArray(s.units)||s.units.length>maxUnits||!Array.isArray(s.buildings)||s.buildings.length>count||!Array.isArray(s.nodes)||s.nodes.length>count)return null;
+    for(const t of s.teams){if(!s.campaign&&t.bank){t.bank.water??=14;t.bank.energy??=16;}if(![1,2,3].includes(t.age)||!Array.isArray(t.explored)||t.explored.length!==count||!Array.isArray(t.tech)||!t.tech.every(k=>owns(STUDIES,k))||!Object.keys(RES).every(k=>finite(t.bank?.[k],0,9999))||!(t.enemyForum===null||cell(t.enemyForum)))return null;
       t.explored=t.explored.map(v=>v===1?1:0);if(!finite(t.trained,0,1e9)||!finite(t.lost,0,1e9))return null;}
     const ids=new Set(),homes=new Set();
     for(const e of [...s.units,...s.buildings]){if(!Number.isSafeInteger(e.id)||e.id<1||ids.has(e.id)||!side(e.side)||!Number.isFinite(e.hp)||e.hp<=0||!finite(e.cool,0,10))return null;ids.add(e.id);}
@@ -20,7 +24,7 @@ export function readMatch(raw) {
       homes.add(b.cell);for(const j of b.queue){const d=jobDef(j.kind,j.key);if(!d||d.at!==b.type||!finite(j.left,0,d.time))return null;
         if(j.paid){const choices=[d.cost];if(j.kind==='tech'&&d.civil)choices.push(Object.fromEntries(Object.entries(d.cost).map(([k,n])=>[k,Math.ceil(n*.75)])));
           if(!choices.some(cost=>Object.keys(j.paid).length===Object.keys(cost).length&&Object.entries(cost).every(([k,n])=>j.paid[k]===n)))return null;}}}
-    for(const u of s.units){if(!owns(UNITS,u.type)||!finite(u.x,0,SIDE-1)||!finite(u.y,0,SIDE-1)||u.hp>UNITS[u.type].hp+.01||!cell(u.anchor)||!finite(u.work,0,1e9)||!Array.isArray(u.path)||u.path.length>SIDE*SIDE||!u.path.every(cell))return null;
+    for(const u of s.units){if(!owns(UNITS,u.type)||!finite(u.x,0,size-1)||!finite(u.y,0,size-1)||u.hp>UNITS[u.type].hp+.01||!cell(u.anchor)||!finite(u.work,0,1e9)||!Array.isArray(u.path)||u.path.length>count||!u.path.every(cell))return null;
       const o=u.order;if(!o||!['idle','move','advance','attack','gather','repair','assist','staff'].includes(o.kind)||o.kind!=='idle'&&!cell(o.cell)||o.kind==='gather'&&!owns(RES,o.resource))return null;
       if(typeof u.goal!=='string'||u.goal.length>75||u.cargo&&(!owns(RES,u.cargo.kind)||!finite(u.cargo.n,0,14)))return null;}
     const deposits=atlas(s).deposits;if(s.nodes.length!==deposits.length||!s.nodes.every((n,i)=>n.cell===deposits[i].cell&&n.kind===deposits[i].kind&&finite(n.left,0,deposits[i].amount)))return null;
@@ -32,8 +36,10 @@ export function readMatch(raw) {
     if(s.scenario!=='siege')delete s.scenario;
     if(!s.alarm||!cell(s.alarm.cell)||!Number.isSafeInteger(s.alarm.tick)||!finite(s.alarm.tick,0,s.tick))s.alarm=null;
     const c=s.command;
-    const list=v=>Array.isArray(v)&&v.length<=116&&v.every(k=>typeof k==='string'&&/^(?:e[0-9]{1,12}|n[0-9]{1,3}|relay|rover)$/.test(k));
-    if(c && !(finite(c.center?.x,-3000,4500)&&finite(c.center?.y,-1000,4500)&&finite(c.zoom,.36,1.8)&&[1,2,3].includes(c.speed)&&list(c.selection)&&c.groups&&Object.entries(c.groups).every(([k,v])=>/^[1-5]$/.test(k)&&list(v))))delete s.command;
-    s.effects=[];refreshVision(s);return s;
+    const list=v=>Array.isArray(v)&&v.length<=maxUnits&&v.every(k=>typeof k==='string'&&
+      (/^(?:e[0-9]{1,12}|relay|rover)$/.test(k)||/^n[0-9]{1,4}$/.test(k)&&cell(Number(k.slice(1)))));
+    const cameraRange=size*80;
+    if(c && !(finite(c.center?.x,-cameraRange,cameraRange)&&finite(c.center?.y,-cameraRange,cameraRange)&&finite(c.zoom,.08,1.8)&&[1,2,3].includes(c.speed)&&list(c.selection)&&c.groups&&Object.entries(c.groups).every(([k,v])=>/^[1-5]$/.test(k)&&list(v))))delete s.command;
+    s.size=size;s.effects=[];refreshVision(s);return s;
   } catch {return null;}
 }
