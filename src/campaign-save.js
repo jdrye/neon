@@ -1,12 +1,13 @@
+import {openTrade,validTrade} from './trade.js?v=8.2.0';
 import {fieldState,importSave} from './engine.js?v=6.0.0';
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS,surveyProgress} from './survey.js?v=6.0.0';
-import {colonyType,scienceIds,sharedCost} from './colony-rules.js?v=8.1.0';
-import {RES,SIDE,STRUCTURES,mapPoint,mapDistance,populationLimit,validSize} from './strategy-rules.js?v=8.1.0';
-import {atlas,gain,makeBuilding,makeUnit,notify,orderUnits,ready,refreshVision,routeDistance,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.1.0';
-import {MAX_SAVE_LENGTH,readMatch} from './strategy-save.js?v=8.1.0';
-import {createCampaign,newSettlement,pacify} from './campaign.js?v=8.1.0';
-import {launchCell,missionSite,MISSIONS,newRover,roverBerth} from './campaign-rover.js?v=8.1.0';
+import {colonyType,scienceIds,sharedCost} from './colony-rules.js?v=8.2.0';
+import {RES,SIDE,STRUCTURES,mapPoint,mapDistance,populationLimit,validSize} from './strategy-rules.js?v=8.2.0';
+import {atlas,gain,makeBuilding,makeUnit,notify,orderUnits,ready,refreshVision,routeDistance,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.2.0';
+import {MAX_SAVE_LENGTH,readMatch} from './strategy-save.js?v=8.2.0';
+import {createCampaign,newSettlement,pacify} from './campaign.js?v=8.2.0';
+import {launchCell,missionSite,MISSIONS,newRover,roverBerth} from './campaign-rover.js?v=8.2.0';
 
 const whole=(n,max=Number.MAX_SAFE_INTEGER)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
 const owns=(dict,key)=>typeof key==='string'&&Object.hasOwn(dict,key);
@@ -33,7 +34,9 @@ export function readCampaign(raw) {
     if(c.peace&&(data.result||[...data.units,...data.buildings].some(e=>e.side===1)))return null;
     const size=Object.hasOwn(data,'size')?data.size:SIDE;
     if(!validSize(size)||!validRover(c.rover,data.tick,size))return null;
-    return readMatch(raw);
+    const s=readMatch(raw);
+    if(!s||!validTrade(s))return null;
+    openTrade(s);return s;
   } catch {return null;}
 }
 function legacyColony(raw,now) {
@@ -106,6 +109,7 @@ export function mergeLegacy(colonyRaw,battleRaw,now=Date.now()) {
     for(const k of old.research){const tech=scienceIds[k];if(!s.teams[0].tech.includes(tech))s.teams[0].tech.push(tech);}
     transplant(s,old);transferTrip(s,old,now);
   }
+  openTrade(s);
   if(s.result?.winner===0)pacify(s);
   notify(s,'Les archives de Kepler ont rejoint cette colonie.');refreshVision(s);
   return s;

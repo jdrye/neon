@@ -1,13 +1,14 @@
+import {charter,knownPost,recallCaravan,scoutPost} from './trade.js?v=8.2.0';
 import { randomSeed } from './world.js?v=6.0.0';
-import { AGES, DT, RES, STRUCTURES, UNITS, fmtTime, grid, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.1.0';
-import { atlas, cancelJob, cancelSite, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.1.0';
-import {createCampaign, districtRates, reviseDistrict, tickCampaign} from './campaign.js?v=8.1.0';
-import {campaignKey, importProgress, loadProgress} from './campaign-save.js?v=8.1.0';
-import {MAX_SAVE_LENGTH} from './strategy-save.js?v=8.1.0';
-import {launchRover, recallRover, scanRover, vote} from './campaign-rover.js?v=8.1.0';
-import {cityPanel, roverPanel} from './campaign-panel.js?v=8.1.0';
-import { BattleView } from './strategy-view.js?v=8.1.0';
-import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=8.1.0';
+import { AGES, DT, RES, STRUCTURES, UNITS, isMilitary, fmtTime, grid, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.2.0';
+import { atlas, cancelJob, cancelSite, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.2.0';
+import {createCampaign, districtRates, reviseDistrict, tickCampaign} from './campaign.js?v=8.2.0';
+import {campaignKey, importProgress, loadProgress} from './campaign-save.js?v=8.2.0';
+import {MAX_SAVE_LENGTH} from './strategy-save.js?v=8.2.0';
+import {launchRover, recallRover, scanRover, vote} from './campaign-rover.js?v=8.2.0';
+import {cityPanel, roverPanel} from './campaign-panel.js?v=8.2.0';
+import { BattleView } from './strategy-view.js?v=8.2.0';
+import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=8.2.0';
 
 export function mountCampaign(root,baseKey) {
   const saveKey=campaignKey(baseKey);
@@ -21,6 +22,7 @@ export function mountCampaign(root,baseKey) {
   function speak(text){radio=text;radioAt=performance.now();if(byId('rts-radio'))byId('rts-radio').textContent=text;}
   function describeKey(key){if(!key||!state)return null;
     if(key==='rover'){const e=state.campaign.rover;return e?{key,kind:'rover',e,cell:unitCell(e,state.size)}:null;}
+    if(/^post[01]$/.test(key)){const index=Number(key.at(-1)),cell=state.campaign.trade.posts[index];return knownPost(state,0,index)?{key,kind:'post',cell,e:{index,cell}}:null;}
     if(key==='relay')return {key,kind:'relay',e:state.relay,cell:atlas(state).relay};
     const id=Number(key.slice(1));if(key[0]==='n'){const e=state.nodes.find(n=>n.cell===id&&n.left>0);return e&&state.teams[0].explored[id]?{key,e,cell:id,kind:'node',visible:vision(state,0)[id]}:null;}
     const unit=state.units.find(u=>u.id===id),e=unit||state.buildings.find(b=>b.id===id);if(!e)return null;
@@ -89,7 +91,7 @@ export function mountCampaign(root,baseKey) {
     byId('civic-orders').hidden=panel!=='orders';
     const content=byId('civic-panel');content.hidden=panel==='orders';
     if(panel!=='orders')setHtml(content,panel==='city'?cityPanel(state):roverPanel(state,rig,surge));
-    const band=byId('rts-mode');band.hidden=!mode;setText(band.querySelector('span'),mode.startsWith('build:')?`Placer · ${STRUCTURES[mode.slice(6)].name}`:mode==='relocate'?'Choisir le nouvel emplacement':mode==='rally'?'Choisir le point de ralliement':mode==='advance'?'Choisir une destination pour progresser':'Choisir la cible de l’ordre');
+    const band=byId('rts-mode');band.hidden=!mode;setText(band.querySelector('span'),mode.startsWith('build:')?`Placer · ${STRUCTURES[mode.slice(6)].name}`:mode==='relocate'?'Choisir le nouvel emplacement':mode==='rally'?'Choisir le point de ralliement':mode==='patrol'?'Choisir la seconde extrémité de la patrouille':mode==='escort'?'Désigner le convoi, le pionnier ou le rover à protéger':mode==='advance'?'Choisir une destination pour progresser':'Choisir la cible de l’ordre');
     const last=state.log.at(-1)?.text||'';setText(byId('rts-radio'),!storage?'Sauvegarde indisponible · session en cours':radio&&performance.now()-radioAt<5000?radio:last);
     view.svg.dataset.tick=state.tick;view.svg.dataset.paused=String(paused);
   }
@@ -184,9 +186,15 @@ export function mountCampaign(root,baseKey) {
   root.addEventListener('keydown',()=>{if(state?.campaign.sound&&!audio)syncSound();});
   function idle(){const free=unitsOf(state,0,'worker').filter(u=>u.order.kind==='idle');if(!free.length){speak('Tous les pionniers sont occupés.');return;}const i=free.findIndex(u=>u.id===lastIdle),u=free[(i+1)%free.length];lastIdle=u.id;select(['e'+u.id],true);}
   function rapid(kind){if(kind==='forum'){const b=ready(state,0,'forum')[0];if(b)select(['e'+b.id],true);return;}
-    const us=unitsOf(state,0).filter(u=>kind==='army'?u.type!=='worker':u.type==='worker');if(us.length)select(us.map(u=>'e'+u.id),true);else speak('Aucune unité de ce type.');}
+    const us=unitsOf(state,0).filter(u=>kind==='army'?isMilitary(u.type):u.type==='worker');if(us.length)select(us.map(u=>'e'+u.id),true);else speak('Aucune unité de ce type.');}
   function sendWorker(item,job){if(!item)return;const workers=unitsOf(state,0,'worker').filter(u=>job!=='staff'||u.order.kind!=='staff'||u.order.target!==item.e.id).sort((a,b)=>Number(a.order.kind!=='idle')-Number(b.order.kind!=='idle')||mapDistance(state.size,unitCell(a,state.size),item.cell)-mapDistance(state.size,unitCell(b,state.size),item.cell));
     for(const w of workers){const r=orderUnits(state,0,[w.id],job,item.cell,item.e.id);if(r.ok){select(['e'+w.id]);apply(r);return;}}speak('Aucun pionnier disponible pour cet ordre.');}
+  function assignEscort(ward){
+    const guards=unitsOf(state,0).filter(u=>isMilitary(u.type)&&u.order.kind==='idle');
+    guards.sort((a,b)=>mapDistance(state.size,unitCell(a,state.size),ward.cell)-mapDistance(state.size,unitCell(b,state.size),ward.cell));
+    for(const guard of guards){const r=orderUnits(state,0,[guard.id],'escort',ward.cell,ward.e.id);if(r.ok){apply(r);return;}}
+    speak('Aucun soldat disponible à portée de cette escorte.');
+  }
   function act(action,key){
     if(pending){if(action==='confirm'||action==='keep')dismiss(action==='confirm');return;}
     if(action==='import'){importGame();return;}
@@ -205,6 +213,17 @@ export function mountCampaign(root,baseKey) {
       if(!u){speak('Formez un pionnier au forum.');return;}select(['e'+u.id],true);
       if(action==='open-build')act('build-menu');else act('build',key);return;
     }
+    if(action==='next-caravan'){
+      const convoys=unitsOf(state,0,'caravan').sort((a,b)=>Number(a.order.kind==='trade')-Number(b.order.kind==='trade')||a.id-b.id);
+      const i=convoys.findIndex(u=>selection.includes('e'+u.id)),u=convoys[(i+1)%convoys.length];
+      if(u)select(['e'+u.id],true);return;
+    }
+    if(action==='show-post'){if(knownPost(state,0,Number(key)))select(['post'+key],true);return;}
+    if(action==='scout-post'){const r=scoutPost(state,0,Number(key));if(r.ok)select(['e'+r.id]);apply(r);return;}
+    if(action==='charter'&&item?.e.type==='caravan'){const [post,good]=key.split('-');apply(charter(state,0,item.e.id,Number(post),good));return;}
+    if(action==='recall-trade'&&item?.e.type==='caravan'){apply(recallCaravan(state,0,item.e.id));return;}
+    if(action==='auto-escort'&&item?.e.type==='caravan'){assignEscort(item);return;}
+    if(action==='escort-rover'&&state.campaign.rover){assignEscort(describeKey('rover'));return;}
     if(action==='rig'){if(['scout','crawler','hauler'].includes(key))rig=key;dirty=true;paint();return;}
     if(action==='surge'){surge=!surge;dirty=true;paint();return;}
     if(action==='dispatch'){const result=launchRover(state,key,rig,surge&&key==='signal');if(result.ok)view.focus(unitCell(state.campaign.rover,state.size));apply(result);return;}
@@ -227,37 +246,46 @@ export function mountCampaign(root,baseKey) {
     if(action==='zoom-in'||action==='zoom-out'){view.scale(action==='zoom-in'?1.2:1/1.2);return;}
     if(action==='cancel'||action==='back-orders'){mode='';buildMenu=false;cursor=null;paint();return;}
     if(action==='build-menu'){if(group().some(u=>u.type==='worker')){filter='base';buildMenu=true;paint();}return;}
-    if(action==='build'||['advance','rally','target'].includes(action)){mode=action==='build'?'build:'+key:action;cursor=item?.cell??atlas(state).home;buildMenu=false;paint();view.svg.focus({preventScroll:true});return;}
+    if(['patrol','escort'].includes(action)&&!group().some(u=>isMilitary(u.type))){speak('Sélectionnez une unité militaire.');return;}
+    if(action==='build'||['advance','rally','target','escort','patrol'].includes(action)){mode=action==='build'?'build:'+key:action;cursor=item?.cell??atlas(state).home;buildMenu=false;paint();view.svg.focus({preventScroll:true});return;}
     if(action==='stop'){apply(orderUnits(state,0,ids(),'stop'));return;}
     if(action==='harvest'){let given=0;for(const u of group().filter(u=>u.type==='worker')){const c=nearestSource(state,0,unitCell(u,state.size),key);if(c!==null&&orderUnits(state,0,[u.id],'gather',c).ok)given++;}apply(given?{ok:true,message:`${given} pionnier(s) affecté(s) aux ${RES[key].name.toLowerCase()}.`}:{ok:false,message:'Explorez la carte pour repérer cette ressource.'});return;}
     if(['age','unit','tech'].includes(action)&&b){apply(enqueue(state,0,b.id,action,key));return;}
     if(action==='cancel-job'&&b){apply(cancelJob(state,0,b.id,Number(key)));return;}
     if(action==='cancel-site'&&b){apply(cancelSite(state,0,b.id));return;}
     if(['send-worker','assist-site','repair-site'].includes(action)){sendWorker(item,action==='send-worker'?'gather':action==='assist-site'?'assist':'repair');return;}
-    if(action==='send-army'){const army=unitsOf(state,0).filter(u=>u.type!=='worker');select(army.map(u=>'e'+u.id));apply(orderUnits(state,0,army.map(u=>u.id),'advance',atlas(state).relay));}
+    if(action==='send-army'){const army=unitsOf(state,0).filter(u=>isMilitary(u.type));select(army.map(u=>'e'+u.id));apply(orderUnits(state,0,army.map(u=>u.id),'advance',atlas(state).relay));}
   }
   function terrainAction(cell,key,force=false,extend=false){if(sheet||state.result)return;const target=describeKey(key),us=group(),idList=us.map(u=>u.id);
     if(mode==='relocate'){const b=selected()[0]?.e;if(b)apply(reviseDistrict(state,b.id,cell));return;}
     if(target?.kind==='rover'&&!mode&&!force){panel='rover';mode='';paint();return;}
     if(mode.startsWith('build:')){const r=construct(state,0,idList,mode.slice(6),cell);if(r.ok)selection=['e'+r.id];apply(r);return;}
     if(mode==='rally'||force&&!us.length&&selected()[0]?.kind==='building'){const b=selected()[0]?.e;if(b)apply(setRally(state,0,b.id,cell));return;}
-    if(mode==='advance'){apply(orderUnits(state,0,idList,'advance',cell));return;}
+    if(mode==='advance'||mode==='patrol'){apply(orderUnits(state,0,idList,mode,cell));return;}
+    if(mode==='escort'){apply(orderUnits(state,0,idList,'escort',cell,target?.e.id));return;}
+    if(target?.kind==='post'&&!force&&mode!=='target'){select([key]);return;}
+    if(target?.kind==='post'&&us.length===1&&us[0].type==='caravan'){
+      apply(charter(state,0,us[0].id,target.e.index,'ore'));return;
+    }
+    if(force&&(target?.kind==='rover'||target?.kind==='unit'&&!target.e.side&&!isMilitary(target.e.type))&&us.some(u=>isMilitary(u.type))){
+      apply(orderUnits(state,0,idList,'escort',cell,target.e.id));return;
+    }
     const owned=target&&['unit','building'].includes(target.kind)&&target.e.side===0;
     if(extend&&owned&&target.kind==='unit'){const others=us.map(u=>'e'+u.id);select(others.includes(key)?others.filter(k=>k!==key):[...others,key]);return;}
     const commanded=force||mode==='target';
     if(owned&&!commanded){select([key]);return;}
     if(us.length){let kind='move';
       if(target?.kind==='node'&&us.some(u=>u.type==='worker')||owned&&target.e.type==='farm'&&target.e.ready&&us.some(u=>u.type==='worker'))kind='gather';
-      else if(target?.e.side===1&&us.some(u=>u.type!=='worker'))kind='attack';
+      else if(target?.e.side===1&&us.some(u=>isMilitary(u.type)))kind='attack';
       else if(owned&&target.kind==='building'&&us.some(u=>u.type==='worker'))kind=!target.e.ready?'assist':target.e.hp<STRUCTURES[target.e.type].hp?'repair':Object.keys(STRUCTURES[target.e.type].output||{}).length?'staff':'move';
-      else if(target?.kind==='relay'&&us.some(u=>u.type!=='worker'))kind='advance';
+      else if(target?.kind==='relay'&&us.some(u=>isMilitary(u.type)))kind='advance';
       if(target?.e.side===1&&!commanded&&kind!=='attack'){select([key]);return;}
       apply(orderUnits(state,0,idList,kind,cell,target?.e.id));return;
     }
     select(key&&target?[key]:[]);
   }
   function bindMap(){const svg=view.svg,stage=svg.parentElement,box=byId('rts-marquee');
-    const hit=e=>{const k=mode.startsWith('build:')||mode==='relocate'||mode==='rally'||mode==='advance'?null:e.target.closest?.('[data-rts-object]')?.dataset.rtsObject;const obj=describeKey(k);return {key:k,cell:obj?.cell??view.cellAt(view.worldPoint(e.clientX,e.clientY))};};
+    const hit=e=>{const k=mode.startsWith('build:')||mode==='relocate'||mode==='rally'||mode==='advance'||mode==='patrol'?null:e.target.closest?.('[data-rts-object]')?.dataset.rtsObject;const obj=describeKey(k);return {key:k,cell:obj?.cell??view.cellAt(view.worldPoint(e.clientX,e.clientY))};};
     svg.addEventListener('contextmenu',e=>{e.preventDefault();const h=hit(e);terrainAction(h.cell,h.key,true);});
     svg.addEventListener('wheel',e=>{e.preventDefault();view.scale(e.deltaY<0?1.12:1/1.12,e.clientX,e.clientY);},{passive:false});
     svg.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1||sheet)return;const h=hit(e);pointer={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,key:h.key,cell:h.cell,pan:e.button===1||dragMode==='pan',drag:false,id:e.pointerId,shift:e.shiftKey};});
@@ -285,11 +313,11 @@ export function mountCampaign(root,baseKey) {
     const k=e.key.toLowerCase();
     const number=e.code.match(/^(?:Digit|Numpad)([1-5])$/)?.[1]||(/^[1-5]$/.test(k)?k:null);
     if(number){e.preventDefault();if(e.ctrlKey||e.metaKey){groups[number]=group().map(u=>'e'+u.id);dirty=true;save();speak(`Groupe ${number} mémorisé.`);}else if(groups[number]?.length)select(groups[number],true);return;}
-    if(e.ctrlKey||e.metaKey||e.altKey)return;const shortcuts={p:'pause',h:'forum',v:'workers',m:'army',o:'overview',q:'idle',a:'advance',b:'build-menu','+':'zoom-in','-':'zoom-out'};
+    if(e.ctrlKey||e.metaKey||e.altKey)return;const shortcuts={p:'pause',h:'forum',v:'workers',m:'army',o:'overview',q:'idle',t:'patrol',e:'escort',a:'advance',b:'build-menu','+':'zoom-in','-':'zoom-out'};
     if(shortcuts[k]){e.preventDefault();act(shortcuts[k]);return;}
     const arrow={ArrowLeft:[-1,1],ArrowRight:[1,-1],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(arrow){e.preventDefault();const {size,home}=grid(state.size),p=mapPoint(size,cursor??selected()[0]?.cell??home);
       cursor=mapKey(size,Math.max(0,Math.min(size-1,p.x+arrow[0])),Math.max(0,Math.min(size-1,p.y+arrow[1])));view.focus(cursor);view.cursor(cursor,mode);view.svg.focus();return;}
-    if((k==='enter'||k===' ')&&e.target===view.svg){e.preventDefault();const c=cursor??atlas(state).home;const unit=state.units.find(u=>unitCell(u,state.size)===c&&(!u.side||vision(state,0)[c])),b=state.buildings.find(b=>b.cell===c&&(!b.side||vision(state,0)[c]));const key=unit?'e'+unit.id:b?'e'+b.id:state.nodes.some(n=>n.cell===c&&n.left>0)?'n'+c:atlas(state).relay===c?'relay':null;terrainAction(c,key,false,e.shiftKey);}
+    if((k==='enter'||k===' ')&&e.target===view.svg){e.preventDefault();const c=cursor??atlas(state).home;const unit=state.units.find(u=>unitCell(u,state.size)===c&&(!u.side||vision(state,0)[c])),b=state.buildings.find(b=>b.cell===c&&(!b.side||vision(state,0)[c]));const key=unit?'e'+unit.id:b?'e'+b.id:state.nodes.some(n=>n.cell===c&&n.left>0)?'n'+c:atlas(state).relay===c?'relay':state.campaign.trade.posts.includes(c)?'post'+state.campaign.trade.posts.indexOf(c):state.campaign.rover&&unitCell(state.campaign.rover,state.size)===c?'rover':null;terrainAction(c,key,false,e.shiftKey);}
   });
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&audio)audio.suspend();else if(audio&&state?.campaign.sound)audio.resume();if(document.hidden&&view){paused=true;carry=0;dirty=true;save();hud();}});window.addEventListener('pagehide',()=>{if(view)dirty=true;save();});
   if(state)play();else openSetup();

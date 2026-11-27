@@ -1,4 +1,4 @@
-import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.1.0';
+import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.2.0';
 
 export const SIDE = 27, HOME = 17 * SIDE + 6, RIVAL = SIDE * SIDE - 1 - HOME, MID = 13 * SIDE + 13;
 export const MAP_SIZES = {
@@ -32,14 +32,17 @@ export const UNITS = {
   worker: {name:'Pionnier', art:'rts-worker', hp:45, speed:1.62, sight:4, damage:0, range:0, interval:1, cost:{food:32}, time:12, age:1, at:'forum', note:'Récolte, livre, bâtit et répare.'},
   guard: {name:'Sentinelle', art:'rts-guard', hp:108, speed:1.45, sight:4, damage:13, range:1.5, interval:1.15, counter:'skimmer', cost:{food:32,ore:12}, time:12, age:1, at:'barracks', note:'Unité de contact. Avantage contre les Voltigeurs.'},
   watcher: {name:'Veilleur', art:'rts-watcher', hp:63, speed:1.55, sight:5, damage:10, range:3.8, interval:1.5, counter:'guard', cost:{wood:22,crystal:16}, time:14, age:2, at:'barracks', note:'Unité à distance. Avantage contre les Sentinelles.'},
+  caravan: {name:'Convoi', art:'trade-caravan', hp:76, speed:1.8, sight:3, damage:0, range:0, interval:1, cost:{wood:27,food:16}, time:16, age:2, at:'market', note:'Échange une cargaison au comptoir et la rapporte à la cité. Vulnérable sans escorte.'},
   skimmer: {name:'Voltigeur', art:'rts-skimmer', hp:82, speed:2.65, sight:6, damage:11, range:1.6, interval:1, counter:'watcher', cost:{food:35,crystal:19}, time:15, age:2, at:'workshop', note:'Unité rapide de reconnaissance. Avantage contre les Veilleurs.'},
 };
+export const isMilitary = type => (UNITS[type]?.damage || 0) > 0;
 export const STRUCTURES = {
   ...DISTRICTS,
   forum: {clearance:1.45, name:'Forum', art:'rts-forum', hp:620, age:1, cap:10, sight:6, damage:9, range:4.3, note:'Reçoit les cargaisons, forme les pionniers et prépare les passages d’âge.'},
   house: {max:3, clearance:0.88, name:'Habitat', art:'habitat', hp:160, age:1, cap:6, cost:{wood:32}, time:14, note:'Ouvre six places de population.'},
   depot: {clearance:0.95, name:'Dépôt', art:'hangar', hp:185, age:1, cost:{wood:36}, time:13, note:'Point de livraison pour toutes les ressources. Permet de rechercher les harnais.'},
   farm: {clearance:1.03, name:'Ferme', art:'hydroponics', hp:155, age:1, cost:{wood:42}, time:16, note:'Source permanente de vivres à exploiter par les pionniers.'},
+  market: {clearance:1.05, name:'Halle marchande', art:'trade-market', hp:245, age:2, cost:{wood:54,ore:18}, time:23, note:'Forme les convois et réceptionne les cargaisons des comptoirs.'},
   barracks: {clearance:1.12, name:'Caserne', art:'rts-barracks', hp:280, age:1, cost:{wood:55,ore:20}, time:22, note:'Forme les Sentinelles, puis les Veilleurs à l’âge II.'},
   tower: {clearance:0.84, name:'Vigie', art:'rts-tower', hp:310, age:2, sight:7, damage:18, range:5.1, cost:{wood:40,ore:44}, time:27, note:'Protège les abords avec un émetteur automatique.'},
   workshop: {clearance:1.12, name:'Atelier', art:'laboratory', hp:240, age:2, cost:{wood:62,ore:32}, time:25, note:'Assemble les Voltigeurs et recherche des améliorations.'},

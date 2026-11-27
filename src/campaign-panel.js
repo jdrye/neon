@@ -1,12 +1,13 @@
+import {tradeOffice} from './trade-panel.js?v=8.2.0';
 import {GOALS} from './engine.js?v=6.0.0';
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS} from './survey.js?v=6.0.0';
-import {sharedCost} from './colony-rules.js?v=8.1.0';
-import {RES,STRUCTURES,canPay,costText} from './strategy-rules.js?v=8.1.0';
-import {buildReason,ready} from './strategy-engine.js?v=8.1.0';
-import {districtRates,goalTexts} from './campaign.js?v=8.1.0';
-import {MISSIONS,contested,councilEffects,departureCost} from './campaign-rover.js?v=8.1.0';
-import {button,picture} from './strategy-hud.js?v=8.1.0';
+import {sharedCost} from './colony-rules.js?v=8.2.0';
+import {RES,STRUCTURES,canPay,costText} from './strategy-rules.js?v=8.2.0';
+import {buildReason,ready} from './strategy-engine.js?v=8.2.0';
+import {districtRates,goalTexts} from './campaign.js?v=8.2.0';
+import {MISSIONS,contested,councilEffects,departureCost} from './campaign-rover.js?v=8.2.0';
+import {button,picture} from './strategy-hud.js?v=8.2.0';
 
 function decisions(s) {
   const c=s.campaign,chapter=CHAPTERS[c.decisions.length];
@@ -24,7 +25,7 @@ export function cityPanel(s) {
     ${goal<0?'<p>Les sept objectifs de la métropole sont accomplis.</p>':`<p><strong>${GOALS[goal].name}</strong><br>${goalTexts[goal]}<br><small>Prime · ${costText(sharedCost(GOALS[goal].reward))}</small></p>`}
     <div class="rts-buttons">${button('open-build','Ouvrir les chantiers')}</div>
     ${c.charters.length?`<p>${c.charters.length} installation(s) issue(s) des archives attendent un emplacement gratuit dans les chantiers.</p>`:''}</section>
-    ${decisions(s)}<section class="civic-block"><h3>Production des installations</h3><p>${Object.values(rate).some(n=>n)?'Versement toutes les 12 secondes dans les réserves communes.':'Une centrale fournit l’énergie et un collecteur fournit l’eau. Les pionniers peuvent renforcer leur rendement.'}</p>
+    ${tradeOffice(s)}${decisions(s)}<section class="civic-block"><h3>Production des installations</h3><p>${Object.values(rate).some(n=>n)?'Versement toutes les 12 secondes dans les réserves communes.':'Une centrale fournit l’énergie et un collecteur fournit l’eau. Les pionniers peuvent renforcer leur rendement.'}</p>
     <div class="civic-rates">${Object.entries(rate).filter(([,n])=>n).map(([k,n])=>`<span>${picture(RES[k].art)} +${n} ${RES[k].name.toLowerCase()}</span>`).join('')}</div></section>
     <section class="civic-block"><h3>Installations en service</h3><div class="civic-facilities">${[...counts].map(([type,bs])=>button('inspect-type',`${picture(STRUCTURES[type].art)}<span>${STRUCTURES[type].name}</span><b>${bs.length}</b>`,type)).join('')}</div></section>`;
 }
@@ -34,7 +35,7 @@ export function roverPanel(s,rig,surge) {
   if(r) {
     const status=r.stage==='home'?'Retour à la cité':r.stage==='out'?'En route vers le site':contested(s,r)?'Prélèvement suspendu · envoyez une escorte':'Prélèvement en cours';
     body=`<div class="civic-portrait">${picture('rover')}<div><small>${RIGS[r.rig].name}</small><h3>${MISSIONS[r.kind].name}</h3><p>${status}${r.loaded?' · soute chargée':''}</p></div></div>
-    <div class="rts-buttons">${button('locate-rover','Suivre le rover')}${button('locate-target','Voir le site')}${button('scan-rover',r.scanUntil>s.tick?'Radar actif':'Balayer au radar','',r.scanUntil>s.tick||!canPay(s.teams[0].bank,{energy:c.decisions.includes('passage')&&!r.scans?0:2}))}${button('recall-rover','Rappeler le rover','',r.stage==='home')}</div>`;
+    <div class="rts-buttons">${button('locate-rover','Suivre le rover')+button('escort-rover','Affecter une escorte')}${button('locate-target','Voir le site')}${button('scan-rover',r.scanUntil>s.tick?'Radar actif':'Balayer au radar','',r.scanUntil>s.tick||!canPay(s.teams[0].bank,{energy:c.decisions.includes('passage')&&!r.scans?0:2}))}${button('recall-rover','Rappeler le rover','',r.stage==='home')}</div>`;
   }else if(!hangar) {
     body=`<div class="civic-portrait">${picture('hangar')}<div><small>EXPÉDITIONS</small><h3>Hangar à rover</h3><p>${site?'Chantier en cours dans la cité.':'Les pionniers construisent le hangar sur votre carte. Le rover partage les réserves et la visibilité des troupes.'}</p></div></div>
     ${site?button('inspect-type','Voir le chantier','hangar'):button('plan-district','Placer le hangar','hangar',!!buildReason(s,0,'hangar'),costText(STRUCTURES.hangar.cost))}`;

@@ -22,9 +22,9 @@ export async function playCampaign({name, server, output, width, call, evaluate,
     return evaluate(`(async () => {
       const s = ${snapshot};
       const module = (file,version) => import(location.protocol === 'file:' ? 'neon/'+file+'.js' : './src/'+file+'.js?v='+version);
-      const {atlas,buildReason} = await module('strategy-engine','8.1.0');
-      const {terrainOf} = await module('terrain','8.1.0');
-      const {mapDistance} = await module('strategy-rules','8.1.0');
+      const {atlas,buildReason} = await module('strategy-engine','8.2.0');
+      const {terrainOf} = await module('terrain','8.2.0');
+      const {mapDistance} = await module('strategy-rules','8.2.0');
       const svg = document.querySelector('#rts-map'), map = atlas(s);
       const mesh = terrainOf(map.cells), type = ${JSON.stringify(type)};
       const tiles = map.cells.filter(t => !buildReason(s, 0, type, t.cell))
@@ -168,6 +168,47 @@ export async function playCampaign({name, server, output, width, call, evaluate,
   await capture('rover');
   await use('panel','city');
   await capture('cite');
+
+  await use('pause');
+  await use('panel','orders');
+  await use('workers');
+  await use('build-menu');
+  await use('build','market');
+  const market=await locatePlot('market');
+  await pointInput(market.point);
+  await stateIs("s.buildings.some(b=>!b.side&&b.type==='market'&&!b.ready)",'pose de la halle');
+  await use('speed');await use('speed');await use('pause');
+  await waitFor(()=>evaluate("!!document.querySelector('[data-rts-act=unit][data-key=caravan]:enabled')"),'formation depuis la halle');
+  await use('unit','caravan');
+  await stateIs("s.units.some(u=>u.side===0&&u.type==='caravan')",'convoi sorti de la halle');
+  await use('pause');
+  await use('army');
+  await call('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT',windowsVirtualKeyCode:84});
+  await call('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT',windowsVirtualKeyCode:84});
+  await pointInput(market.point,'right');
+  await stateIs("s.units.some(u=>!u.side&&u.order.kind==='patrol')",'patrouille au clavier et à la souris');
+  await use('stop');
+  await use('cohort','caravan');
+  await use('charter','0-ore');
+  await use('auto-escort');
+  await stateIs("s.units.some(u=>!u.side&&u.order.kind==='trade')&&s.units.some(u=>!u.side&&u.order.kind==='escort')",'contrat et escorte');
+  await use('pause');
+  await waitFor(()=>evaluate("document.querySelector('.freight-track [aria-current=step]')?.textContent==='Retour'"),'marchandises à bord');
+  await use('pause');
+  await use('cohort','caravan');
+  await capture('routes');
+  await use('show-post','0');
+  await capture('comptoir');
+  await use('next-caravan');
+  await use('recall-trade');
+  await use('pause');
+  await stateIs("s.campaign.trade.deliveries[0]===1&&s.units.some(u=>!u.side&&u.type==='caravan'&&u.order.kind==='idle')",'livraison à la cité et fin du contrat');
+  await use('pause');
+  await call('Page.reload');
+  await appears('#rts-map[data-paused="true"]','reprise après livraison');
+  await stateIs("s.campaign.trade.deliveries[0]===1&&s.buildings.some(b=>!b.side&&b.type==='market')",'commerce sauvegardé');
+  console.log('PC · halle, patrouille, formation, contrat, escorte et livraison vérifiés.');
+
 
   await call('Page.navigate',{url:pathToFileURL(resolve(output,'NEON-Aurore.html')).href});
   await appears(action('start'),'ouverture du jeu autonome');

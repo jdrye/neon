@@ -1,6 +1,6 @@
-import {HOME, RIVAL, SIDE, tileDistance} from '../../src/strategy-rules.js?v=8.1.0';
-import {cancelSite, createMatch, notify, orderUnits, unitsOf} from '../../src/strategy-engine.js?v=8.1.0';
-import {planSide, tickMatch} from '../../src/strategy-ai.js?v=8.1.0';
+import {HOME, RIVAL, SIDE, tileDistance} from '../../src/strategy-rules.js?v=8.2.0';
+import {cancelSite, createMatch, notify, orderUnits, unitsOf} from '../../src/strategy-engine.js?v=8.2.0';
+import {planSide, tickMatch} from '../../src/strategy-ai.js?v=8.2.0';
 
 // Replay the opening through the same economy, construction, visibility and
 // combat rules as a fresh skirmish. Aurore's opening commander holds the town.

@@ -29,6 +29,17 @@ Les pionniers bâtissent le hangar sur le terrain. Chaque sortie consomme des pr
 
 Trois spécimens ouvrent l’observatoire. Les fragments du Signal des marées ouvrent trois décisions permanentes. Le conseil peut renforcer le radar, ouvrir un poste supplémentaire dans les installations ou améliorer le rendement des équipes et des sorties. Le port stellaire et les trois votes permettent de construire le phare des marées.
 
+## Ouvrir une route marchande
+
+Dans **Cité → Routes marchandes**, envoyez un Voltigeur reconnaître le Ponant ou le Levant. Un losange doré signale chaque comptoir découvert sur la minicarte. Les deux camps commercent avec ces places neutres.
+
+1. À l’âge II, construisez une **halle marchande** avec 54 bois et 18 minerais. Elle forme les convois, qui occupent chacun une place de population.
+2. Sélectionnez le convoi et choisissez sa destination et son chargement. Il échange **12 vivres contre du minerai** ou **10 bois contre des cristaux**. L’ordre affiche le rendement exact du trajet. Le chargement est payé à la halle et le gain entre dans vos réserves au retour.
+3. Pour couvrir la route, sélectionnez des soldats, appuyez sur **E** et cliquez sur le convoi. **T** suivi d’un clic établit une patrouille aller-retour entre deux points. Une escorte peut aussi suivre un pionnier ou le rover.
+4. Le convoi enchaîne les voyages tant qu’il trouve des provisions. Un rappel restitue le chargement d’aller ou livre les marchandises déjà échangées. Si la halle est détruite, les rescapés cherchent une autre halle ou le forum. Une cargaison perdue en chemin est perdue pour la cité.
+
+La reprise d’une partie 8.0 ou 8.1 place les comptoirs sur des emplacements libres et conserve la carte et sa progression.
+
 ## Commander sur le terrain
 
 Les Sentinelles contrent les Voltigeurs, les Voltigeurs contrent les Veilleurs et les Veilleurs contrent les Sentinelles. Le relais central accorde de la visibilité et deux cristaux toutes les huit secondes après douze secondes de contrôle militaire. Le siège se déclenche quand une colonne de Cendre s’approche d’Aurore.
@@ -42,6 +53,7 @@ Un forum adverse détruit ou une Flèche orbitale défendue pendant 90 secondes 
 | Glisser, Maj + clic, double-clic | Sélectionner un groupe, modifier sa composition ou prendre toutes les unités du même type à l’écran. |
 | Ctrl + 1 à 5, puis 1 à 5 | Mémoriser et rappeler un groupe, y compris sur un clavier AZERTY. |
 | H, V, M, Q | Sélectionner le forum, les pionniers, l’armée ou le prochain pionnier libre. |
+| E, T | Escorter une unité civile ou le rover, établir une patrouille. |
 | B, A, P | Construire, avancer en combattant, mettre en pause ou reprendre. |
 | Bouton du milieu, molette | Déplacer la caméra en glissant, zoomer vers le pointeur. |
 | Minicarte, O, ⌾ | Centrer la caméra depuis la minicarte, afficher la vue d’ensemble ou revenir au forum. |

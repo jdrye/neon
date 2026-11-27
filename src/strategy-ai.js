@@ -1,12 +1,13 @@
-import { DT, LEVELS, SIDE, UNITS, apart, grid, populationLimit, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.1.0';
-import { atlas, buildReason, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, routeDistance, tickSimulation, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.1.0';
+import {knownPost,planCommerce,scoutPost} from './trade.js?v=8.2.0';
+import { DT, LEVELS, SIDE, UNITS, isMilitary, apart, grid, populationLimit, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.2.0';
+import { atlas, buildReason, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, routeDistance, tickSimulation, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.2.0';
 
 // The rival pays through the same public orders as the player. Difficulty changes
 // how often it plans, which investments it prioritises and when it sends a group.
 function commission(s,side,type,workers,home) {
   if(buildReason(s,side,type)||!workers.length)return false;
   const focus=mapPoint(s.size,home), sign=side?-1:1;
-  const offset={barracks:[2,-1],farm:[-2,2],house:[-2,-1],workshop:[2,1],depot:[0,-3],tower:[3,-2],spire:[-2,1],solar:[-3,-2],pump:[-2,3],mine:[2,-3],greenhouse:[0,3]}[type];
+  const offset={barracks:[2,-1],farm:[-2,2],house:[-2,-1],workshop:[2,1],market:[-2,-3],depot:[0,-3],tower:[3,-2],spire:[-2,1],solar:[-3,-2],pump:[-2,3],mine:[2,-3],greenhouse:[0,3]}[type];
   const wanted=mapKey(s.size,focus.x+offset[0]*sign,focus.y+offset[1]*sign);
   const board=atlas(s),candidates=[];
   const radius=board.size===SIDE?7.4:9.5;
@@ -42,7 +43,7 @@ export function planSide(s,side,difficulty,brain) {
   const home=side?board.rival:board.home, enemyHome=side?board.home:board.rival;
   const settlers=level.settlers+Math.round(scale*level.settlers), raidSize=level.army+Math.round(scale*4);
   const forum=ready(s,side,'forum')[0];if(!forum)return;
-  const workers=unitsOf(s,side,'worker'),army=unitsOf(s,side).filter(u=>u.type!=='worker');
+  const workers=unitsOf(s,side,'worker'),army=unitsOf(s,side).filter(u=>isMilitary(u.type));
   const sites=s.buildings.filter(b=>b.side===side&&!b.ready), time=s.tick*DT, has=type=>ready(s,side,type).length>0;
   if(sites.length){for(const b of sites)if(!workers.some(u=>u.order.target===b.id&&u.order.kind==='assist')){
     const nearest=workers.filter(u=>u.order.kind!=='assist').sort((a,c)=>mapDistance(s.size,unitCell(a,s.size),b.cell)-mapDistance(s.size,unitCell(c,s.size),b.cell))[0];
@@ -52,6 +53,7 @@ export function planSide(s,side,difficulty,brain) {
     if(!has('barracks'))buildList.push('barracks');
     if(p.used+p.reserved>=p.cap-2 && p.cap<populationLimit(s.size))buildList.push('house');
     if(!has('depot')||scale>=.5&&team.age>=2&&ready(s,side,'depot').length<2)buildList.push('depot');
+    if(s.campaign?.trade&&team.age>=2&&knownPost(s,side,side)&&!has('market')&&army.length>=2&&team.bank.wood>=60&&team.bank.ore>=24)buildList.push('market');
     if(!has('farm')&&(!s.nodes.some(n=>n.kind==='food'&&n.left>0&&mapDistance(s.size,n.cell,home)<5)||team.age>=2))buildList.push('farm');
     if(team.age>=2&&!has('workshop'))buildList.push('workshop');
     if(team.age>=2&&!has('tower')&&army.length>=3)buildList.push('tower');
@@ -72,7 +74,7 @@ export function planSide(s,side,difficulty,brain) {
   if(!forum.queue.length&&workers.length<settlers&&(!ageSoon||workers.length<7||team.bank.food>245))enqueue(s,side,forum.id,'unit','worker');
   const depot=ready(s,side,'depot')[0];
   if(depot&&!depot.queue.length&&workers.length>=7&&!team.tech.includes('harness')&&(!ageSoon||team.age>=2))enqueue(s,side,depot.id,'tech','harness');
-  const seen=vision(s,side),opponents=unitsOf(s,1-side).filter(u=>seen[unitCell(u,s.size)]&&u.type!=='worker');
+  const seen=vision(s,side),opponents=unitsOf(s,1-side).filter(u=>seen[unitCell(u,s.size)]&&isMilitary(u.type));
   const enemyTypes=Object.keys(UNITS).sort((a,b)=>opponents.filter(u=>u.type===b).length-opponents.filter(u=>u.type===a).length);
   for(const base of ready(s,side).filter(b=>b.type==='barracks'||b.type==='workshop')){
     if(base.queue.length)continue;
@@ -82,13 +84,17 @@ export function planSide(s,side,difficulty,brain) {
     choices.sort((a,b)=>score(a)-score(b));
     for(const key of choices){if(key==='guard'&&ageSoon&&army.length>=raidSize&&team.bank.food<218)continue;if(enqueue(s,side,base.id,'unit',key).ok)break;}
   }
+  if(s.campaign?.trade)planCommerce(s,side);
   const threat=opponents.filter(u=>mapDistance(s.size,unitCell(u,s.size),home)<=6).sort((a,b)=>mapDistance(s.size,unitCell(a,s.size),home)-mapDistance(s.size,unitCell(b,s.size),home))[0];
   if(threat){const reservists=army.filter(u=>mapDistance(s.size,unitCell(u,s.size),home)<=8&&u.order.target!==threat.id);if(reservists.length)orderUnits(s,side,reservists.map(u=>u.id),'attack',null,threat.id);return;}
   const enemySpire=s.buildings.find(b=>b.side!==side&&b.ready&&b.type==='spire');
   if(army.length>=raidSize && time>=level.raid+scale*20 && time-brain.lastRaid>=level.repeat+scale*25 || enemySpire&&army.length>=3&&time-brain.lastRaid>=30){
     const target=enemySpire?.cell??team.enemyForum??enemyHome;
-    const group=army.length>7?army.slice(1+Math.round(scale*3)):army;
+    const fieldArmy=army.filter(u=>u.order.kind!=='escort');
+    const group=fieldArmy.length>7?fieldArmy.slice(1+Math.round(scale*3)):fieldArmy;
     if(orderUnits(s,side,group.map(u=>u.id),'advance',target).ok)brain.lastRaid=time;
+  }else if(s.campaign?.trade&&time>21&&!knownPost(s,side,side)&&army.some(u=>u.type==='skimmer'&&u.order.kind==='idle')){
+    scoutPost(s,side,side);
   }else if(time>35&&s.relay.owner!==side){
     const scout=army.find(u=>u.type==='skimmer'&&u.order.kind==='idle'&&mapDistance(s.size,unitCell(u,s.size),home)<8);
     if(scout)orderUnits(s,side,[scout.id],'advance',atlas(s).relay);

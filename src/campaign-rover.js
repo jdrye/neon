@@ -1,8 +1,8 @@
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS} from './survey.js?v=6.0.0';
-import {sharedCost} from './colony-rules.js?v=8.1.0';
-import {DT,SIDE,apart,canPay,grid,mapPoint,mapDistance} from './strategy-rules.js?v=8.1.0';
-import {atlas,distancesFrom,gain,notify,pay,ready,refreshVision,routeDistance,travel,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.1.0';
+import {sharedCost} from './colony-rules.js?v=8.2.0';
+import {DT,SIDE,isMilitary,apart,canPay,grid,mapPoint,mapDistance} from './strategy-rules.js?v=8.2.0';
+import {atlas,distancesFrom,gain,notify,pay,ready,refreshVision,routeDistance,travel,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.2.0';
 
 export const MISSIONS = {
   flora:{name:'Forêt des brumes',art:'site-flora',kind:'wood',distance:6},
@@ -94,7 +94,7 @@ export function vote(s,key) {
   return success(councilEffects[key]);
 }
 export function contested(s,r) {
-  return unitsOf(s,1).some(u=>u.type!=='worker'&&apart(u,r)<2.4)&&!unitsOf(s,0).some(u=>u.type!=='worker'&&apart(u,r)<3.5);
+  return unitsOf(s,1).some(u=>isMilitary(u.type)&&apart(u,r)<2.4)&&!unitsOf(s,0).some(u=>isMilitary(u.type)&&apart(u,r)<3.5);
 }
 function unload(s,r) {
   const c=s.campaign;
