@@ -1,5 +1,5 @@
-import { LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, UNITS, isMilitary, populationLimit, validSize } from './strategy-rules.js?v=8.2.0';
-import { atlas, jobDef, refreshVision } from './strategy-engine.js?v=8.2.0';
+import { LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, UNITS, isMilitary, populationLimit, validSize } from './strategy-rules.js?v=8.3.0';
+import { atlas, jobDef, refreshVision } from './strategy-engine.js?v=8.3.0';
 
 export const MAX_SAVE_LENGTH = 3_000_000;
 const finite = (n,lo,hi) => Number.isFinite(n)&&n>=lo&&n<=hi;
@@ -33,7 +33,8 @@ export function readMatch(raw) {
     const deposits=atlas(s).deposits;if(s.nodes.length!==deposits.length||!s.nodes.every((n,i)=>n.cell===deposits[i].cell&&n.kind===deposits[i].kind&&finite(n.left,0,deposits[i].amount)))return null;
     if(!Number.isSafeInteger(s.nextId)||s.nextId<=Math.max(0,...ids)||!Number.isSafeInteger(s.rev)||s.rev<0||!finite(s.ai?.lastRaid,0,s.tick/4)||![-1,0,1].includes(s.relay?.owner)||![-1,0,1].includes(s.relay.contender)||!finite(s.relay.progress,0,12))return null;
     if(s.result!==null&&(![-1,0,1].includes(s.result?.winner)||!['forum','spire'].includes(s.result?.reason)))return null;
-    if(!s.result&&!(s.campaign?.peace?[0]:[0,1]).every(n=>s.buildings.filter(b=>b.side===n&&b.type==='forum'&&b.ready).length===1))return null;
+    if(s.level==='solo'&&(s.result||s.campaign?.peace||s.campaign?.siege!=null||[...s.units,...s.buildings].some(e=>e.side===1)))return null;
+    if(!s.result&&!(s.level==='solo'||s.campaign?.peace?[0]:[0,1]).every(n=>s.buildings.filter(b=>b.side===n&&b.type==='forum'&&b.ready).length===1))return null;
     // Imported text is never inserted into game markup. The log is shown as text.
     s.log=Array.isArray(s.log)?s.log.filter(l=>Number.isInteger(l?.tick)&&typeof l.text==='string').slice(-12).map(l=>({tick:l.tick,text:l.text.slice(0,180)})):[];
     if(s.scenario!=='siege')delete s.scenario;

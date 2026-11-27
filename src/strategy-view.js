@@ -1,9 +1,9 @@
-import {CONTRACTS,POST_NAMES} from './trade.js?v=8.2.0';
+import {CONTRACTS,POST_NAMES} from './trade.js?v=8.3.0';
 import { artUrl } from './art-url.js?v=6.0.0';
 import { BIOMES } from './world.js?v=6.0.0';
-import { groundArt, terrainOf } from './terrain.js?v=8.2.0';
-import { MAPS, RES, SIDE, STRUCTURES, UNITS, mapDistance, mapKey } from './strategy-rules.js?v=8.2.0';
-import { atlas, buildReason, routeDistance, unitCell, vision } from './strategy-engine.js?v=8.2.0';
+import { groundArt, terrainOf } from './terrain.js?v=8.3.0';
+import { MAPS, RES, SIDE, STRUCTURES, UNITS, mapDistance, mapKey } from './strategy-rules.js?v=8.3.0';
+import { atlas, buildReason, routeDistance, unitCell, vision } from './strategy-engine.js?v=8.3.0';
 
 const NS='http://www.w3.org/2000/svg';
 const TEAM=['#77f4cf','#ff926c'];

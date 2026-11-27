@@ -1,7 +1,7 @@
-import {RES, isMilitary} from './strategy-rules.js?v=8.2.0';
-import {buildReason, unitsOf} from './strategy-engine.js?v=8.2.0';
-import {CONTRACTS, POST_NAMES, knownPost, manifest, proceeds, tradingHall} from './trade.js?v=8.2.0';
-import {button,picture} from './command-ui.js?v=8.2.0';
+import {RES, isMilitary} from './strategy-rules.js?v=8.3.0';
+import {buildReason, unitsOf} from './strategy-engine.js?v=8.3.0';
+import {CONTRACTS, POST_NAMES, knownPost, manifest, proceeds, tradingHall} from './trade.js?v=8.3.0';
+import {button,picture} from './command-ui.js?v=8.3.0';
 
 const resource=(key,n)=>'<span class="freight-value">'+picture(RES[key].art)+n+' '+RES[key].name.toLowerCase()+'</span>';
 function postControl(s,index) {

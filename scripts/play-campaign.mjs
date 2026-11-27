@@ -22,9 +22,9 @@ export async function playCampaign({name, server, output, width, call, evaluate,
     return evaluate(`(async () => {
       const s = ${snapshot};
       const module = (file,version) => import(location.protocol === 'file:' ? 'neon/'+file+'.js' : './src/'+file+'.js?v='+version);
-      const {atlas,buildReason} = await module('strategy-engine','8.2.0');
-      const {terrainOf} = await module('terrain','8.2.0');
-      const {mapDistance} = await module('strategy-rules','8.2.0');
+      const {atlas,buildReason} = await module('strategy-engine','8.3.0');
+      const {terrainOf} = await module('terrain','8.3.0');
+      const {mapDistance} = await module('strategy-rules','8.3.0');
       const svg = document.querySelector('#rts-map'), map = atlas(s);
       const mesh = terrainOf(map.cells), type = ${JSON.stringify(type)};
       const tiles = map.cells.filter(t => !buildReason(s, 0, type, t.cell))
@@ -219,6 +219,7 @@ export async function playCampaign({name, server, output, width, call, evaluate,
   })()`);
   await use('map','passes');
   await use('size','65');
+  await use('level','solo');
   await use('start');
   await appears('#rts-map[data-tick]','fondation depuis le disque');
   await use('pause');
@@ -226,5 +227,7 @@ export async function playCampaign({name, server, output, width, call, evaluate,
   const offlinePlot=await locatePlot('hangar');
   await pointInput(offlinePlot.point);
   await stateIs("s.size===65 && s.region === 'passes' && s.buildings.some(b=>!b.side && b.type==='hangar') && s.units.some(u=>u.order.kind==='assist')",'chantier sur la carte hors ligne');
+  await call('Page.reload');await appears('#rts-map[data-paused="true"]','reprise de la colonie libre');
+  await stateIs("s.level==='solo'&&!s.result&&!s.units.some(u=>u.side===1)&&!s.buildings.some(b=>b.side===1)&&s.buildings.some(b=>b.type==='hangar')",'colonie libre sauvegardée');
   console.log(name+' · partie unique, défense, construction civile, rover, migration et HTML autonome validés.');
 }

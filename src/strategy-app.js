@@ -1,14 +1,14 @@
-import {charter,knownPost,recallCaravan,scoutPost} from './trade.js?v=8.2.0';
+import {charter,knownPost,recallCaravan,scoutPost} from './trade.js?v=8.3.0';
 import { randomSeed } from './world.js?v=6.0.0';
-import { AGES, DT, RES, STRUCTURES, UNITS, isMilitary, fmtTime, grid, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.2.0';
-import { atlas, cancelJob, cancelSite, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.2.0';
-import {createCampaign, districtRates, reviseDistrict, tickCampaign} from './campaign.js?v=8.2.0';
-import {campaignKey, importProgress, loadProgress} from './campaign-save.js?v=8.2.0';
-import {MAX_SAVE_LENGTH} from './strategy-save.js?v=8.2.0';
-import {launchRover, recallRover, scanRover, vote} from './campaign-rover.js?v=8.2.0';
-import {cityPanel, roverPanel} from './campaign-panel.js?v=8.2.0';
-import { BattleView } from './strategy-view.js?v=8.2.0';
-import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=8.2.0';
+import { AGES, DT, RES, STRUCTURES, UNITS, isMilitary, fmtTime, grid, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.3.0';
+import { atlas, cancelJob, cancelSite, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.3.0';
+import {createCampaign, districtRates, reviseDistrict, tickCampaign} from './campaign.js?v=8.3.0';
+import {campaignKey, importProgress, loadProgress} from './campaign-save.js?v=8.3.0';
+import {MAX_SAVE_LENGTH} from './strategy-save.js?v=8.3.0';
+import {launchRover, recallRover, scanRover, vote} from './campaign-rover.js?v=8.3.0';
+import {cityPanel, roverPanel} from './campaign-panel.js?v=8.3.0';
+import { BattleView } from './strategy-view.js?v=8.3.0';
+import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=8.3.0';
 
 export function mountCampaign(root,baseKey) {
   const saveKey=campaignKey(baseKey);
@@ -47,11 +47,12 @@ export function mountCampaign(root,baseKey) {
     }
     const ageJob=ready(state,0,'forum')[0]?.queue.find(j=>j.kind==='age');
     const built=new Set(ready(state,0).map(b=>b.type));
-    const header=ageJob?'Transition engagée':team.age===3?'Objectif orbital':'Prochain âge · '+AGES[team.age];
+    const header=ageJob?'Transition engagée':team.age===3?(state.level==='solo'?'Développement de la colonie':'Objectif orbital'):'Prochain âge · '+AGES[team.age];
     let next;
     if(ageJob)next=ageJob===ready(state,0,'forum')[0].queue[0]?`Passage dans ${Math.ceil(ageJob.left)} secondes.`:'Le passage attend son tour au forum.';
     else if(team.age===1)next=`${Math.min(2,[...built].filter(type=>type!=='forum').length)} / 2 types de bâtiments achevés en plus du forum.`;
     else if(team.age===2)next=`Atelier ${built.has('workshop')?'en service':'à construire'} · ${team.tech.length?'recherche acquise':'une recherche à achever'}.`;
+    else if(state.level==='solo')next='Poursuivez les objectifs de la cité, développez le port et explorez en rover.';
     else next=built.has('spire')?'Défendez la Flèche jusqu’à la synchronisation.':'Construisez une Flèche ou menez l’assaut sur le forum.';
     setText(byId('rts-next-title'),state.campaign.peace?'Bassin pacifié':header);
     setText(byId('rts-next'),state.campaign.peace?'Les équipes poursuivent les projets de la cité et les missions du rover.':next);
@@ -81,7 +82,7 @@ export function mountCampaign(root,baseKey) {
     const pause=one('[data-rts-act="pause"]');setText(pause,paused?'▶':'Ⅱ');pause.setAttribute('aria-label',paused?'Reprendre la simulation':'Mettre en pause');pause.setAttribute('aria-pressed',String(paused));setText(one('[data-rts-act="speed"]'),speed+'×');
     setText(one('[data-rts-act="drag"]'),dragMode==='select'?'Cadre':'Caméra');one('[data-rts-act="drag"]').setAttribute('aria-label',dragMode==='select'?'Glisser pour sélectionner. Passer en caméra.':'Glisser pour déplacer la caméra. Passer en sélection.');
     const ownSpire=ready(state,0,'spire')[0],enemySpire=ready(state,1,'spire')[0];
-    const task=state.campaign.peace?'Bassin pacifié · développez la cité et son port.':ownSpire?`Défendre la Flèche · ${Math.max(0,Math.ceil(90-ownSpire.hold))} s`:enemySpire?`Flèche adverse · ${Math.max(0,Math.ceil(90-enemySpire.hold))} s`:state.tick<200?'Développez votre forum et explorez les rives.':state.relay.owner===0?'Relais sous votre contrôle · +2 cristaux / 8 s':'Contrôlez le relais ou avancez vers Cendre.';
+    const task=state.level==='solo'?'Colonie libre · explorez et développez les deux rives.':state.campaign.peace?'Bassin pacifié · développez la cité et son port.':ownSpire?`Défendre la Flèche · ${Math.max(0,Math.ceil(90-ownSpire.hold))} s`:enemySpire?`Flèche adverse · ${Math.max(0,Math.ceil(90-enemySpire.hold))} s`:state.tick<200?'Développez votre forum et explorez les rives.':state.relay.owner===0?'Relais sous votre contrôle · +2 cristaux / 8 s':'Contrôlez le relais ou avancez vers Cendre.';
     setText(byId('rts-mission'),task);one('[data-rts-act="locate-spire"]').hidden=!enemySpire;
     one('[data-rts-act="locate-contact"]').hidden=!state.alarm||state.tick-state.alarm.tick>88;report(t);
     const alert=byId('rts-alert');const danger=ready(state,0,'forum')[0]?.hp<STRUCTURES.forum.hp*.7;const alertText=paused?'Pause tactique · ▶ pour reprendre':state.campaign.peace&&state.tick-state.campaign.peace.tick<100?'Victoire d’Aurore · bassin pacifié':danger?'Votre forum est endommagé':enemySpire?'Flèche adverse en service':'';
@@ -132,7 +133,7 @@ export function mountCampaign(root,baseKey) {
     frame=requestAnimationFrame(loop);
   }
   function displaySheet(kind){if(!sheet)beforeSheet=paused;sheet=kind;paused=true;carry=0;let content='';
-    if(kind==='help')content=helpMarkup();
+    if(kind==='help')content=helpMarkup(state);
     if(kind==='menu')content=`<h2>Colonie d’Aurore</h2><p>${fmtTime(state.tick*DT)} · ${AGES[state.teams[0].age-1]} · carte ${state.seed}</p><div class="rts-menu-actions">${button('back','Reprendre la partie')}${button('help','Commandes et objectifs')}${button('export','Exporter la sauvegarde')}${button('import','Importer une sauvegarde')}${button('sound',state.campaign.sound?'Couper l’ambiance sonore':'Activer l’ambiance sonore')}${button('setup','Fonder une nouvelle colonie')}</div>`;
     if(kind==='result'){const r=state.result,t=state.teams[0];content=`<h2>${r.winner===-1?'Égalité':'Victoire de Cendre'}</h2><p>${r.winner===-1?'Les deux cités ont atteint leur objectif au même instant.':r.reason==='spire'?'La Flèche de Cendre a terminé sa synchronisation.':'Le forum d’Aurore est tombé.'}</p><div class="rts-results"><span><b>${fmtTime(state.tick*DT)}</b>Durée</span><span><b>${t.age}</b>Âge atteint</span><span><b>${t.trained}</b>Unités formées</span></div>${button('setup','Fonder une nouvelle colonie')}${button('import','Importer une sauvegarde')}`;}
     const el=byId('rts-sheet');el.hidden=false;el.innerHTML=`<div class="rts-sheet-card" role="dialog" aria-modal="true" aria-label="Conseil de commandement">${content}</div>`;

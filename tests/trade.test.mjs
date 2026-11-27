@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCampaign,tickCampaign} from '../src/campaign.js?v=8.2.0';
-import {readCampaign} from '../src/campaign-save.js?v=8.2.0';
-import {planSide} from '../src/strategy-ai.js?v=8.2.0';
-import {atlas,buildReason,construct,enqueue,makeUnit,orderUnits,unitCell,unitsOf,walkable} from '../src/strategy-engine.js?v=8.2.0';
-import {mapDistance} from '../src/strategy-rules.js?v=8.2.0';
-import {charter,knownPost,proceeds,recallCaravan,scoutPost} from '../src/trade.js?v=8.2.0';
+import {createCampaign,tickCampaign} from '../src/campaign.js?v=8.3.0';
+import {readCampaign} from '../src/campaign-save.js?v=8.3.0';
+import {planSide} from '../src/strategy-ai.js?v=8.3.0';
+import {atlas,buildReason,construct,enqueue,makeUnit,orderUnits,unitCell,unitsOf,walkable} from '../src/strategy-engine.js?v=8.3.0';
+import {mapDistance} from '../src/strategy-rules.js?v=8.3.0';
+import {charter,knownPost,proceeds,recallCaravan,scoutPost} from '../src/trade.js?v=8.3.0';
 
 function until(s,check,limit=600){
   for(let i=0;i<limit&&!check()&&!s.result;i++)tickCampaign(s);

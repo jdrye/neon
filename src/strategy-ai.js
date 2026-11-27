@@ -1,6 +1,6 @@
-import {knownPost,planCommerce,scoutPost} from './trade.js?v=8.2.0';
-import { DT, LEVELS, SIDE, UNITS, isMilitary, apart, grid, populationLimit, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.2.0';
-import { atlas, buildReason, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, routeDistance, tickSimulation, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.2.0';
+import {knownPost,planCommerce,scoutPost} from './trade.js?v=8.3.0';
+import { DT, LEVELS, SIDE, UNITS, isMilitary, apart, grid, populationLimit, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.3.0';
+import { atlas, buildReason, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, routeDistance, tickSimulation, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.3.0';
 
 // The rival pays through the same public orders as the player. Difficulty changes
 // how often it plans, which investments it prioritises and when it sends a group.
@@ -38,7 +38,7 @@ function assignGatherers(s,side,workers) {
   }
 }
 export function planSide(s,side,difficulty,brain) {
-  if(s.result)return;
+  if(s.result||difficulty==='solo'||(side===1&&s.level==='solo'))return;
   const board=grid(s.size),scale=(board.size-SIDE)/(85-SIDE),level=LEVELS[difficulty],team=s.teams[side];
   const home=side?board.rival:board.home, enemyHome=side?board.home:board.rival;
   const settlers=level.settlers+Math.round(scale*level.settlers), raidSize=level.army+Math.round(scale*4);
@@ -102,6 +102,6 @@ export function planSide(s,side,difficulty,brain) {
 }
 export function tickMatch(state) {
   if(state.result)return;
-  if(state.tick%Math.round(LEVELS[state.level].interval/DT)===0)planSide(state,1,state.level,state.ai);
+  if(state.level!=='solo'&&state.tick%Math.round(LEVELS[state.level].interval/DT)===0)planSide(state,1,state.level,state.ai);
   tickSimulation(state);
 }

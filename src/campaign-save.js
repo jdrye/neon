@@ -1,13 +1,13 @@
-import {openTrade,validTrade} from './trade.js?v=8.2.0';
+import {openTrade,validTrade} from './trade.js?v=8.3.0';
 import {fieldState,importSave} from './engine.js?v=6.0.0';
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS,surveyProgress} from './survey.js?v=6.0.0';
-import {colonyType,scienceIds,sharedCost} from './colony-rules.js?v=8.2.0';
-import {RES,SIDE,STRUCTURES,mapPoint,mapDistance,populationLimit,validSize} from './strategy-rules.js?v=8.2.0';
-import {atlas,gain,makeBuilding,makeUnit,notify,orderUnits,ready,refreshVision,routeDistance,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.2.0';
-import {MAX_SAVE_LENGTH,readMatch} from './strategy-save.js?v=8.2.0';
-import {createCampaign,newSettlement,pacify} from './campaign.js?v=8.2.0';
-import {launchCell,missionSite,MISSIONS,newRover,roverBerth} from './campaign-rover.js?v=8.2.0';
+import {colonyType,scienceIds,sharedCost} from './colony-rules.js?v=8.3.0';
+import {RES,SIDE,STRUCTURES,mapPoint,mapDistance,populationLimit,validSize} from './strategy-rules.js?v=8.3.0';
+import {atlas,gain,makeBuilding,makeUnit,notify,orderUnits,ready,refreshVision,routeDistance,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.3.0';
+import {MAX_SAVE_LENGTH,readMatch} from './strategy-save.js?v=8.3.0';
+import {createCampaign,newSettlement,pacify} from './campaign.js?v=8.3.0';
+import {launchCell,missionSite,MISSIONS,newRover,roverBerth} from './campaign-rover.js?v=8.3.0';
 
 const whole=(n,max=Number.MAX_SAFE_INTEGER)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
 const owns=(dict,key)=>typeof key==='string'&&Object.hasOwn(dict,key);

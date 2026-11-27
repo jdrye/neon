@@ -1,5 +1,5 @@
-import {RES, STRUCTURES, canPay, mapDistance, mapKey} from './strategy-rules.js?v=8.2.0';
-import {atlas, distancesFrom, enqueue, gain, notify, orderUnits, pay, ready, routeDistance, travel, unitCell, unitsOf, walkable} from './strategy-engine.js?v=8.2.0';
+import {RES, STRUCTURES, canPay, mapDistance, mapKey} from './strategy-rules.js?v=8.3.0';
+import {atlas, distancesFrom, enqueue, gain, notify, orderUnits, pay, ready, routeDistance, travel, unitCell, unitsOf, walkable} from './strategy-engine.js?v=8.3.0';
 
 export const POST_NAMES = ['Comptoir du Ponant', 'Comptoir du Levant'];
 export const CONTRACTS = {
