@@ -1,29 +1,29 @@
 import {fieldState,importSave} from './engine.js?v=6.0.0';
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS,surveyProgress} from './survey.js?v=6.0.0';
-import {colonyType,scienceIds,sharedCost} from './colony-rules.js?v=8.0.0';
-import {HOME,MID,RES,RIVAL,SIDE,STRUCTURES,pointOf,tileDistance} from './strategy-rules.js?v=8.0.0';
-import {atlas,gain,makeBuilding,makeUnit,notify,orderUnits,ready,refreshVision,routeDistance,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.0.0';
-import {readMatch} from './strategy-save.js?v=8.0.0';
-import {createCampaign,newSettlement,pacify} from './campaign.js?v=8.0.0';
-import {launchCell,missionSite,MISSIONS,newRover,roverBerth} from './campaign-rover.js?v=8.0.0';
+import {colonyType,scienceIds,sharedCost} from './colony-rules.js?v=8.1.0';
+import {RES,SIDE,STRUCTURES,mapPoint,mapDistance,populationLimit,validSize} from './strategy-rules.js?v=8.1.0';
+import {atlas,gain,makeBuilding,makeUnit,notify,orderUnits,ready,refreshVision,routeDistance,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.1.0';
+import {MAX_SAVE_LENGTH,readMatch} from './strategy-save.js?v=8.1.0';
+import {createCampaign,newSettlement,pacify} from './campaign.js?v=8.1.0';
+import {launchCell,missionSite,MISSIONS,newRover,roverBerth} from './campaign-rover.js?v=8.1.0';
 
 const whole=(n,max=Number.MAX_SAFE_INTEGER)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
-const cell=n=>whole(n,SIDE*SIDE-1);
 const owns=(dict,key)=>typeof key==='string'&&Object.hasOwn(dict,key);
 const distinct=(arr,max,predicate)=>Array.isArray(arr)&&arr.length<=max&&new Set(arr).size===arr.length&&arr.every(predicate);
-function validRover(r,tick) {
+function validRover(r,tick,size) {
+  const cell=n=>whole(n,size*size-1);
   if(r===null)return true;
   return r&&r.id===0&&owns(MISSIONS,r.kind)&&owns(RIGS,r.rig)&&cell(r.target)&&['out','field','home'].includes(r.stage)
-    &&Number.isFinite(r.x)&&r.x>=0&&r.x<=SIDE-1&&Number.isFinite(r.y)&&r.y>=0&&r.y<=SIDE-1
+    &&Number.isFinite(r.x)&&r.x>=0&&r.x<=size-1&&Number.isFinite(r.y)&&r.y>=0&&r.y<=size-1
     &&whole(r.departed,tick)&&whole(r.scanUntil,tick+24)&&whole(r.scans)&&Number.isFinite(r.work)&&r.work>=0&&r.work<=7
-    &&typeof r.goal==='string'&&r.goal.length<=75&&Array.isArray(r.path)&&r.path.length<=SIDE*SIDE&&r.path.every(cell)
+    &&typeof r.goal==='string'&&r.goal.length<=75&&Array.isArray(r.path)&&r.path.length<=size*size&&r.path.every(cell)
     &&typeof r.loaded==='boolean'&&typeof r.surge==='boolean'&&r.cargo&&typeof r.cargo==='object'&&!Array.isArray(r.cargo)
     &&Object.entries(r.cargo).every(([k,n])=>owns(RES,k)&&whole(n,9999));
 }
 export function readCampaign(raw) {
   try {
-    if(typeof raw!=='string'||raw.length>1000000)return null;
+    if(typeof raw!=='string'||raw.length>MAX_SAVE_LENGTH)return null;
     const data=JSON.parse(raw), c=data.campaign;
     if(c?.version!==1||(c.sound!==undefined&&typeof c.sound!=='boolean')||!['deliveries','sorties','signals','orders','surgeWins'].every(k=>whole(c[k])))return null;
     if(!distinct(c.specimens,3,k=>owns(SURVEYS,k))||!distinct(c.claimed,7,i=>whole(i,6))
@@ -31,7 +31,8 @@ export function readCampaign(raw) {
     if(!Array.isArray(c.charters)||c.charters.length>1000||!c.charters.every(i=>owns(STRUCTURES,i.type)&&(STRUCTURES[i.type].civil||i.type==='house')&&whole(i.level,STRUCTURES[i.type].max||1)&&i.level>=1))return null;
     if(!(c.siege===null||whole(c.siege,data.tick))||!(c.peace===null||whole(c.peace.tick,data.tick)&&['forum','spire'].includes(c.peace.reason)))return null;
     if(c.peace&&(data.result||[...data.units,...data.buildings].some(e=>e.side===1)))return null;
-    if(!validRover(c.rover,data.tick))return null;
+    const size=Object.hasOwn(data,'size')?data.size:SIDE;
+    if(!validSize(size)||!validRover(c.rover,data.tick,size))return null;
     return readMatch(raw);
   } catch {return null;}
 }
@@ -44,8 +45,8 @@ function legacyBattle(raw) {
   try{if(JSON.parse(raw).campaign)return null;return readMatch(raw);}catch{return null;}
 }
 function transplant(s,old) {
-  const locations=new Map(),home=pointOf(HOME),anchor=unitsOf(s,0,'worker')[0];
-  const start=anchor?unitCell(anchor):launchCell(s,ready(s,0,'forum')[0]);
+  const board=atlas(s),locations=new Map(),home=mapPoint(s.size,board.home),anchor=unitsOf(s,0,'worker')[0];
+  const start=anchor?unitCell(anchor,s.size):launchCell(s,ready(s,0,'forum')[0]);
   for(const item of old.buildings) {
     if(item.type==='pod')continue;
     const type=colonyType(item.type),d=STRUCTURES[type];
@@ -53,10 +54,10 @@ function transplant(s,old) {
     if(existing){locations.set(item.id,existing);continue;}
     const [x,y]=item.id.split(',').map(Number);
     const target={x:home.x+(x-5)*1.65,y:home.y+(y-5)*1.65};
-    const candidates=atlas(s).cells.filter(t=>start!==null&&walkable(s,t.cell)&&!t.ford&&t.cell!==MID
-      &&tileDistance(t.cell,HOME)+2<tileDistance(t.cell,RIVAL)
-      &&s.buildings.every(b=>tileDistance(t.cell,b.cell)>=d.clearance+STRUCTURES[b.type].clearance)
-      &&s.units.every(u=>unitCell(u)!==t.cell));
+    const candidates=atlas(s).cells.filter(t=>start!==null&&walkable(s,t.cell)&&!t.ford&&t.cell!==board.relay
+      &&mapDistance(s.size,t.cell,board.home)+2<mapDistance(s.size,t.cell,board.rival)
+      &&s.buildings.every(b=>mapDistance(s.size,t.cell,b.cell)>=d.clearance+STRUCTURES[b.type].clearance)
+      &&s.units.every(u=>unitCell(u,s.size)!==t.cell));
     candidates.sort((a,b)=>Math.hypot(a.x-target.x,a.y-target.y)-Math.hypot(b.x-target.x,b.y-target.y));
     const spot=candidates.find(t=>routeDistance(s,start,t.cell,0)>=0);
     if(!spot){s.campaign.charters.push({type,level:item.level});continue;}
@@ -67,7 +68,7 @@ function transplant(s,old) {
   for(const id of old.crews) {
     const b=locations.get(id);if(!b||!Object.keys(STRUCTURES[b.type].output||{}).length)continue;
     let u=workers.find(u=>!['assist','staff'].includes(u.order.kind));
-    if(!u&&start!==null&&unitsOf(s,0).length<58){u=makeUnit(s,0,'worker',start);workers.push(u);}
+    if(!u&&start!==null&&unitsOf(s,0).length<populationLimit(s.size)){u=makeUnit(s,0,'worker',start);workers.push(u);}
     if(u)orderUnits(s,0,[u.id],'staff',b.cell,b.id);
   }
 }
@@ -79,8 +80,8 @@ function transferTrip(s,old,now) {
   const r=newRover(s,kind,rig,origin,target,!!drive?.surge);
   if(trip&&surveyProgress(trip,now)>=.5||drive?.signal){
     r.loaded=true;r.stage='home';r.cargo=trip?sharedCost(SURVEYS[kind].reward):{...drive.cargo,crystal:drive.cargo.crystal+4+(drive.surge?6:0),energy:drive.surge?8:0};
-    const near=atlas(s).cells.find(t=>walkable(s,t.cell)&&tileDistance(t.cell,target)<=1.45&&routeDistance(s,origin,t.cell,0)>=0);
-    if(near&&(!trip||surveyProgress(trip,now)<1))Object.assign(r,pointOf(near.cell));
+    const near=atlas(s).cells.find(t=>walkable(s,t.cell)&&mapDistance(s.size,t.cell,target)<=1.45&&routeDistance(s,origin,t.cell,0)>=0);
+    if(near&&(!trip||surveyProgress(trip,now)<1))Object.assign(r,mapPoint(s.size,near.cell));
   }else if(drive)r.cargo={...drive.cargo};
   r.scans=drive?.scans||0;c.rover=r;
 }

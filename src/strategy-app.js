@@ -1,29 +1,30 @@
 import { randomSeed } from './world.js?v=6.0.0';
-import { AGES, DT, HOME, RES, SIDE, STRUCTURES, UNITS, fmtTime, keyOf, pointOf, tileDistance } from './strategy-rules.js?v=8.0.0';
-import { atlas, cancelJob, cancelSite, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.0.0';
-import {createCampaign, districtRates, reviseDistrict, tickCampaign} from './campaign.js?v=8.0.0';
-import {campaignKey, importProgress, loadProgress} from './campaign-save.js?v=8.0.0';
-import {launchRover, recallRover, scanRover, vote} from './campaign-rover.js?v=8.0.0';
-import {cityPanel, roverPanel} from './campaign-panel.js?v=8.0.0';
-import { BattleView } from './strategy-view.js?v=8.0.0';
-import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=8.0.0';
+import { AGES, DT, RES, STRUCTURES, UNITS, fmtTime, grid, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.1.0';
+import { atlas, cancelJob, cancelSite, construct, enqueue, nearestSource, orderUnits, populationInfo, ready, setRally, unitCell, unitsOf, vision } from './strategy-engine.js?v=8.1.0';
+import {createCampaign, districtRates, reviseDistrict, tickCampaign} from './campaign.js?v=8.1.0';
+import {campaignKey, importProgress, loadProgress} from './campaign-save.js?v=8.1.0';
+import {MAX_SAVE_LENGTH} from './strategy-save.js?v=8.1.0';
+import {launchRover, recallRover, scanRover, vote} from './campaign-rover.js?v=8.1.0';
+import {cityPanel, roverPanel} from './campaign-panel.js?v=8.1.0';
+import { BattleView } from './strategy-view.js?v=8.1.0';
+import { arenaMarkup, button, commands, describe, helpMarkup, queueMarkup, setupMarkup } from './strategy-hud.js?v=8.1.0';
 
 export function mountCampaign(root,baseKey) {
   const saveKey=campaignKey(baseKey);
   const one=q=>root.querySelector(q),byId=id=>document.getElementById(id);
-  const options={seed:randomSeed(),region:'delta',level:'even'};
+  const options={seed:randomSeed(),size:45,region:'delta',level:'even'};
   let state=null,view=null,screen='setup',paused=true,speed=1,mode='',buildMenu=false,sheet='',beforeSheet=true;
-  let selection=[],groups={},cursor=null,lastIdle=0,dragMode='select',pointer=null,resizeObserver=null,frame=0,lastFrame=0,carry=0;
+  let selection=[],groups={},cursor=null,lastIdle=0,dragMode='select',pointer=null,resizeObserver=null,cameraFrame=0,frame=0,lastFrame=0,carry=0;
   let storage=true,radio='',radioAt=0,dirty=false,panel="orders",filter="base",rig="scout",surge=false,pending=null,audio=null;
   try{state=loadProgress(localStorage,baseKey);}catch{storage=false;}
   function save(){if(!state||!dirty)return;if(view)state.command={groups,selection,center:{...view.center},zoom:view.zoom,speed,panel,rig,surge};try{localStorage.setItem(saveKey,JSON.stringify(state));storage=true;dirty=false;}catch{storage=false;}}
   function speak(text){radio=text;radioAt=performance.now();if(byId('rts-radio'))byId('rts-radio').textContent=text;}
   function describeKey(key){if(!key||!state)return null;
-    if(key==='rover'){const e=state.campaign.rover;return e?{key,kind:'rover',e,cell:unitCell(e)}:null;}
+    if(key==='rover'){const e=state.campaign.rover;return e?{key,kind:'rover',e,cell:unitCell(e,state.size)}:null;}
     if(key==='relay')return {key,kind:'relay',e:state.relay,cell:atlas(state).relay};
     const id=Number(key.slice(1));if(key[0]==='n'){const e=state.nodes.find(n=>n.cell===id&&n.left>0);return e&&state.teams[0].explored[id]?{key,e,cell:id,kind:'node',visible:vision(state,0)[id]}:null;}
     const unit=state.units.find(u=>u.id===id),e=unit||state.buildings.find(b=>b.id===id);if(!e)return null;
-    const cell=unit?unitCell(e):e.cell;return !e.side||vision(state,0)[cell]?{key,e,cell,kind:unit?'unit':'building'}:null;
+    const cell=unit?unitCell(e,state.size):e.cell;return !e.side||vision(state,0)[cell]?{key,e,cell,kind:unit?'unit':'building'}:null;
   }
   const selected=()=>selection.map(describeKey).filter(Boolean);
   const group=()=>selected().filter(o=>o.kind==='unit'&&!o.e.side).map(o=>o.e);
@@ -99,18 +100,26 @@ export function mountCampaign(root,baseKey) {
     closeRenderer();screen='setup';sheet='';root.innerHTML=setupMarkup(options,state);
     root.setAttribute('aria-label','Fondation d’Aurore');one('[data-rts-act="start"]').focus({preventScroll:true});
   }
-  function closeRenderer(){cancelAnimationFrame(frame);resizeObserver?.disconnect();resizeObserver=null;view=null;pointer=null;carry=0;}
+  function closeRenderer(){cancelAnimationFrame(frame);cancelAnimationFrame(cameraFrame);cameraFrame=0;resizeObserver?.disconnect();resizeObserver=null;view=null;pointer=null;carry=0;}
   function play(fresh=false){
     closeRenderer();
-    if(fresh||!state){state=createCampaign(options.seed,options.region,options.level);dirty=true;}
+    if(fresh||!state){state=createCampaign(options.seed,options.region,options.level,options.size);dirty=true;}
     const kept=!fresh&&state.command;
     screen='match';mode='';sheet='';buildMenu=false;cursor=null;speed=kept?.speed||1;groups=kept?.groups||{};paused=!fresh;
     selection=kept?.selection||['e'+(ready(state,0,'forum')[0]?.id||0)];radio='';
     panel=['city','rover'].includes(kept?.panel)?kept.panel:'orders';rig=['scout','hauler','crawler'].includes(kept?.rig)?kept.rig:'scout';surge=kept?.surge===true;
     root.innerHTML=arenaMarkup(state);root.setAttribute('aria-label','Aurore · colonie de Kepler');
-    dragMode=matchMedia('(pointer:coarse)').matches||innerWidth<720?'pan':'select';
+    dragMode='select';
     view=new BattleView(byId('rts-map'),byId('rts-mini'),state);
     if(kept?.center){view.center={...kept.center};view.zoom=kept.zoom;view.camera();}
+    view.onCamera=()=>{
+      dirty=true;
+      if(cameraFrame)return;
+      cameraFrame=requestAnimationFrame(()=>{
+        cameraFrame=0;
+        view?.draw(selection,mode,cursor,speed,true);
+      });
+    };
     resizeObserver=new ResizeObserver(()=>view?.resize());resizeObserver.observe(view.svg);
     bindMap();paint();save();lastFrame=performance.now();frame=requestAnimationFrame(loop);
     if(state.result)displaySheet('result');else view.svg.focus({preventScroll:true});
@@ -154,7 +163,7 @@ export function mountCampaign(root,baseKey) {
     const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.multiple=true;
     input.onchange=async()=>{
       try{
-        const files=[...input.files];if(!files.length)return;if(files.length>2||files.some(f=>f.size>1000000))throw Error('Choisissez au plus deux fichiers JSON de moins de 1 Mo.');
+        const files=[...input.files];if(!files.length)return;if(files.length>2||files.some(f=>f.size>MAX_SAVE_LENGTH))throw Error('Choisissez au plus deux fichiers JSON de 3 Mo maximum.');
         const next=importProgress(await Promise.all(files.map(f=>f.text())));
         const restore=()=>{state=next;dirty=true;play();};
         if(state)confirmAction('Charger cette sauvegarde ?','La partie importée remplacera la colonie en cours sur cet appareil.','Charger',restore);else restore();
@@ -176,14 +185,14 @@ export function mountCampaign(root,baseKey) {
   function idle(){const free=unitsOf(state,0,'worker').filter(u=>u.order.kind==='idle');if(!free.length){speak('Tous les pionniers sont occupés.');return;}const i=free.findIndex(u=>u.id===lastIdle),u=free[(i+1)%free.length];lastIdle=u.id;select(['e'+u.id],true);}
   function rapid(kind){if(kind==='forum'){const b=ready(state,0,'forum')[0];if(b)select(['e'+b.id],true);return;}
     const us=unitsOf(state,0).filter(u=>kind==='army'?u.type!=='worker':u.type==='worker');if(us.length)select(us.map(u=>'e'+u.id),true);else speak('Aucune unité de ce type.');}
-  function sendWorker(item,job){if(!item)return;const workers=unitsOf(state,0,'worker').filter(u=>job!=='staff'||u.order.kind!=='staff'||u.order.target!==item.e.id).sort((a,b)=>Number(a.order.kind!=='idle')-Number(b.order.kind!=='idle')||tileDistance(unitCell(a),item.cell)-tileDistance(unitCell(b),item.cell));
+  function sendWorker(item,job){if(!item)return;const workers=unitsOf(state,0,'worker').filter(u=>job!=='staff'||u.order.kind!=='staff'||u.order.target!==item.e.id).sort((a,b)=>Number(a.order.kind!=='idle')-Number(b.order.kind!=='idle')||mapDistance(state.size,unitCell(a,state.size),item.cell)-mapDistance(state.size,unitCell(b,state.size),item.cell));
     for(const w of workers){const r=orderUnits(state,0,[w.id],job,item.cell,item.e.id);if(r.ok){select(['e'+w.id]);apply(r);return;}}speak('Aucun pionnier disponible pour cet ordre.');}
   function act(action,key){
     if(pending){if(action==='confirm'||action==='keep')dismiss(action==='confirm');return;}
     if(action==='import'){importGame();return;}
     if(screen==='setup'){
       if(action==='start')startNew();else if(action==='resume')play();
-      else if(['map','level','reroll'].includes(action)){const el=byId('rts-seed');if(el.value&&el.checkValidity())options.seed=Number(el.value);if(action==='map')options.region=key;if(action==='level')options.level=key;if(action==='reroll')options.seed=randomSeed();openSetup();one(`[data-rts-act="${action}"]${key?`[data-key="${key}"]`:''}`)?.focus();}return;
+      else if(['map','size','level','reroll'].includes(action)){const el=byId('rts-seed');if(el.value&&el.checkValidity())options.seed=Number(el.value);if(action==='map')options.region=key;if(action==='level')options.level=key;if(action==='size')options.size=Number(key);if(action==='reroll')options.seed=randomSeed();openSetup();one(`[data-rts-act="${action}"]${key?`[data-key="${key}"]`:''}`)?.focus();}return;
     }
     if(action==='export'){exportGame();return;}if(action==='sound'){toggleSound();return;}
     if(action==='back'){closeSheet();return;}if(action==='help'||action==='menu'){displaySheet(action);return;}if(action==='setup'){save();openSetup();return;}if(sheet||state.result)return;
@@ -198,11 +207,11 @@ export function mountCampaign(root,baseKey) {
     }
     if(action==='rig'){if(['scout','crawler','hauler'].includes(key))rig=key;dirty=true;paint();return;}
     if(action==='surge'){surge=!surge;dirty=true;paint();return;}
-    if(action==='dispatch'){const result=launchRover(state,key,rig,surge&&key==='signal');if(result.ok)view.focus(unitCell(state.campaign.rover));apply(result);return;}
+    if(action==='dispatch'){const result=launchRover(state,key,rig,surge&&key==='signal');if(result.ok)view.focus(unitCell(state.campaign.rover,state.size));apply(result);return;}
     if(action==='scan-rover'){apply(scanRover(state));return;}
     if(action==='recall-rover'){apply(recallRover(state));return;}
     if(action==='vote'){apply(vote(state,key));return;}
-    if(action==='locate-rover'||action==='locate-target'){const r=state.campaign.rover;if(r)view.focus(action==='locate-target'?r.target:unitCell(r));return;}
+    if(action==='locate-rover'||action==='locate-target'){const r=state.campaign.rover;if(r)view.focus(action==='locate-target'?r.target:unitCell(r,state.size));return;}
     if(action==='level-up'&&b){apply(enqueue(state,0,b.id,'level',key));return;}
     if(action==='staff-site'&&b){sendWorker(item,'staff');return;}
     if(action==='relocate'&&b){mode='relocate';cursor=b.cell;paint();view.svg.focus();return;}
@@ -213,13 +222,14 @@ export function mountCampaign(root,baseKey) {
     if(action==='locate-contact'){if(state.alarm)view.focus(state.alarm.cell);return;}
     if(action==='locate-spire'){const spire=ready(state,1,'spire')[0];if(spire)select(['e'+spire.id],true);return;}
     if(action==='idle'){idle();return;}if(['workers','army','forum'].includes(action)){rapid(action);return;}
-    if(action==='drag'){dragMode=dragMode==='pan'?'select':'pan';hud();return;}if(action==='home'){view.focus(HOME);return;}
+    if(action==='drag'){dragMode=dragMode==='pan'?'select':'pan';hud();return;}if(action==='home'){view.zoom=Math.max(view.zoom,.77);view.focus(atlas(state).home);return;}
+    if(action==='overview'){view.overview();return;}
     if(action==='zoom-in'||action==='zoom-out'){view.scale(action==='zoom-in'?1.2:1/1.2);return;}
     if(action==='cancel'||action==='back-orders'){mode='';buildMenu=false;cursor=null;paint();return;}
     if(action==='build-menu'){if(group().some(u=>u.type==='worker')){filter='base';buildMenu=true;paint();}return;}
-    if(action==='build'||['advance','rally','target'].includes(action)){mode=action==='build'?'build:'+key:action;cursor=item?.cell??HOME;buildMenu=false;paint();view.svg.focus({preventScroll:true});return;}
+    if(action==='build'||['advance','rally','target'].includes(action)){mode=action==='build'?'build:'+key:action;cursor=item?.cell??atlas(state).home;buildMenu=false;paint();view.svg.focus({preventScroll:true});return;}
     if(action==='stop'){apply(orderUnits(state,0,ids(),'stop'));return;}
-    if(action==='harvest'){let given=0;for(const u of group().filter(u=>u.type==='worker')){const c=nearestSource(state,0,unitCell(u),key);if(c!==null&&orderUnits(state,0,[u.id],'gather',c).ok)given++;}apply(given?{ok:true,message:`${given} pionnier(s) affecté(s) aux ${RES[key].name.toLowerCase()}.`}:{ok:false,message:'Explorez la carte pour repérer cette ressource.'});return;}
+    if(action==='harvest'){let given=0;for(const u of group().filter(u=>u.type==='worker')){const c=nearestSource(state,0,unitCell(u,state.size),key);if(c!==null&&orderUnits(state,0,[u.id],'gather',c).ok)given++;}apply(given?{ok:true,message:`${given} pionnier(s) affecté(s) aux ${RES[key].name.toLowerCase()}.`}:{ok:false,message:'Explorez la carte pour repérer cette ressource.'});return;}
     if(['age','unit','tech'].includes(action)&&b){apply(enqueue(state,0,b.id,action,key));return;}
     if(action==='cancel-job'&&b){apply(cancelJob(state,0,b.id,Number(key)));return;}
     if(action==='cancel-site'&&b){apply(cancelSite(state,0,b.id));return;}
@@ -249,7 +259,7 @@ export function mountCampaign(root,baseKey) {
   function bindMap(){const svg=view.svg,stage=svg.parentElement,box=byId('rts-marquee');
     const hit=e=>{const k=mode.startsWith('build:')||mode==='relocate'||mode==='rally'||mode==='advance'?null:e.target.closest?.('[data-rts-object]')?.dataset.rtsObject;const obj=describeKey(k);return {key:k,cell:obj?.cell??view.cellAt(view.worldPoint(e.clientX,e.clientY))};};
     svg.addEventListener('contextmenu',e=>{e.preventDefault();const h=hit(e);terrainAction(h.cell,h.key,true);});
-    svg.addEventListener('wheel',e=>{e.preventDefault();view.scale(e.deltaY<0?1.12:1/1.12);},{passive:false});
+    svg.addEventListener('wheel',e=>{e.preventDefault();view.scale(e.deltaY<0?1.12:1/1.12,e.clientX,e.clientY);},{passive:false});
     svg.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1||sheet)return;const h=hit(e);pointer={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,key:h.key,cell:h.cell,pan:e.button===1||dragMode==='pan',drag:false,id:e.pointerId,shift:e.shiftKey};});
     svg.addEventListener('pointermove',e=>{if(!pointer){if(mode){cursor=view.cellAt(view.worldPoint(e.clientX,e.clientY));view.cursor(cursor,mode);}return;}if(pointer.id!==e.pointerId)return;
       const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;if(!pointer.drag&&Math.hypot(dx,dy)<7)return;
@@ -275,11 +285,11 @@ export function mountCampaign(root,baseKey) {
     const k=e.key.toLowerCase();
     const number=e.code.match(/^(?:Digit|Numpad)([1-5])$/)?.[1]||(/^[1-5]$/.test(k)?k:null);
     if(number){e.preventDefault();if(e.ctrlKey||e.metaKey){groups[number]=group().map(u=>'e'+u.id);dirty=true;save();speak(`Groupe ${number} mémorisé.`);}else if(groups[number]?.length)select(groups[number],true);return;}
-    if(e.ctrlKey||e.metaKey||e.altKey)return;const shortcuts={p:'pause',h:'forum',v:'workers',m:'army',q:'idle',a:'advance',b:'build-menu','+':'zoom-in','-':'zoom-out'};
+    if(e.ctrlKey||e.metaKey||e.altKey)return;const shortcuts={p:'pause',h:'forum',v:'workers',m:'army',o:'overview',q:'idle',a:'advance',b:'build-menu','+':'zoom-in','-':'zoom-out'};
     if(shortcuts[k]){e.preventDefault();act(shortcuts[k]);return;}
-    const arrow={ArrowLeft:[-1,1],ArrowRight:[1,-1],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(arrow){e.preventDefault();const p=pointOf(cursor??selected()[0]?.cell??HOME);
-      cursor=keyOf(Math.max(0,Math.min(SIDE-1,p.x+arrow[0])),Math.max(0,Math.min(SIDE-1,p.y+arrow[1])));view.focus(cursor);view.cursor(cursor,mode);view.svg.focus();return;}
-    if((k==='enter'||k===' ')&&e.target===view.svg){e.preventDefault();const c=cursor??HOME;const unit=state.units.find(u=>unitCell(u)===c&&(!u.side||vision(state,0)[c])),b=state.buildings.find(b=>b.cell===c&&(!b.side||vision(state,0)[c]));const key=unit?'e'+unit.id:b?'e'+b.id:state.nodes.some(n=>n.cell===c&&n.left>0)?'n'+c:atlas(state).relay===c?'relay':null;terrainAction(c,key,false,e.shiftKey);}
+    const arrow={ArrowLeft:[-1,1],ArrowRight:[1,-1],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(arrow){e.preventDefault();const {size,home}=grid(state.size),p=mapPoint(size,cursor??selected()[0]?.cell??home);
+      cursor=mapKey(size,Math.max(0,Math.min(size-1,p.x+arrow[0])),Math.max(0,Math.min(size-1,p.y+arrow[1])));view.focus(cursor);view.cursor(cursor,mode);view.svg.focus();return;}
+    if((k==='enter'||k===' ')&&e.target===view.svg){e.preventDefault();const c=cursor??atlas(state).home;const unit=state.units.find(u=>unitCell(u,state.size)===c&&(!u.side||vision(state,0)[c])),b=state.buildings.find(b=>b.cell===c&&(!b.side||vision(state,0)[c]));const key=unit?'e'+unit.id:b?'e'+b.id:state.nodes.some(n=>n.cell===c&&n.left>0)?'n'+c:atlas(state).relay===c?'relay':null;terrainAction(c,key,false,e.shiftKey);}
   });
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&audio)audio.suspend();else if(audio&&state?.campaign.sound)audio.resume();if(document.hidden&&view){paused=true;carry=0;dirty=true;save();hud();}});window.addEventListener('pagehide',()=>{if(view)dirty=true;save();});
   if(state)play();else openSetup();

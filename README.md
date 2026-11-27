@@ -4,7 +4,14 @@ Un jeu de stratégie et de colonisation en français. Sur Kepler, Aurore et Cend
 
 ## Fonder Aurore
 
-Choisissez le delta, les plateaux d’ambre ou les cols de givre, un numéro de carte et la difficulté. **Fonder la colonie** vous donne un forum, cinq pionniers et un Voltigeur. Quatre pionniers travaillent déjà. Le cinquième peut construire un hangar ou une caserne, rejoindre une équipe de récolte ou assurer la production d’une installation.
+Choisissez le delta, les plateaux d’ambre ou les cols de givre, une taille, un numéro de carte et la difficulté. Le même numéro, utilisé avec la même taille et le même bassin, reproduit le terrain. **Fonder la colonie** vous donne un forum, cinq pionniers et un Voltigeur. Quatre pionniers travaillent déjà. Le cinquième peut construire un hangar ou une caserne, rejoindre une équipe de récolte ou assurer la production d’une installation.
+
+| Taille | Dimensions | Plafond par camp |
+| --- | --- | ---: |
+| Classique | 27 × 27 | 58 |
+| Grande | 45 × 45 | 90 |
+| Vaste | 65 × 65 | 140 |
+| Immense | 85 × 85 | 200 |
 
 | Dans la partie | Ce que vous commandez |
 | --- | --- |
@@ -30,17 +37,18 @@ Un forum adverse détruit ou une Flèche orbitale défendue pendant 90 secondes 
 
 | Commande | Action |
 | --- | --- |
-| Clic ou toucher | Sélectionner une unité, puis désigner une destination ou une ressource. |
+| Clic gauche | Sélectionner une unité, puis désigner une destination ou une ressource. |
 | Clic droit | Donner un ordre contextuel ou fixer un ralliement depuis un bâtiment de formation. |
 | Glisser, Maj + clic, double-clic | Sélectionner un groupe, modifier sa composition ou prendre toutes les unités du même type à l’écran. |
 | Ctrl + 1 à 5, puis 1 à 5 | Mémoriser et rappeler un groupe, y compris sur un clavier AZERTY. |
 | H, V, M, Q | Sélectionner le forum, les pionniers, l’armée ou le prochain pionnier libre. |
 | B, A, P | Construire, avancer en combattant, mettre en pause ou reprendre. |
-| Téléphone | Glisser pour déplacer la carte. Le bouton Caméra permet de passer à la sélection au cadre. |
+| Bouton du milieu, molette | Déplacer la caméra en glissant, zoomer vers le pointeur. |
+| Minicarte, O, ⌾ | Centrer la caméra depuis la minicarte, afficher la vue d’ensemble ou revenir au forum. |
 
 ## Retrouver une partie
 
-La campagne s’enregistre sur cet appareil et reprend en pause. La simulation utilise le temps de jeu pour la ville, le rover et le front. Le menu permet d’exporter ou d’importer un fichier JSON.
+La campagne s’enregistre sur cet appareil et reprend en pause. Les campagnes créées avant le choix de la taille retrouvent leur terrain de 27 × 27 cases. La simulation utilise le temps de jeu pour la ville, le rover et le front. Le menu permet d’exporter ou d’importer un fichier JSON.
 
 À la première ouverture, les sauvegardes locales de la colonie et de l’escarmouche sont lues ensemble. Une escarmouche en cours fournit le terrain, les troupes et les files de production. Les anciennes réserves de minerai et de cristaux s’ajoutent aux réserves du front dans la limite de stockage. La biomasse rejoint les vivres. Les bâtiments civils sont replacés à proximité du forum avec leur niveau. Un bâtiment qui manque de place devient un kit à réinstaller gratuitement. Les recherches, les spécimens, les votes et la cargaison d’une sortie déjà payée suivent la cité.
 
@@ -55,4 +63,4 @@ npm run dev
 npm run build:preview -- dist/NEON-Aurore.html
 ```
 
-Le fichier HTML autonome embarque le même jeu et les illustrations. Le contrôle GitHub Actions joue la campagne à la souris et au toucher, teste la migration des deux archives et joint l’HTML ainsi que les captures dans l’artefact **kepler-en-jeu**. Le workflow publie le jeu sur GitHub Pages lors d’un push sur `main`.
+Le fichier HTML autonome embarque le même jeu et les illustrations. Le contrôle GitHub Actions joue la campagne au clavier et à la souris sur ordinateur, teste la migration des deux archives et joint l’HTML ainsi que les captures dans l’artefact **kepler-en-jeu**. Le workflow publie le jeu sur GitHub Pages lors d’un push sur `main`.

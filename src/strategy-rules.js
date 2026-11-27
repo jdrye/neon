@@ -1,6 +1,14 @@
-import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.0.0';
+import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.1.0';
 
 export const SIDE = 27, HOME = 17 * SIDE + 6, RIVAL = SIDE * SIDE - 1 - HOME, MID = 13 * SIDE + 13;
+export const MAP_SIZES = {
+  27: {name:'Classique', population:58},
+  45: {name:'Grande', population:90},
+  65: {name:'Vaste', population:140},
+  85: {name:'Immense', population:200},
+};
+export const validSize = size => Number.isInteger(size)&&Object.hasOwn(MAP_SIZES,size);
+export const populationLimit = size => MAP_SIZES[size??SIDE].population;
 export const DT = .25;
 export const RES = {
   food: { name: 'Vivres', art: 'planter' }, wood: { name: 'Bois', art: 'bio' },
@@ -47,23 +55,40 @@ export const TRANSITIONS = {
   2:{name:'Âge II · Expansion',at:'forum',cost:{food:112,ore:38,crystal:12},time:32,note:'Achever deux types de bâtiments différents en plus du forum.'},
   3:{name:'Âge III · Rayonnement',at:'forum',cost:{food:190,ore:85,crystal:50},time:46,note:'Achever un atelier et acquérir au moins une recherche.'},
 };
-export const keyOf = (x,y) => Math.round(y)*SIDE + Math.round(x);
-export const pointOf = id => ({x:id%SIDE, y:Math.floor(id/SIDE)});
+export const mapKey = (size=SIDE,x,y) => Math.round(y)*size + Math.round(x);
+export const mapPoint = (size=SIDE,id) => ({x:id%size, y:Math.floor(id/size)});
+export const keyOf = (x,y) => mapKey(SIDE,x,y);
+export const pointOf = id => mapPoint(SIDE,id);
 export const apart = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
-export const tileDistance = (a,b) => apart(pointOf(a),pointOf(b));
+export const mapDistance = (size=SIDE,a,b) => Math.hypot(a%size-b%size,Math.floor(a/size)-Math.floor(b/size));
+export const tileDistance = (a,b) => mapDistance(SIDE,a,b);
 export const costText = cost => Object.entries(cost||{}).map(([k,n])=>`${n} ${RES[k].name.toLowerCase()}`).join(' · ');
 export const canPay = (bank,cost) => Object.entries(cost).every(([k,n])=>bank[k]>=n);
 export const fmtTime = seconds => `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
-export const eachNeighbor = Array.from({length:SIDE*SIDE},(_,id)=>{
-  const {x,y}=pointOf(id);
-  return [[1,0],[0,1],[-1,0],[0,-1]].map(([a,b])=>[x+a,y+b]).filter(([a,b])=>a>=0&&b>=0&&a<SIDE&&b<SIDE).map(([a,b])=>keyOf(a,b));
-});
+const grids=new Map();
+export function grid(size=SIDE) {
+  if(!grids.has(size)){
+    const count=size*size, center=(size-1)/2;
+    const home=size===SIDE?HOME:mapKey(size,Math.round(size*.23),Math.round(size*.63));
+    const neighbors=Array.from({length:count},(_,id)=>{
+      const {x,y}=mapPoint(size,id);
+      const cells=[];
+      if(x<size-1)cells.push(id+1);
+      if(y<size-1)cells.push(id+size);
+      if(x>0)cells.push(id-1);
+      if(y>0)cells.push(id-size);
+      return cells;
+    });
+    grids.set(size,{size,count,home,rival:count-1-home,relay:mapKey(size,center,center),neighbors});
+  }
+  return grids.get(size);
+}
+export const eachNeighbor=grid().neighbors;
 function random(seed) {
   return () => {seed=(seed+0x6d2b79f5)>>>0; let a=Math.imul(seed^(seed>>>15),1|seed); a^=a+Math.imul(a^(a>>>7),61|a);return ((a^(a>>>14))>>>0)/4294967296;};
 }
 const charts=new Map();
-export function battlefield(seed,region) {
-  const key=region+seed; if(charts.has(key)) return charts.get(key);
+function classicBattlefield(seed,region) {
   const rng=random(seed), wave=1.2+rng()*.72, spread=1.2+rng()*.5;
   const cells=Array.from({length:SIDE*SIDE},(_,id)=>{
     const {x,y}=pointOf(id), dx=x-13,dy=y-13;
@@ -91,6 +116,66 @@ export function battlefield(seed,region) {
   }
   const relay=MID;
   cells[relay].terrain='sand';cells[relay].ridge=false;
-  const map={cells,deposits:deposits.filter(d=>d.cell!==relay),relay};
-  if(charts.size>=12)charts.delete(charts.keys().next().value); charts.set(key,map);return map;
+  return {cells,deposits:deposits.filter(d=>d.cell!==relay)};
+}
+
+function wideBattlefield(seed,region,board) {
+  const {size,count,home,rival,relay,neighbors}=board, middle=(size-1)/2;
+  const rng=random(seed), key=(x,y)=>mapKey(size,x,y), distance=(a,b)=>mapDistance(size,a,b);
+  const wave=1.6+rng()*2.4, frequency=.12+rng()*.07;
+  const crossing=Math.round(middle*(.39+rng()*.22)), width=size>=65?2:1;
+  const lakes=Array.from({length:region==='mesas'?Math.ceil(size/18):Math.ceil(size/29)},(_,i)=>({
+    x:middle*(.32+rng()*.28),y:middle*(-.77+(i+.3)*1.54/Math.ceil(size/18)),
+    rx:2.2+rng()*size*.045,ry:2.5+rng()*size*.05,
+  }));
+  const cells=Array.from({length:count},(_,cell)=>{
+    const {x,y}=mapPoint(size,cell),dx=x-middle,dy=y-middle;
+    const line=Math.round(Math.sin(dy*frequency)*wave);
+    const coast=Math.max(Math.abs(dx),Math.abs(dy))>=middle-1||
+      Math.pow(dx/(middle-1),4)+Math.pow(dy/(middle-1),4)>1+.06*Math.cos((dx-dy)*.31);
+    const clear=distance(cell,home)<=5.5||distance(cell,rival)<=5.5||distance(cell,relay)<=3;
+    const channel=Math.abs(dx-line)<=width;
+    const gap=[-crossing,0,crossing].some(y=>Math.abs(dy-y)<=2);
+    const ford=region==='delta'&&channel&&gap&&!coast;
+    const lake=!clear&&lakes.some(l=>[-1,1].some(sign=>((dx-sign*l.x)/l.rx)**2+((dy-sign*l.y)/l.ry)**2<1));
+    const water=coast||lake||region==='delta'&&channel&&!gap;
+    const ridge=region==='passes'&&!water&&!clear&&channel&&!gap;
+    return {id:`${x},${y}`,cell,x,y,terrain:water?'water':'grass',ridge,ford,variant:Math.floor(rng()*10000)};
+  });
+  for(const c of cells)if(c.terrain==='grass'&&(c.ford||neighbors[c.cell].some(n=>cells[n].terrain==='water')))c.terrain='sand';
+
+  const deposits=[], occupied=new Set([home,rival,relay]);
+  function add(cell,kind,amount) {
+    const other=count-1-cell;
+    if([cell,other].some(id=>occupied.has(id)||!cells[id]||cells[id].terrain==='water'||cells[id].ridge||cells[id].ford))return false;
+    for(const id of [cell,other]){occupied.add(id);deposits.push({cell:id,kind,amount});}
+    return true;
+  }
+  const origin=mapPoint(size,home);
+  for(const [dx,dy,kind] of [[-3,-1,'wood'],[-2,-2,'wood'],[-1,2,'food'],[2,1,'food'],[2,-2,'ore'],[-1,-3,'crystal']]){
+    add(key(origin.x+dx,origin.y+dy),kind,kind==='crystal'?280:380);
+  }
+  const kinds=['wood','food','ore','wood','crystal','food','ore','crystal'];
+  const reserves=Math.round(count/47);
+  for(let i=0;i<reserves;i++){
+    const kind=kinds[i%kinds.length];
+    for(let attempt=0;attempt<90;attempt++){
+      const x=2+Math.floor(rng()*(middle-3)),y=2+Math.floor(rng()*(size-4)),cell=key(x,y);
+      if(Math.abs(x-middle)<=width+Math.ceil(wave)+2||distance(cell,home)<5||neighbors[cell].some(n=>occupied.has(n)))continue;
+      if(add(cell,kind,kind==='crystal'?380+rngInt(181):490+rngInt(231)))break;
+    }
+  }
+  function rngInt(limit){return Math.floor(rng()*limit);}
+  return {cells,deposits};
+}
+
+export function battlefield(seed,region,size=SIDE) {
+  const key=`${region}:${seed}:${size}`;
+  if(charts.has(key))return charts.get(key);
+  const board=grid(size);
+  const terrain=size===SIDE?classicBattlefield(seed,region):wideBattlefield(seed,region,board);
+  const map={...board,...terrain};
+  if(charts.size>=8)charts.delete(charts.keys().next().value);
+  charts.set(key,map);
+  return map;
 }
