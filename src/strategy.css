@@ -78,3 +78,21 @@ button { cursor:pointer; } button:disabled { cursor:default; } img { vertical-al
 .rts-sizes small { color:var(--r-muted); font-variant-numeric:tabular-nums; }
 .rts-mini-wrap canvas { position:absolute; inset:0; box-sizing:border-box; width:100%; height:100%; padding:inherit; border-radius:inherit; pointer-events:none; }
 #rts-mini { position:relative; }
+
+.rts-roster { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.freight-head { display:flex; align-items:center; gap:12px; }
+.freight-head>img { width:67px; height:61px; object-fit:contain; }
+.freight-ports,.freight-choice>div { display:grid; gap:5px; }
+.freight-ports { margin-top:9px; }
+.freight-ports>div { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--r-line); }
+.freight-ports b,.freight-choice>b { display:block; color:#f6e1b2; font-size:13px; }
+.freight-ports small,.freight-contract small { display:block; color:var(--r-muted); font-size:11px; }
+.freight-choice,.freight-contract { padding:9px 10px; margin:7px 0; background:#192e2aa8; border:1px solid var(--r-line); border-radius:5px; }
+.freight-choice>b { margin-bottom:7px; }
+#rts-screen .freight-choice button { text-align:left; padding:5px 7px; }
+.freight-value { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
+.freight-value img { width:18px; height:18px; object-fit:contain; }
+.freight-track { display:flex; gap:3px; margin:8px 0 6px; }
+.freight-track span { flex:1; font-size:11px; color:#aec2b4; border-top:2px solid #59716b; padding-top:5px; }
+.freight-track [aria-current] { border-color:#ecc982; color:#ffe1a7; font-weight:bold; }
+#rts-screen .freight-contract h3 { margin:0; font-size:21px; }.freight-contract p { margin:5px 0; font-size:12px; }

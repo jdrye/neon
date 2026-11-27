@@ -1,15 +1,16 @@
-import {IMPROVEMENTS} from './colony-rules.js?v=8.1.0';
+import {caravanOrders,postDescription} from './trade-panel.js?v=8.2.0';
+import {IMPROVEMENTS} from './colony-rules.js?v=8.2.0';
 import { artUrl } from './art-url.js?v=6.0.0';
-import { AGES, DT, GATHERED, LEVELS, MAPS, MAP_SIZES, RES, SIDE, STRUCTURES, STUDIES, TEAMS, TRANSITIONS, UNITS, costText, fmtTime } from './strategy-rules.js?v=8.1.0';
-import { buildReason, jobDef, jobCost, jobReason } from './strategy-engine.js?v=8.1.0';
+import { AGES, DT, GATHERED, LEVELS, MAPS, MAP_SIZES, RES, SIDE, STRUCTURES, STUDIES, TEAMS, TRANSITIONS, UNITS, isMilitary, costText, fmtTime } from './strategy-rules.js?v=8.2.0';
+import { buildReason, jobDef, jobCost, jobReason } from './strategy-engine.js?v=8.2.0';
 
-export const picture=(art,cls='')=>`<img class="${cls}" src="${artUrl(art)}" alt="" draggable="false">`;
-export function button(act,text,key='',disabled=false,title='') {return `<button type="button" data-rts-act="${act}"${key?` data-key="${key}"`:''}${disabled?' disabled':''}${title?` title="${title}"`:''}>${text}</button>`;}
+import {picture,button} from './command-ui.js?v=8.2.0';
+export {picture,button} from './command-ui.js?v=8.2.0';
 const prices=cost=>Object.entries(cost||{}).map(([k,n])=>`<span title="${RES[k].name}">${picture(RES[k].art)}${n}</span>`).join('');
 function card(act,key,d,reason,art) {return `<button type="button" class="rts-card" data-rts-act="${act}" data-key="${key}" title="${d.note} ${reason||costText(d.cost)}" ${reason?'disabled':''}>${art?picture(art):''}<span><b>${d.name}</b><small class="rts-price">${prices(d.cost)}</small>${reason?`<small class="rts-locked">${reason}</small>`:''}</span></button>`;}
 const crest='<svg viewBox="0 0 40 40" aria-hidden="true"><path d="m20 3 14 7-1 15-13 12L7 25 6 10Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m10 23 10-14 11 15-9-5-6 8 2-10Z" fill="currentColor"/></svg>';
 export function setupMarkup(options,saved) {
-  return `<div class="rts-setup"><div class="rts-keyart">${picture('rts-valley')}<div class="rts-keycopy"><span>${crest} NÉON</span><h1>Les Deux Rives</h1><p>Bâtissez Aurore, partez en rover au-delà des gués et défendez votre cité face aux Maisons de Cendre.</p></div></div>
+  return `<div class="rts-setup"><div class="rts-keyart">${picture('rts-valley')}<div class="rts-keycopy"><span>${crest} NÉON</span><h1>Les Deux Rives</h1><p>Fondez Aurore, explorez les gués en rover et protégez vos routes marchandes face aux Maisons de Cendre.</p></div></div>
     <div class="rts-briefing"><div class="rts-brow">PLANÈTE KEPLER</div><h2>Fonder Aurore</h2>
     <fieldset><legend>Bassin d’implantation</legend><div class="rts-options">${Object.entries(MAPS).map(([k,m])=>`<button data-rts-act="map" data-key="${k}" aria-pressed="${k===options.region}">${m.name}</button>`).join('')}</div><p>${MAPS[options.region].terrain}</p></fieldset>
     <fieldset><legend>Taille de carte</legend><div class="rts-options rts-sizes">${Object.entries(MAP_SIZES).map(([k,m])=>`<button data-rts-act="size" data-key="${k}" aria-pressed="${Number(k)===options.size}"><b>${m.name}</b><small>${k} × ${k}</small></button>`).join('')}</div><p>Jusqu’à ${MAP_SIZES[options.size].population} unités par camp avec les habitats.</p></fieldset>
@@ -36,17 +37,18 @@ export function arenaMarkup(s) {
 export function describe(s,items){
   if(!items.length)return `<div class="rts-selected"><div><small>COMMANDEMENT</small><h3>Aurore</h3><p>Choisissez des unités sur le terrain ou utilisez les sélections rapides.</p></div></div>`;
   const first=items[0];if(first.kind==='rover')return `<div class="rts-selected">${picture('rover')}<div><small>EXPLORATION</small><h3>Rover de Kepler</h3><p>Transmet ses observations à la cité.</p></div></div>`;
+  if(first.kind==='post')return postDescription(first.e.index);
   if(first.kind==='relay'){const r=s.relay;return `<div class="rts-selected">${picture('beacon')}<div><small>POINT DE CONTRÔLE</small><h3>Relais du bassin</h3><p>${r.owner<0?'Relais neutre':TEAMS[r.owner]} · ${r.contender>=0?`capture ${Math.floor(r.progress)} / 12 s`:'2 cristaux toutes les 8 s et vision locale'}</p></div></div>`;}
   if(first.kind==='node'){const n=first.e;return `<div class="rts-selected">${picture(RES[n.kind].art)}<div><small>GISEMENT</small><h3>${RES[n.kind].name}</h3><p>${first.visible?`${n.left} unités disponibles.`:'Dernière position connue.'} Assignez un pionnier pour exploiter ce site.</p></div></div>`;}
   const e=first.e,isUnit=first.kind==='unit',d=(isUnit?UNITS:STRUCTURES)[e.type];
   if(items.length>1){const counts={};for(const o of items)counts[o.e.type]=(counts[o.e.type]||0)+1;return `<div class="rts-selected">${picture(d.art)}<div><small>GROUPE D’AURORE</small><h3>${items.length} unités</h3><p>${Object.entries(counts).map(([k,n])=>`${n} × ${UNITS[k].name}`).join(' · ')}</p></div></div>`;}
-  let status='';if(isUnit){status={idle:'Disponible',move:'En mouvement',advance:'En progression',attack:'Engagé',gather:e.order.delivering?'Retour au dépôt':`Collecte de ${RES[e.order.resource]?.name.toLowerCase()||''}`,assist:'Au chantier',repair:'En réparation',staff:'En poste à la production'}[e.order.kind];if(e.cargo)status+=` · charge ${e.cargo.n} ${RES[e.cargo.kind].name.toLowerCase()}`;}
+  let status='';if(isUnit){status={idle:'Disponible',move:'En mouvement',advance:'En progression',attack:'Engagé',gather:e.order.delivering?'Retour au dépôt':`Collecte de ${RES[e.order.resource]?.name.toLowerCase()||''}`,assist:'Au chantier',repair:'En réparation',staff:'En poste à la production',patrol:'En patrouille',escort:'En escorte',trade:'Sur la route commerciale'}[e.order.kind];if(e.cargo)status+=` · charge ${e.cargo.n} ${RES[e.cargo.kind].name.toLowerCase()}`;}
   else status=e.ready?(e.type==='spire'?`Synchronisation · ${Math.floor(e.hold)} / 90 s`:(d.max>1?'En service · niveau '+(e.level||1):'En service')):`Chantier · ${Math.floor(e.work/d.time*100)} %`;
   return `<div class="rts-selected">${picture(d.art)}<div><small>${TEAMS[e.side].toUpperCase()}</small><h3>${d.name}</h3><p>${status} · ${Math.ceil(e.hp)} / ${d.hp} PV</p></div></div><p class="rts-note">${d.note}</p>`;
 }
 const catalog={
-  base:['house','depot','farm','barracks','solar','pump','hangar'],
-  industry:['solar','pump','greenhouse','mine','wind','residence','hydroponics','quarry','synthesizer'],
+  base:['house','depot','farm','barracks','solar','pump','hangar','market'],
+  industry:['market','solar','pump','greenhouse','mine','wind','residence','hydroponics','quarry','synthesizer'],
   army:['house','depot','farm','barracks','workshop','tower','spire'],
   science:['hangar','laboratory','beacon','observatory','lighthouse'],
 };
@@ -54,6 +56,7 @@ export function commands(s,items,buildMenu,filter='base') {
   const first=items[0];if(!first)return '';
   if(first.kind==='rover')return button('panel','Ouvrir les commandes du rover','rover');
   if(first.kind==='node')return button('send-worker','Affecter un pionnier');
+  if(first.kind==='post')return button('next-caravan','Sélectionner un convoi','',!s.units.some(u=>!u.side&&u.type==='caravan'))+button('panel','Routes marchandes','city');
   if(first.kind==='relay')return button('send-army','Envoyer l’armée au relais');
   const e=first.e;if(e.side)return '';
   if(first.kind==='building'){
@@ -63,17 +66,19 @@ export function commands(s,items,buildMenu,filter='base') {
     if(e.type==='forum'&&s.teams[0].age<3){const key=s.teams[0].age+1; jobs.push(card('age',String(key),TRANSITIONS[key],jobReason(s,e,'age',String(key)),'beacon'));}
     const next=e.type+'-'+((e.level||1)+1),upgrade=IMPROVEMENTS[next];if(upgrade)jobs.push(card('level-up',next,upgrade,jobReason(s,e,'level',next),STRUCTURES[e.type].art));
     let extra='';
+    if(e.type==='market'&&s.units.some(u=>!u.side&&u.type==='caravan'))extra+=button('next-caravan','Sélectionner un convoi');
     if(e.type==='hangar')extra+=button('panel','Préparer une sortie','rover');
     if(Object.keys(STRUCTURES[e.type].output||{}).length)extra+=button('staff-site','Affecter un pionnier à la production');
     if(STRUCTURES[e.type].civil||e.type==='house')extra+=button('relocate','Déplacer')+button('salvage','Démonter');
-    if(['forum','barracks','workshop'].includes(e.type))extra+=button('rally','Point de ralliement');if(e.type==='farm')extra+=button('send-worker','Affecter un pionnier');if(e.hp<STRUCTURES[e.type].hp-.01)extra+=button('repair-site','Réparer');
+    if(['forum','barracks','workshop','market'].includes(e.type))extra+=button('rally','Point de ralliement');if(e.type==='farm')extra+=button('send-worker','Affecter un pionnier');if(e.hp<STRUCTURES[e.type].hp-.01)extra+=button('repair-site','Réparer');
     return `<div class="rts-cards">${jobs.join('')}</div><div class="rts-buttons">${extra}</div>`;
   }
-  const workers=items.some(o=>o.e.type==='worker'),military=items.some(o=>o.e.type!=='worker');
+  if(items.length===1&&e.type==='caravan')return caravanOrders(s,e);
+  const workers=items.some(o=>o.e.type==='worker'),military=items.some(o=>isMilitary(o.e.type));
   if(buildMenu&&workers)return `<div class="rts-subhead"><b>Chantiers</b>${button('back-orders','Retour')}</div>
     <div class="civic-pills">${[['base','Essentiels'],['industry','Économie'],['army','Défense'],['science','Science']].map(([k,n])=>`<button data-rts-act="filter" data-key="${k}" aria-pressed="${filter===k}">${n}</button>`).join('')}</div>
     <div class="rts-cards buildings">${catalog[filter].map(k=>{const d=STRUCTURES[k],voucher=s.campaign?.charters.find(v=>v.type===k);return card('build',k,voucher?{...d,name:d.name+' · kit niv. '+voucher.level,cost:{}}:d,buildReason(s,0,k),d.art);}).join('')}</div>`;
-  return `<div class="rts-buttons">${workers?button('build-menu','Construire (B)'):''}${military?button('advance','Avancer en combattant (A)'):''}${button('target','Ordre ciblé')}${button('stop','Halte')}</div>${workers?`<div class="rts-subhead"><b>Récolter à proximité</b></div><div class="rts-harvest">${GATHERED.map(k=>button('harvest',`${picture(RES[k].art)} ${RES[k].name}`,k)).join('')}</div>`:''}`;
+  return `<div class="rts-buttons">${workers?button('build-menu','Construire (B)'):''}${military?button('advance','Avancer en combattant (A)')+button('patrol','Patrouiller (T)')+button('escort','Escorter (E)'):''}${button('target','Ordre ciblé')}${button('stop','Halte')}</div>${workers?`<div class="rts-subhead"><b>Récolter à proximité</b></div><div class="rts-harvest">${GATHERED.map(k=>button('harvest',`${picture(RES[k].art)} ${RES[k].name}`,k)).join('')}</div>`:''}`;
 }
 export function queueMarkup(b){if(!b?.queue?.length)return '';return `<div class="rts-subhead"><b>File de production</b></div><ol class="rts-jobs">${b.queue.map((j,i)=>`<li><span>${jobDef(j.kind,j.key).name}<small>${i?'En attente':j.left>0?`${Math.ceil(j.left)} s`:'En attente d’un logement'}</small></span>${button('cancel-job','×',String(i),false,'Annuler et rembourser')}</li>`).join('')}</ol>`;}
-export function helpMarkup(){return `<h2>Commandes du terrain</h2><dl class="rts-keys"><dt>Clic gauche</dt><dd>Sélectionner une unité. Cliquez ensuite sur un gisement, une cible ou le sol pour donner un ordre.</dd><dt>Clic droit</dt><dd>Donner un ordre contextuel. Un bâtiment de formation peut fixer un point de ralliement.</dd><dt>Glisser</dt><dd>Tracer une sélection au clic gauche. Maintenez le bouton du milieu pour déplacer la caméra.</dd><dt>Molette · minicarte · O</dt><dd>Zoomer vers le pointeur, centrer la caméra, afficher la vue d’ensemble.</dd><dt>Maj + clic · double-clic</dt><dd>Ajouter ou retirer une unité. Double-cliquer sélectionne son type à l’écran.</dd><dt>Ctrl + 1 à 5 · 1 à 5</dt><dd>Mémoriser puis rappeler un groupe.</dd><dt>H · V · M · Q</dt><dd>Forum, pionniers, armée et prochain pionnier libre.</dd><dt>B · A · P</dt><dd>Construire, avancer en combattant et mettre en pause.</dd><dt>Flèches · Entrée</dt><dd>Déplacer le curseur sur la carte puis interagir. Échap annule l’ordre préparé.</dd></dl><p>Les rubriques Cité et Rover gardent la carte en mouvement. Les installations produisent toutes les 12 secondes. Les ressources du rover rejoignent le stock au retour. Un relais tenu 12 secondes par des unités militaires donne des cristaux et de la vision. Détruisez le forum ennemi ou gardez votre Flèche orbitale en service pendant 90 secondes pour pacifier le bassin. Votre colonie poursuit ensuite ses découvertes.</p>${button('back','Reprendre le commandement')}`;}
+export function helpMarkup(){return `<h2>Commandes du terrain</h2><dl class="rts-keys"><dt>Clic gauche</dt><dd>Sélectionner une unité. Cliquez ensuite sur un gisement, une cible ou le sol pour donner un ordre.</dd><dt>Clic droit</dt><dd>Donner un ordre contextuel. Un bâtiment de formation peut fixer un point de ralliement.</dd><dt>Glisser</dt><dd>Tracer une sélection au clic gauche. Maintenez le bouton du milieu pour déplacer la caméra.</dd><dt>Molette · minicarte · O</dt><dd>Zoomer vers le pointeur, centrer la caméra, afficher la vue d’ensemble.</dd><dt>Maj + clic · double-clic</dt><dd>Ajouter ou retirer une unité. Double-cliquer sélectionne son type à l’écran.</dd><dt>Ctrl + 1 à 5 · 1 à 5</dt><dd>Mémoriser puis rappeler un groupe.</dd><dt>H · V · M · Q</dt><dd>Forum, pionniers, armée et prochain pionnier libre.</dd><dt>T · E</dt><dd>Patrouiller entre la position actuelle et un point du terrain. Pour escorter, désignez un convoi, un pionnier ou le rover allié.</dd><dt>B · A · P</dt><dd>Construire, avancer en combattant et mettre en pause.</dd><dt>Flèches · Entrée</dt><dd>Déplacer le curseur sur la carte puis interagir. Échap annule l’ordre préparé.</dd></dl><p>Les rubriques Cité et Rover gardent la carte en mouvement. Les installations produisent toutes les 12 secondes. Les ressources du rover rejoignent le stock au retour. Un relais tenu 12 secondes par des unités militaires donne des cristaux et de la vision. Détruisez le forum ennemi ou gardez votre Flèche orbitale en service pendant 90 secondes pour pacifier le bassin. Votre colonie poursuit ensuite ses découvertes.</p>${button('back','Reprendre le commandement')}`;}

@@ -1,5 +1,5 @@
-import { LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, UNITS, populationLimit, validSize } from './strategy-rules.js?v=8.1.0';
-import { atlas, jobDef, refreshVision } from './strategy-engine.js?v=8.1.0';
+import { LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, UNITS, isMilitary, populationLimit, validSize } from './strategy-rules.js?v=8.2.0';
+import { atlas, jobDef, refreshVision } from './strategy-engine.js?v=8.2.0';
 
 export const MAX_SAVE_LENGTH = 3_000_000;
 const finite = (n,lo,hi) => Number.isFinite(n)&&n>=lo&&n<=hi;
@@ -25,7 +25,10 @@ export function readMatch(raw) {
         if(j.paid){const choices=[d.cost];if(j.kind==='tech'&&d.civil)choices.push(Object.fromEntries(Object.entries(d.cost).map(([k,n])=>[k,Math.ceil(n*.75)])));
           if(!choices.some(cost=>Object.keys(j.paid).length===Object.keys(cost).length&&Object.entries(cost).every(([k,n])=>j.paid[k]===n)))return null;}}}
     for(const u of s.units){if(!owns(UNITS,u.type)||!finite(u.x,0,size-1)||!finite(u.y,0,size-1)||u.hp>UNITS[u.type].hp+.01||!cell(u.anchor)||!finite(u.work,0,1e9)||!Array.isArray(u.path)||u.path.length>count||!u.path.every(cell))return null;
-      const o=u.order;if(!o||!['idle','move','advance','attack','gather','repair','assist','staff'].includes(o.kind)||o.kind!=='idle'&&!cell(o.cell)||o.kind==='gather'&&!owns(RES,o.resource))return null;
+      const o=u.order;if(!o||!['idle','move','advance','attack','gather','repair','assist','staff','trade','escort','patrol'].includes(o.kind)||o.kind!=='idle'&&!cell(o.cell)||o.kind==='gather'&&!owns(RES,o.resource))return null;
+      if(o.kind==='trade'&&(!s.campaign||u.type!=='caravan'))return null;
+      if(o.kind==='patrol'&&(!isMilitary(u.type)||!cell(o.other)))return null;
+      if(o.kind==='escort'&&(!isMilitary(u.type)||!Number.isSafeInteger(o.target)||o.target<0))return null;
       if(typeof u.goal!=='string'||u.goal.length>75||u.cargo&&(!owns(RES,u.cargo.kind)||!finite(u.cargo.n,0,14)))return null;}
     const deposits=atlas(s).deposits;if(s.nodes.length!==deposits.length||!s.nodes.every((n,i)=>n.cell===deposits[i].cell&&n.kind===deposits[i].kind&&finite(n.left,0,deposits[i].amount)))return null;
     if(!Number.isSafeInteger(s.nextId)||s.nextId<=Math.max(0,...ids)||!Number.isSafeInteger(s.rev)||s.rev<0||!finite(s.ai?.lastRaid,0,s.tick/4)||![-1,0,1].includes(s.relay?.owner)||![-1,0,1].includes(s.relay.contender)||!finite(s.relay.progress,0,12))return null;
@@ -37,7 +40,7 @@ export function readMatch(raw) {
     if(!s.alarm||!cell(s.alarm.cell)||!Number.isSafeInteger(s.alarm.tick)||!finite(s.alarm.tick,0,s.tick))s.alarm=null;
     const c=s.command;
     const list=v=>Array.isArray(v)&&v.length<=maxUnits&&v.every(k=>typeof k==='string'&&
-      (/^(?:e[0-9]{1,12}|relay|rover)$/.test(k)||/^n[0-9]{1,4}$/.test(k)&&cell(Number(k.slice(1)))));
+      (/^(?:e[0-9]{1,12}|relay|rover|post[01])$/.test(k)||/^n[0-9]{1,4}$/.test(k)&&cell(Number(k.slice(1)))));
     const cameraRange=size*80;
     if(c && !(finite(c.center?.x,-cameraRange,cameraRange)&&finite(c.center?.y,-cameraRange,cameraRange)&&finite(c.zoom,.08,1.8)&&[1,2,3].includes(c.speed)&&list(c.selection)&&c.groups&&Object.entries(c.groups).every(([k,v])=>/^[1-5]$/.test(k)&&list(v))))delete s.command;
     s.size=size;s.effects=[];refreshVision(s);return s;

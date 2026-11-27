@@ -1,5 +1,5 @@
-import {IMPROVEMENTS} from './colony-rules.js?v=8.1.0';
-import { AGES, DT, LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, TRANSITIONS, UNITS, apart, battlefield, canPay, grid, populationLimit, validSize, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.1.0';
+import {IMPROVEMENTS} from './colony-rules.js?v=8.2.0';
+import { AGES, DT, LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, TRANSITIONS, UNITS, apart, battlefield, isMilitary, canPay, grid, populationLimit, validSize, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.2.0';
 
 const deny = message => ({ok:false,message});
 const done = message => ({ok:true,message});
@@ -186,10 +186,19 @@ function nearestDepot(s,side,from) {
 export function orderUnits(s,side,ids,kind,cell,targetId) {
   if(s.result)return deny('La partie est terminée.');
   const wanted=new Set(ids);
-  let group=unitsOf(s,side).filter(u=>wanted.has(u.id));
+  let group=unitsOf(s,side).filter(u=>wanted.has(u.id)&&u.order.kind!=='trade');
+  if(!group.length&&unitsOf(s,side,'caravan').some(u=>wanted.has(u.id)))return deny('Rappelez le convoi pour ramener sa cargaison.');
   if(!group.length)return deny('Sélectionnez au moins une unité.');
   const target=[...s.units,...s.buildings].find(e=>e.id===targetId&&e.hp>0);
   if(kind==='stop'){for(const u of group){resetOrder(u,{kind:'idle'});u.anchor=unitCell(u,s.size);}return done('Ordre de halte.');}
+  if(kind==='escort'){
+    const protectedUnit=escortTarget(s,side,targetId);
+    if(!protectedUnit)return deny('Désignez un convoi, un pionnier ou le rover de votre camp.');
+    group=group.filter(u=>isMilitary(u.type)&&routeDistance(s,unitCell(u,s.size),unitCell(protectedUnit,s.size),2)>=0);
+    if(!group.length)return deny('Aucune unité militaire ne peut rejoindre cette escorte.');
+    for(const u of group)resetOrder(u,{kind,target:targetId,cell:unitCell(protectedUnit,s.size)});
+    return done('Escorte en place.');
+  }
   if(kind==='attack'){
     if(!target||target.side===side||!vision(s,side)[target.cell??unitCell(target,s.size)])return deny('La cible doit être visible.');
     group=group.filter(u=>UNITS[u.type].damage);if(!group.length)return deny('Sélectionnez une unité militaire.');
@@ -212,7 +221,8 @@ export function orderUnits(s,side,ids,kind,cell,targetId) {
     for(const u of reachable)resetOrder(u,{kind,cell,...(source?{resource:source.kind}:{target:target.id})});
     return done(kind==='gather'?`Collecte de ${RES[source.kind].name.toLowerCase()} engagée.`:kind==='staff'?'Pionnier affecté à la production.':kind==='assist'?'Pionniers affectés au chantier.':'Réparation engagée, 1 minerai pour 12 points.');
   }
-  if(kind!=='move'&&kind!=='advance')return deny('Ordre inconnu.');
+  if(kind==='patrol')group=group.filter(u=>isMilitary(u.type));
+  if(kind!=='move'&&kind!=='advance'&&kind!=='patrol')return deny('Ordre inconnu.');
   const wide=s.size>SIDE,radius=wide?Math.max(5,Math.ceil(Math.sqrt(group.length)/1.4)+4):5;
   const assigned=new Set(),sites=nearestFree(s,cell,new Set(),radius),labels=wide?components(s):null;
   let placed=0;
@@ -220,12 +230,16 @@ export function orderUnits(s,side,ids,kind,cell,targetId) {
     const from=unitCell(u,s.size);
     const goal=sites.find(id=>!assigned.has(id)&&(labels?labels[from]===labels[id]:routeDistance(s,from,id,0)>=0));
     if(goal===undefined)continue;
-    assigned.add(goal);resetOrder(u,{kind:kind==='advance'&&UNITS[u.type].damage?'advance':'move',cell:goal});placed++;}
-  return placed?done(kind==='advance'?'Progression ordonnée.':'Déplacement ordonné.'):deny('Aucun itinéraire praticable.');
+    if(kind==='patrol'&&goal===from)continue;
+    assigned.add(goal);
+    resetOrder(u,kind==='patrol'?{kind,cell:goal,other:from}:{kind:kind==='advance'&&isMilitary(u.type)?'advance':'move',cell:goal});
+    placed++;}
+  return placed?done(kind==='patrol'?'Patrouille établie entre les deux positions.':kind==='advance'?'Progression ordonnée.':'Déplacement ordonné.'):deny('Aucun itinéraire praticable.');
 }
 export function placementReason(s,side,type,cell,ignore=0) {
   const def=STRUCTURES[type];
   if(!Number.isInteger(cell)||!walkable(s,cell)||atlas(s).cells[cell].ford||atlas(s).relay===cell||!vision(s,side)[cell])return 'Choisissez un terrain visible et libre, hors des gués et du relais.';
+  if(s.campaign?.trade?.posts.some(post=>mapDistance(s.size,cell,post)<def.clearance+.65))return 'Laissez libre la place du comptoir marchand.';
   if(s.buildings.some(b=>b.id!==ignore&&b.hp>0&&mapDistance(s.size,cell,b.cell)<def.clearance+STRUCTURES[b.type].clearance))return 'Prévoyez de la place pour les accès.';
   if(s.units.some(u=>u.hp>0&&apart(u,mapPoint(s.size,cell))<.78))return 'Cette case est occupée.';
   return '';
@@ -294,7 +308,7 @@ export function cancelSite(s,side,id) {
 }
 export function setRally(s,side,id,cell) {
   const b=s.buildings.find(b=>b.id===id&&same(b,side)&&b.ready);
-  if(s.result||!b||!['forum','barracks','workshop'].includes(b.type)||!walkable(s,cell))return deny('Choisissez un terrain accessible.');
+  if(s.result||!b||!['forum','barracks','workshop','market'].includes(b.type)||!walkable(s,cell))return deny('Choisissez un terrain accessible.');
   const exit=nearestFree(s,b.cell,new Set(),1)[0];if(exit===undefined||routeDistance(s,exit,cell,0)<0)return deny('Point de ralliement inaccessible.');
   b.rally=cell;return done('Point de ralliement défini.');
 }
@@ -326,7 +340,7 @@ function doProduction(s,b) {
     const pop=populationInfo(s,b.side);if(pop.used>=pop.cap)return;
     const sites=nearestFree(s,b.cell,new Set(),1).filter(cell=>mapDistance(s.size,cell,b.cell)<=1.45);if(!sites.length)return;
     const spot=sites.find(id=>!s.units.some(u=>unitCell(u,s.size)===id))??sites[0];const u=makeUnit(s,b.side,job.key,spot);team.trained++;
-    if(b.rally!==null)resetOrder(u,{kind:u.type==='worker'?'move':'advance',cell:b.rally});
+    if(b.rally!==null)resetOrder(u,{kind:isMilitary(u.type)?'advance':'move',cell:b.rally});
   }else if(job.kind==='level'){b.level=jobDef('level',job.key).level;notify(s,`${STRUCTURES[b.type].name} · niveau ${b.level} achevé.`);}
   else if(job.kind==='age'){team.age=Number(job.key);notify(s,`${b.side?'Cendre':'Aurore'} entre dans l’âge de ${AGES[team.age-1].toLowerCase()}.`);}
   else {team.tech.push(job.key);if(b.side===0)notify(s,`Recherche achevée · ${STUDIES[job.key].name}.`);}
@@ -343,14 +357,24 @@ function nearestEnemy(s,side,point,radius) {
 function fire(s,attacker,enemy,def,hits) {
   if(attacker.cool>0)return;attacker.cool=def.interval||1.75;
   let dmg=def.damage;if(def.counter===enemy.type)dmg*=1.65;
-  if(enemy.cell===undefined&&enemy.type!=='worker'&&s.teams[enemy.side].tech.includes('plating'))dmg*=.75;
+  if(enemy.cell===undefined&&isMilitary(enemy.type)&&s.teams[enemy.side].tech.includes('plating'))dmg*=.75;
   hits.set(enemy.id,(hits.get(enemy.id)||0)+dmg);
   if(vision(s,0)[enemy.cell??unitCell(enemy,s.size)] && vision(s,0)[attacker.cell??unitCell(attacker,s.size)])s.effects.push({a:{...pointXY(s,attacker)},b:{...pointXY(s,enemy)},side:attacker.side,t:s.tick});
 }
 function pointXY(s,e){const p=where(s,e);return {x:p.x,y:p.y};}
+function escortTarget(s,side,id) {
+  return id===0&&side===0?s.campaign?.rover:s.units.find(e=>e.id===id&&same(e,side)&&!isMilitary(e.type));
+}
 function militaryStep(s,u,hits) {
   const def=UNITS[u.type],order=u.order,visible=vision(s,u.side);
   let enemy=null;
+  if(order.kind==='escort'){
+    const ward=escortTarget(s,u.side,order.target);
+    if(!ward){u.anchor=unitCell(u,s.size);resetOrder(u,{kind:'idle'});return;}
+    order.cell=unitCell(ward,s.size);
+    if(apart(u,ward)<=4.5)enemy=nearestEnemy(s,u.side,ward,3.8);
+    if(!enemy){if(apart(u,ward)>1.7)travel(s,u,order.cell,1.45);return;}
+  }
   if(order.kind==='attack'){
     enemy=[...s.units,...s.buildings].find(e=>e.id===order.target&&e.hp>0&&visible[e.cell??unitCell(e,s.size)]);
     if(enemy)order.cell=enemy.cell??unitCell(enemy,s.size);else{resetOrder(u,{kind:'advance',cell:order.cell});}
@@ -361,12 +385,14 @@ function militaryStep(s,u,hits) {
     if(apart(u,where(s,enemy))<=range+.07){fire(s,u,enemy,def,hits);return;}
     travel(s,u,enemy.cell??unitCell(enemy,s.size),Math.max(1,range-.45));return;
   }
-  if(u.order.kind==='advance'){if(travel(s,u,u.order.cell)){u.anchor=unitCell(u,s.size);resetOrder(u,{kind:'idle'});}}
+  if(u.order.kind==='patrol'){
+    if(travel(s,u,order.cell)){const next=order.other;order.other=order.cell;order.cell=next;u.anchor=unitCell(u,s.size);}
+  }else if(u.order.kind==='advance'){if(travel(s,u,u.order.cell)){u.anchor=unitCell(u,s.size);resetOrder(u,{kind:'idle'});}}
   else if(u.order.kind==='idle'&&mapDistance(s.size,unitCell(u,s.size),u.anchor)>1.5)travel(s,u,u.anchor,.25);
 }
 function capture(s) {
   const relay=s.relay,p=mapPoint(s.size,atlas(s).relay),present=[false,false];
-  for(const u of s.units)if(u.hp>0&&u.type!=='worker'&&apart(u,p)<=2.2)present[u.side]=true;
+  for(const u of s.units)if(u.hp>0&&isMilitary(u.type)&&apart(u,p)<=2.2)present[u.side]=true;
   const side=present[0]===present[1]?-1:present[0]?0:1;
   if(side<0||side===relay.owner){if(!present[0]&&!present[1]||side===relay.owner){relay.progress=Math.max(0,relay.progress-DT);if(!relay.progress)relay.contender=-1;}}
   else{if(relay.contender!==side){relay.contender=side;relay.progress=0;}relay.progress+=DT;
@@ -379,7 +405,7 @@ export function tickSimulation(s) {
   for(const u of s.units){u.cool=Math.max(0,u.cool-DT);const kind=u.order.kind;
     if(kind==='move'){if(travel(s,u,u.order.cell)){u.anchor=unitCell(u,s.size);resetOrder(u,{kind:'idle'});}continue;}
     if(u.type==='worker'){if(['gather','assist','repair','staff'].includes(kind))economicStep(s,u,builders);}
-    else militaryStep(s,u,hits);
+    else if(isMilitary(u.type))militaryStep(s,u,hits);
   }
   for(const b of s.buildings){const def=STRUCTURES[b.type];if(!b.ready){const count=builders.get(b.id)||0;if(!count)continue;
     const work=Math.min(def.time-b.work,DT*(1+.65*(Math.min(8,count)-1)));b.work+=work;b.hp=Math.min(def.hp,b.hp+def.hp*.82*work/def.time);

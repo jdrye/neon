@@ -1,10 +1,11 @@
+import {POST_NAMES,openTrade,advanceTrade} from './trade.js?v=8.2.0';
 import {GOALS} from './engine.js?v=6.0.0';
 import {WORKSHOPS} from './crews.js?v=6.0.0';
-import {IMPROVEMENTS,scienceIds,sharedCost} from './colony-rules.js?v=8.1.0';
-import {DT,RES,STRUCTURES,apart,mapPoint,mapDistance} from './strategy-rules.js?v=8.1.0';
-import {atlas,createMatch,gain,notify,placementReason,ready,refreshVision,tickSimulation,unitCell,unitsOf} from './strategy-engine.js?v=8.1.0';
-import {tickMatch} from './strategy-ai.js?v=8.1.0';
-import {advanceRover} from './campaign-rover.js?v=8.1.0';
+import {IMPROVEMENTS,scienceIds,sharedCost} from './colony-rules.js?v=8.2.0';
+import {DT,RES,STRUCTURES,isMilitary,apart,mapPoint,mapDistance} from './strategy-rules.js?v=8.2.0';
+import {atlas,createMatch,gain,notify,placementReason,ready,refreshVision,tickSimulation,unitCell,unitsOf} from './strategy-engine.js?v=8.2.0';
+import {tickMatch} from './strategy-ai.js?v=8.2.0';
+import {advanceRover} from './campaign-rover.js?v=8.2.0';
 
 export const TICKS_PER_CYCLE = Math.round(12/DT);
 export const goalTexts=['Faire livrer cinq cargaisons par les pionniers.','Mettre une centrale solaire en service.','Achever un habitat.','Exploiter une serre et un collecteur d’eau.','Réunir 16 habitants, une serre et un port stellaire.','Acquérir les trois sciences civiles et réunir 28 habitants.','Réunir 52 habitants et quatre installations de niveau III.'];
@@ -12,7 +13,7 @@ export function newSettlement() {
   return {version:1,sound:false,deliveries:0,claimed:[],specimens:[],sorties:0,signals:0,orders:0,surgeWins:0,decisions:[],rover:null,peace:null,siege:null,charters:[]};
 }
 export function createCampaign(seed,region='delta',level='even',size) {
-  const s=createMatch(seed,region,level,size);s.campaign=newSettlement();return s;
+  const s=createMatch(seed,region,level,size);s.campaign=newSettlement();openTrade(s);return s;
 }
 export function installationYield(s,b) {
   const d=STRUCTURES[b.type],income={};
@@ -57,14 +58,16 @@ export function pacify(s) {
 }
 export function tickCampaign(s) {
   if(s.result)return;
+  const posts=s.campaign.trade.posts,unseen=posts.filter(cell=>!s.teams[0].explored[cell]);
   if(s.campaign.peace)tickSimulation(s);else tickMatch(s);
   if(s.result){pacify(s);if(s.result)return;}
-  advanceRover(s);
+  advanceRover(s);advanceTrade(s);
+  for(const cell of unseen)if(s.teams[0].explored[cell])notify(s,POST_NAMES[posts.indexOf(cell)]+' reconnu. La halle peut désormais y envoyer un convoi.');
   if(s.tick%TICKS_PER_CYCLE===0){
     for(const side of [0,1])for(const [key,n] of Object.entries(districtRates(s,side)))if(n)gain(s,side,key,n);
     civicMilestones(s);
   }
-  if(!s.campaign.siege&&s.tick%8===0&&unitsOf(s,1).filter(u=>u.type!=='worker'&&mapDistance(s.size,unitCell(u,s.size),atlas(s).home)<7.5).length>=3) {
+  if(!s.campaign.siege&&s.tick%8===0&&unitsOf(s,1).filter(u=>isMilitary(u.type)&&mapDistance(s.size,unitCell(u,s.size),atlas(s).home)<7.5).length>=3) {
     s.campaign.siege=s.tick;notify(s,'Le siège d’Aurore commence. Une colonne de Cendre approche de votre forum.');
   }
 }
