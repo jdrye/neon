@@ -4,6 +4,8 @@ Un jeu de stratégie et de colonisation en français. Sur Kepler, Aurore et Cend
 
 ## Fonder Aurore
 
+Pour une colonie paisible, choisissez **Sans adversaire** à la fondation. Vous partez avec le double des réserves habituelles. Les deux rives restent ouvertes à la construction, au commerce et aux expéditions. La partie se poursuit aussi longtemps que vous le souhaitez, y compris après la construction de la Flèche orbitale. Ce choix est enregistré avec la colonie.
+
 Choisissez le delta, les plateaux d’ambre ou les cols de givre, une taille, un numéro de carte et la difficulté. Le même numéro, utilisé avec la même taille et le même bassin, reproduit le terrain. **Fonder la colonie** vous donne un forum, cinq pionniers et un Voltigeur. Quatre pionniers travaillent déjà. Le cinquième peut construire un hangar ou une caserne, rejoindre une équipe de récolte ou assurer la production d’une installation.
 
 | Taille | Dimensions | Plafond par camp |

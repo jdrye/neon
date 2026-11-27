@@ -1,8 +1,8 @@
 import {CHAPTERS,RIGS} from './frontier.js?v=6.0.0';
 import {SURVEYS} from './survey.js?v=6.0.0';
-import {sharedCost} from './colony-rules.js?v=8.2.0';
-import {DT,SIDE,isMilitary,apart,canPay,grid,mapPoint,mapDistance} from './strategy-rules.js?v=8.2.0';
-import {atlas,distancesFrom,gain,notify,pay,ready,refreshVision,routeDistance,travel,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.2.0';
+import {sharedCost} from './colony-rules.js?v=8.3.0';
+import {DT,SIDE,isMilitary,apart,canPay,grid,mapPoint,mapDistance} from './strategy-rules.js?v=8.3.0';
+import {atlas,distancesFrom,gain,notify,pay,ready,refreshVision,routeDistance,travel,unitCell,unitsOf,walkable} from './strategy-engine.js?v=8.3.0';
 
 export const MISSIONS = {
   flora:{name:'Forêt des brumes',art:'site-flora',kind:'wood',distance:6},

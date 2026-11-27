@@ -1,4 +1,4 @@
-import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.2.0';
+import {DISTRICTS, SCIENCE} from './colony-rules.js?v=8.3.0';
 
 export const SIDE = 27, HOME = 17 * SIDE + 6, RIVAL = SIDE * SIDE - 1 - HOME, MID = 13 * SIDE + 13;
 export const MAP_SIZES = {
@@ -24,6 +24,7 @@ export const MAPS = {
   passes: { name: 'Cols de givre', biome: 'boreal', terrain: 'Deux cols traversent la crête centrale.' },
 };
 export const LEVELS = {
+  solo: {name:"Sans adversaire"},
   calm: { name:'Découverte', interval:7, raid:235, repeat:130, settlers:8, army:5, grow:150 },
   even: { name:'Stratège', interval:4, raid:145, repeat:95, settlers:11, army:6, grow:95 },
   fierce:{ name:'Vétéran', interval:3, raid:95, repeat:66, settlers:14, army:5, grow:70 },

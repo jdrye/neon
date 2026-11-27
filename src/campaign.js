@@ -1,11 +1,11 @@
-import {POST_NAMES,openTrade,advanceTrade} from './trade.js?v=8.2.0';
+import {POST_NAMES,openTrade,advanceTrade} from './trade.js?v=8.3.0';
 import {GOALS} from './engine.js?v=6.0.0';
 import {WORKSHOPS} from './crews.js?v=6.0.0';
-import {IMPROVEMENTS,scienceIds,sharedCost} from './colony-rules.js?v=8.2.0';
-import {DT,RES,STRUCTURES,isMilitary,apart,mapPoint,mapDistance} from './strategy-rules.js?v=8.2.0';
-import {atlas,createMatch,gain,notify,placementReason,ready,refreshVision,tickSimulation,unitCell,unitsOf} from './strategy-engine.js?v=8.2.0';
-import {tickMatch} from './strategy-ai.js?v=8.2.0';
-import {advanceRover} from './campaign-rover.js?v=8.2.0';
+import {IMPROVEMENTS,scienceIds,sharedCost} from './colony-rules.js?v=8.3.0';
+import {DT,RES,STRUCTURES,isMilitary,apart,mapPoint,mapDistance} from './strategy-rules.js?v=8.3.0';
+import {atlas,createMatch,gain,notify,placementReason,ready,refreshVision,tickSimulation,unitCell,unitsOf} from './strategy-engine.js?v=8.3.0';
+import {tickMatch} from './strategy-ai.js?v=8.3.0';
+import {advanceRover} from './campaign-rover.js?v=8.3.0';
 
 export const TICKS_PER_CYCLE = Math.round(12/DT);
 export const goalTexts=['Faire livrer cinq cargaisons par les pionniers.','Mettre une centrale solaire en service.','Achever un habitat.','Exploiter une serre et un collecteur d’eau.','Réunir 16 habitants, une serre et un port stellaire.','Acquérir les trois sciences civiles et réunir 28 habitants.','Réunir 52 habitants et quatre installations de niveau III.'];

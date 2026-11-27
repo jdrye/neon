@@ -1,5 +1,5 @@
-import {IMPROVEMENTS} from './colony-rules.js?v=8.2.0';
-import { AGES, DT, LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, TRANSITIONS, UNITS, apart, battlefield, isMilitary, canPay, grid, populationLimit, validSize, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.2.0';
+import {IMPROVEMENTS} from './colony-rules.js?v=8.3.0';
+import { AGES, DT, LEVELS, MAPS, RES, SIDE, STRUCTURES, STUDIES, TRANSITIONS, UNITS, apart, battlefield, isMilitary, canPay, grid, populationLimit, validSize, mapKey, mapPoint, mapDistance } from './strategy-rules.js?v=8.3.0';
 
 const deny = message => ({ok:false,message});
 const done = message => ({ok:true,message});
@@ -28,13 +28,18 @@ export function createMatch(seed=1,region='delta',level='even',size=SIDE) {
   s.nodes=atlas(s).deposits.map(d=>({cell:d.cell,kind:d.kind,left:d.amount}));
   for(const [side,home] of [atlas(s).home,atlas(s).rival].entries()) {
     s.teams.push({bank:{food:100,wood:105,ore:45,crystal:18,water:14,energy:16},age:1,tech:[],explored:Array(size*size).fill(0),enemyForum:null,trained:0,lost:0});
+    if(level==='solo'){
+      if(side===1)continue;
+      const bank=s.teams[0].bank;
+      for(const resource of Object.keys(bank))bank[resource]*=2;
+    }
     makeBuilding(s,side,'forum',home,true);
     const {x,y}=mapPoint(s.size,home),flip=side?-1:1;
     for(const [dx,dy] of [[-1,0],[0,1],[1,0],[0,-1],[-1,1]]) makeUnit(s,side,'worker',mapKey(s.size,x+flip*dx,y+flip*dy));
     makeUnit(s,side,'skimmer',mapKey(s.size,x+flip,y-flip));
   }
   refreshVision(s);
-  for(const side of [0,1]) for(const [i,kind] of ['food','wood','wood','ore'].entries()) {
+  for(const side of (level==='solo'?[0]:[0,1])) for(const [i,kind] of ['food','wood','wood','ore'].entries()) {
     const u=unitsOf(s,side,'worker')[i];const site=nearestSource(s,side,unitCell(u,s.size),kind);
     if(site!==null) resetOrder(u,{kind:'gather',cell:site,resource:kind});
   }
@@ -412,7 +417,7 @@ export function tickSimulation(s) {
     if(b.work+.00001>=def.time){b.ready=true;delete b.chartered;if(b.side===0||b.type==='spire')notify(s,`${def.name} en service ${b.side?'chez Cendre':'chez Aurore'}.`);}continue;}
     doProduction(s,b);if(def.damage){b.cool=Math.max(0,b.cool-DT);const range=def.range+(b.type==='tower'&&s.teams[b.side].tech.includes('optics')?1:0);
       const enemy=nearestEnemy(s,b.side,mapPoint(s.size,b.cell),range);if(enemy)fire(s,b,enemy,def,hits);}
-    if(b.type==='spire')b.hold+=DT;
+    if(b.type==='spire'&&s.level!=='solo')b.hold+=DT;
   }
   const attacked=[...s.buildings,...s.units].find(e=>!e.side&&hits.has(e.id));
   if(attacked && (!s.alarm||s.tick-s.alarm.tick>=100||attacked.type==='forum'&&attacked.cell!==s.alarm.cell)) {
@@ -427,7 +432,7 @@ export function tickSimulation(s) {
   s.units=s.units.filter(u=>u.hp>0);s.buildings=s.buildings.filter(b=>b.hp>0);capture(s);
   const forums=[0,1].map(side=>ready(s,side,'forum').length>0);
   const spires=[0,1].map(side=>ready(s,side,'spire').some(b=>b.hold>=90));
-  if(s.campaign?.peace)return;
+  if(s.level==='solo'||s.campaign?.peace)return;
   if(!forums[0]||!forums[1])s.result={winner:forums[0]===forums[1]?-1:forums[0]?0:1,reason:'forum'};
   else if(spires[0]||spires[1])s.result={winner:spires[0]===spires[1]?-1:spires[0]?0:1,reason:'spire'};
 }
